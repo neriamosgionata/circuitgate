@@ -169,6 +169,31 @@ export class CircuitEditorStore {
 		};
 	}
 
+	loadDocument(options: CircuitStoreOptions = {}): void {
+		this.circuit = options.circuit ?? emptyDocument();
+		this.definitions = options.definitions ?? {};
+		this.layouts = {};
+		if (options.layouts) {
+			for (const [key, value] of Object.entries(options.layouts)) {
+				this.layouts[key] = cloneLayoutMap(value);
+			}
+		}
+		if (!this.layouts['']) this.layouts[''] = {};
+		this.path = [];
+		this.selection = emptySelection();
+		this.pendingKind = null;
+		this.pendingWire = null;
+		this.packaging = null;
+		this.netValues = {};
+		this.oscillatingNets = new Set();
+		this.usedComponentIds.clear();
+		this.componentCounter = 0;
+		this.instanceCounter = 0;
+		this.netCounter = 0;
+		this.reindexIds();
+		this.emit();
+	}
+
 	private emit(): void {
 		this.revision += 1;
 		const snapshot = this.snapshot;

@@ -7,10 +7,13 @@ import dev.circuitgate.account.InvalidPasswordException;
 import dev.circuitgate.account.InvalidTokenException;
 import dev.circuitgate.account.RateLimitedException;
 import dev.circuitgate.account.SendMailException;
+import dev.circuitgate.lock.LockConflictException;
+import dev.circuitgate.lock.ProjectLockedException;
 import dev.circuitgate.project.InvalidProjectDocumentException;
 import dev.circuitgate.project.ProjectConflictException;
 import dev.circuitgate.project.ProjectNotFoundException;
 import dev.circuitgate.project.ProjectPayloadTooLargeException;
+import dev.circuitgate.sharing.ShareNotFoundException;
 import dev.circuitgate.team.MemberNotAvailableException;
 import dev.circuitgate.team.OwnerCannotBeRemovedException;
 import dev.circuitgate.team.TeamMemberNotFoundException;
@@ -61,10 +64,31 @@ public class ApiExceptionHandler {
 		return Map.of("error", "not_found");
 	}
 
-	@ExceptionHandler({ TeamNotFoundException.class, TeamMemberNotFoundException.class })
+	@ExceptionHandler({ TeamNotFoundException.class, TeamMemberNotFoundException.class, ShareNotFoundException.class })
 	@ResponseStatus(HttpStatus.NOT_FOUND)
 	public Map<String, String> teamNotFound() {
 		return Map.of("error", "not_found");
+	}
+
+	@ExceptionHandler(ProjectLockedException.class)
+	@ResponseStatus(HttpStatus.CONFLICT)
+	public Map<String, Object> projectLocked(ProjectLockedException ex) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("error", "locked");
+		body.put("lock", ex.getLock());
+		return body;
+	}
+
+	@ExceptionHandler(LockConflictException.class)
+	@ResponseStatus(HttpStatus.CONFLICT)
+	public Map<String, Object> lockConflict(LockConflictException ex) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("error", "lock_conflict");
+		body.put("reason", ex.getReason());
+		if (ex.getVersion() != null) {
+			body.put("version", ex.getVersion());
+		}
+		return body;
 	}
 
 	@ExceptionHandler(MemberNotAvailableException.class)

@@ -9,6 +9,7 @@ import dev.circuitgate.account.dto.AccountDtos.ResetPasswordRequest;
 import dev.circuitgate.account.dto.AccountDtos.StatusResponse;
 import dev.circuitgate.account.dto.AccountDtos.VerifyEmailRequest;
 import dev.circuitgate.config.ClientAddressResolver;
+import dev.circuitgate.realtime.RealtimeSessionRegistry;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,13 +37,16 @@ public class AccountController {
 
 	private final HashedPersistentTokenRememberMeServices rememberMeServices;
 
+	private final RealtimeSessionRegistry realtime;
+
 	private final SecurityContextLogoutHandler logoutHandler = new SecurityContextLogoutHandler();
 
 	public AccountController(AccountService accountService, ClientAddressResolver addressResolver,
-			HashedPersistentTokenRememberMeServices rememberMeServices) {
+			HashedPersistentTokenRememberMeServices rememberMeServices, RealtimeSessionRegistry realtime) {
 		this.accountService = accountService;
 		this.addressResolver = addressResolver;
 		this.rememberMeServices = rememberMeServices;
+		this.realtime = realtime;
 	}
 
 	@GetMapping("/csrf")
@@ -95,6 +99,7 @@ public class AccountController {
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void logoutAll(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
 		accountService.revokeSessions(authentication.getName());
+		realtime.disconnectUser(authentication.getName());
 		rememberMeServices.logout(request, response, authentication);
 		logoutHandler.logout(request, response, authentication);
 	}

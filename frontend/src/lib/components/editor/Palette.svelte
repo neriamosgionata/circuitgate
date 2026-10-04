@@ -17,9 +17,10 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		readonly?: boolean;
 	}
 
-	let { store }: Props = $props();
+	let { store, readonly = false }: Props = $props();
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let packageName = $state('');
 	let packageError = $state<string | null>(null);
@@ -49,6 +50,7 @@
 	});
 
 	function beginPackaging() {
+		if (readonly) return;
 		packageError = null;
 		const result = store.beginPackaging();
 		if (!result.ok) {
@@ -60,6 +62,7 @@
 	}
 
 	function confirmPackaging() {
+		if (readonly) return;
 		const result = store.confirmPackage(packageName);
 		if (!result.ok) {
 			packageError = result.error;
@@ -91,6 +94,7 @@
 						type="button"
 						class:active={snapshot.pendingKind === kind}
 						onclick={() => store.beginPlacement(kind)}
+						disabled={readonly}
 					>
 						{kind}
 					</button>
@@ -106,13 +110,22 @@
 		{/if}
 		<div class="kinds">
 			{#each definitionNames as name (name)}
-				<button type="button" onclick={() => store.instantiateDefinition(name, { x: 80, y: 80 })}>
+				<button
+					type="button"
+					onclick={() => store.instantiateDefinition(name, { x: 80, y: 80 })}
+					disabled={readonly}
+				>
 					{name}
 				</button>
 			{/each}
 		</div>
 		{#if selectedInstance}
-			<button class="wide" type="button" onclick={() => store.enterDefinition(selectedInstance)}>
+			<button
+				class="wide"
+				type="button"
+				onclick={() => store.enterDefinition(selectedInstance)}
+				disabled={readonly}
+			>
 				Edit definition “{selectedInstance}”
 			</button>
 		{/if}
@@ -121,7 +134,9 @@
 	<section class="packaging">
 		<h3>Package selection</h3>
 		{#if !snapshot.packaging}
-			<button class="wide" type="button" onclick={beginPackaging}>Package selection as subcircuit</button>
+			<button class="wide" type="button" onclick={beginPackaging} disabled={readonly}>
+				Package selection as subcircuit
+			</button>
 			{#if packageError}<p class="error">{packageError}</p>{/if}
 		{:else}
 			<p class="muted">Define the pin interface, then name the subcircuit.</p>
@@ -135,14 +150,15 @@
 								: pinNameFor(snapshot.packaging, candidate.netId, 'output')}
 							onchange={(event) =>
 								store.renamePackagingPin(candidate.netId, event.currentTarget.value)}
+							disabled={readonly}
 						/>
 						<small>{candidate.netId}</small>
 					</label>
 				{/each}
 			</div>
-			<input placeholder="definition name" bind:value={packageName} />
+			<input placeholder="definition name" bind:value={packageName} disabled={readonly} />
 			<div class="row">
-				<button type="button" onclick={confirmPackaging}>Create</button>
+				<button type="button" onclick={confirmPackaging} disabled={readonly}>Create</button>
 				<button type="button" onclick={() => store.cancelPackaging()}>Cancel</button>
 			</div>
 			{#if packageError}<p class="error">{packageError}</p>{/if}

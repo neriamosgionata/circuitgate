@@ -19,9 +19,10 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		readonly?: boolean;
 	}
 
-	let { store }: Props = $props();
+	let { store, readonly = false }: Props = $props();
 
 	interface OverlayRect {
 		id: string;
@@ -83,6 +84,20 @@
 
 		if (event.button === 1 || event.button === 2) {
 			drag = { kind: 'pan', last: screen };
+			return;
+		}
+
+		if (readonly) {
+			const inspected = hitTest(scene, viewport, screen);
+			if (inspected?.type === 'component') {
+				if (event.shiftKey) {
+					store.toggleSelection(inspected.id);
+				} else {
+					store.setSelection([inspected.id]);
+				}
+			} else if (!event.shiftKey) {
+				store.clearSelection();
+			}
 			return;
 		}
 
@@ -201,7 +216,7 @@
 		) {
 			return;
 		}
-		if (event.key === 'Delete' || event.key === 'Backspace') {
+		if ((event.key === 'Delete' || event.key === 'Backspace') && !readonly) {
 			event.preventDefault();
 			store.deleteSelection();
 		} else if (event.key === 'Escape') {

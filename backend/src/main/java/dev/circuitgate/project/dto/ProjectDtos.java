@@ -20,18 +20,19 @@ public final class ProjectDtos {
 	}
 
 	public record SaveProjectRequest(@NotBlank @Size(max = 200) String name, @NotNull Integer schemaVersion,
-			@Positive long version, @NotNull JsonNode document) {
+			@Positive long version, Long lockEpoch, @NotNull JsonNode document) {
 	}
 
 	public record ImportRequest(String format, String name, Integer schemaVersion, Long contentVersion,
 			JsonNode document) {
 	}
 
-	public record ProjectResponse(UUID id, String name, int schemaVersion, long version, JsonNode document,
-			Instant createdAt, Instant updatedAt) {
+	public record ProjectResponse(UUID id, String name, int schemaVersion, long version, UUID ownerId, boolean owned,
+			JsonNode document, Instant createdAt, Instant updatedAt) {
 	}
 
-	public record ProjectSummary(UUID id, String name, long version, Instant createdAt, Instant updatedAt) {
+	public record ProjectSummary(UUID id, String name, long version, UUID ownerId, boolean owned, Instant createdAt,
+			Instant updatedAt) {
 	}
 
 	public record ExportEnvelope(String format, int schemaVersion, long contentVersion, String name,

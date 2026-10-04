@@ -6,6 +6,11 @@ import java.util.UUID;
 
 import dev.circuitgate.account.User;
 import dev.circuitgate.account.UserRepository;
+import dev.circuitgate.lock.LockService;
+import dev.circuitgate.realtime.RealtimeEvents;
+import dev.circuitgate.realtime.RealtimePublisher;
+import dev.circuitgate.realtime.RealtimeSessionRegistry;
+import dev.circuitgate.sharing.ProjectTeamRepository;
 import dev.circuitgate.team.dto.TeamDtos.AddTeamMemberRequest;
 import dev.circuitgate.team.dto.TeamDtos.CreateTeamRequest;
 import dev.circuitgate.team.dto.TeamDtos.TeamDetailResponse;
@@ -29,12 +34,26 @@ public class TeamService {
 
 	private final UserRepository users;
 
+	private final ProjectTeamRepository shares;
+
+	private final LockService locks;
+
+	private final RealtimePublisher events;
+
+	private final RealtimeSessionRegistry realtime;
+
 	private final Clock clock;
 
-	public TeamService(TeamRepository teams, TeamMemberRepository members, UserRepository users, Clock clock) {
+	public TeamService(TeamRepository teams, TeamMemberRepository members, UserRepository users,
+			ProjectTeamRepository shares, LockService locks, RealtimePublisher events, RealtimeSessionRegistry realtime,
+			Clock clock) {
 		this.teams = teams;
 		this.members = members;
 		this.users = users;
+		this.shares = shares;
+		this.locks = locks;
+		this.events = events;
+		this.realtime = realtime;
 		this.clock = clock;
 	}
 
@@ -79,6 +98,9 @@ public class TeamService {
 		boolean created = members.insertIfAbsent(team.getId(), target.getId(), ROLE_MEMBER) == 1;
 		TeamMember membership = members.findMembership(teamId, target.getId())
 			.orElseThrow(() -> new IllegalStateException("membership was not persisted"));
+		if (created) {
+			events.publish(new RealtimeEvents.Event.TeamMembershipChanged(teamId, target.getId(), true));
+		}
 		return new MemberAddResult(created, memberResponse(membership));
 	}
 
@@ -92,6 +114,10 @@ public class TeamService {
 		if (members.deleteMembership(teamId, memberId) == 0) {
 			throw new TeamMemberNotFoundException();
 		}
+		locks.forceReleaseForMemberRemoval(teamId, memberId);
+		events.publish(new RealtimeEvents.Event.TeamMembershipChanged(teamId, memberId, false));
+		List<UUID> affectedProjects = shares.findProjectIdsForTeam(teamId);
+		events.runAfterCommit(() -> realtime.disconnectUserFromProjects(memberId, affectedProjects));
 	}
 
 	private Team requireTeam(UUID teamId) {

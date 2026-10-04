@@ -7,9 +7,10 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		readonly?: boolean;
 	}
 
-	let { store }: Props = $props();
+	let { store, readonly = false }: Props = $props();
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 
 	$effect(() => {
@@ -61,6 +62,7 @@
 				: 'Select a single component to edit its properties.'}
 		</p>
 	{:else}
+		<fieldset class="readonly-guard" disabled={readonly}>
 		<fieldset>
 			<legend>Identity</legend>
 			<label>
@@ -166,6 +168,7 @@
 				</label>
 			{/each}
 		</fieldset>
+		</fieldset>
 	{/if}
 </aside>
 
@@ -190,6 +193,13 @@
 		border-radius: 4px;
 		padding: 8px;
 		margin: 0 0 10px;
+	}
+
+	.readonly-guard {
+		border: 0;
+		padding: 0;
+		margin: 0;
+		min-width: 0;
 	}
 
 	legend {

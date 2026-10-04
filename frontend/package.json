@@ -29,5 +29,8 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
+	},
+	"dependencies": {
+		"@stomp/stompjs": "^7.3.0"
 	}
 }

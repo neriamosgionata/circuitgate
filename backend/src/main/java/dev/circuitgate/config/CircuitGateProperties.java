@@ -23,6 +23,10 @@ public class CircuitGateProperties {
 
 	private final Projects projects = new Projects();
 
+	private final Locks locks = new Locks();
+
+	private final Realtime realtime = new Realtime();
+
 	public App getApp() {
 		return app;
 	}
@@ -49,6 +53,14 @@ public class CircuitGateProperties {
 
 	public Projects getProjects() {
 		return projects;
+	}
+
+	public Locks getLocks() {
+		return locks;
+	}
+
+	public Realtime getRealtime() {
+		return realtime;
 	}
 
 	public static class App {
@@ -317,6 +329,50 @@ public class CircuitGateProperties {
 
 		public void setSchemaVersion(int schemaVersion) {
 			this.schemaVersion = schemaVersion;
+		}
+	}
+
+	public static class Locks {
+
+		private Duration ttl = Duration.ofMinutes(5);
+
+		private Duration sweepInterval = Duration.ofSeconds(30);
+
+		public Duration getTtl() {
+			return ttl;
+		}
+
+		public void setTtl(Duration ttl) {
+			this.ttl = ttl;
+		}
+
+		public Duration getSweepInterval() {
+			return sweepInterval;
+		}
+
+		public void setSweepInterval(Duration sweepInterval) {
+			this.sweepInterval = sweepInterval;
+		}
+
+		public long ttlSeconds() {
+			return Math.max(1, ttl.toSeconds());
+		}
+
+		public long heartbeatSeconds() {
+			return Math.max(1, ttlSeconds() / 3);
+		}
+	}
+
+	public static class Realtime {
+
+		private List<String> allowedOrigins = List.of();
+
+		public List<String> getAllowedOrigins() {
+			return allowedOrigins;
+		}
+
+		public void setAllowedOrigins(List<String> allowedOrigins) {
+			this.allowedOrigins = allowedOrigins;
 		}
 	}
 }

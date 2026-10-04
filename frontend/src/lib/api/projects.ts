@@ -19,6 +19,8 @@ export interface ProjectSummary {
 	id: string;
 	name: string;
 	version: number;
+	ownerId: string;
+	owned: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -235,11 +237,21 @@ export async function saveProject(
 	id: string,
 	name: string,
 	version: number,
-	document: ProjectDocument
+	document: ProjectDocument,
+	lockEpoch: number | null = null
 ): Promise<ProjectDetail> {
+	const body: Record<string, unknown> = {
+		name,
+		schemaVersion: PROJECT_SCHEMA_VERSION,
+		version,
+		document: toProjectDocument(document)
+	};
+	if (lockEpoch !== null) {
+		body['lockEpoch'] = lockEpoch;
+	}
 	return apiFetch<ProjectDetail>(`/api/projects/${encodeURIComponent(id)}`, {
 		method: 'PUT',
-		body: { name, schemaVersion: PROJECT_SCHEMA_VERSION, version, document: toProjectDocument(document) }
+		body
 	});
 }
 

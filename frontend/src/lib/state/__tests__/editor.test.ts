@@ -349,4 +349,22 @@ describe('inspector property edits', () => {
 		expect(store.snapshot.oscillatingNets.size).toBe(0);
 		unsubscribe();
 	});
+
+	it('loads a replacement document and resets editing state', () => {
+		const store = seedStore();
+		expectOk(store.placeComponent('and', { x: 40, y: 40 }));
+		expect(store.snapshot.document.components.length).toBeGreaterThan(0);
+
+		store.loadDocument({
+			circuit: doc([{ id: 'z1', kind: 'not', inputs: { in: 'n1' }, outputs: { out: 'n2' } }]),
+			definitions: {},
+			layouts: { '': { z1: { position: { x: 20, y: 20 } } } }
+		});
+
+		expect(store.snapshot.path).toEqual([]);
+		expect(store.snapshot.selection.size).toBe(0);
+		expect(store.snapshot.document.components.map((component) => component.id)).toEqual(['z1']);
+		const placed = expectOk(store.placeComponent('and', { x: 0, y: 0 }));
+		expect(placed.id).not.toBe('z1');
+	});
 });

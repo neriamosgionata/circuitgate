@@ -31,6 +31,10 @@ export function clearCsrf(): void {
 	csrfPending = null;
 }
 
+export async function getCsrf(): Promise<CsrfToken> {
+	return loadCsrf();
+}
+
 async function loadCsrf(): Promise<CsrfToken> {
 	if (csrf) return csrf;
 	if (!csrfPending) {

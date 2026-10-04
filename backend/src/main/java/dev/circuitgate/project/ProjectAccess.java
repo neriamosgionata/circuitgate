@@ -2,13 +2,21 @@ package dev.circuitgate.project;
 
 import java.util.UUID;
 
+import dev.circuitgate.sharing.ProjectTeamRepository;
+
 import org.springframework.stereotype.Component;
 
 @Component
 public class ProjectAccess {
 
+	private final ProjectTeamRepository shares;
+
+	public ProjectAccess(ProjectTeamRepository shares) {
+		this.shares = shares;
+	}
+
 	public boolean canRead(Project project, UUID userId) {
-		return project.getOwner().getId().equals(userId);
+		return project.getOwner().getId().equals(userId) || shares.hasAccess(project.getId(), userId);
 	}
 
 	public boolean canEdit(Project project, UUID userId) {

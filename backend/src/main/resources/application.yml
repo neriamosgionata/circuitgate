@@ -58,3 +58,6 @@ circuitgate:
     max-depth: 50
     max-string-length: 10000
     schema-version: 1
+  locks:
+    ttl: 5m
+    sweep-interval: 30s

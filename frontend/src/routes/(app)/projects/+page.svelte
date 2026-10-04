@@ -138,6 +138,9 @@
 			{#each projects as project (project.id)}
 				<li data-testid="project-row">
 					<a class="name" data-testid="project-name" href={`/projects/${project.id}`}>{project.name}</a>
+					{#if project.owned === false}
+						<span class="tag" data-testid="shared-tag">shared with you</span>
+					{/if}
 					<span class="muted">version {project.version}</span>
 					<span class="muted">updated {formatDate(project.updatedAt)}</span>
 				</li>
@@ -239,6 +242,14 @@
 		font-weight: 600;
 		color: #1565c0;
 		text-decoration: none;
+	}
+
+	.tag {
+		padding: 2px 6px;
+		border-radius: 999px;
+		background: #e3f2fd;
+		color: #1565c0;
+		font-size: 11px;
 	}
 
 	.visually-hidden {
