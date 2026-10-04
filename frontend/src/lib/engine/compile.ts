@@ -16,9 +16,12 @@ export interface ComponentKind {
 export type ComponentKinds = Readonly<Record<string, ComponentKind>>;
 
 export class CompileError extends Error {
-	constructor(message: string) {
+	readonly code: string | undefined;
+
+	constructor(message: string, code?: string) {
 		super(message);
 		this.name = 'CompileError';
+		this.code = code;
 	}
 }
 
