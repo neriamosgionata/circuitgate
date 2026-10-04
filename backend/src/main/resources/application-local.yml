@@ -1,0 +1,11 @@
+server:
+  servlet:
+    session:
+      cookie:
+        name: circuitgate-session
+        secure: false
+
+circuitgate:
+  security:
+    remember-me:
+      secure-cookie: false

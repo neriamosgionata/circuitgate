@@ -1,3 +1,55 @@
 spring:
   application:
     name: CircuitGate
+  datasource:
+    url: ${CIRCUITGATE_DB_URL:jdbc:postgresql://localhost:5432/circuitgate}
+    username: ${CIRCUITGATE_DB_USERNAME:circuitgate}
+    password: ${CIRCUITGATE_DB_PASSWORD:circuitgate}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+  session:
+    jdbc:
+      initialize-schema: never
+
+server:
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        name: __Host-circuitgate-session
+        http-only: true
+        secure: true
+        same-site: lax
+
+circuitgate:
+  app:
+    base-url: ${CIRCUITGATE_APP_BASE_URL:http://localhost:5173}
+  mail:
+    mode: ${CIRCUITGATE_MAIL_MODE:capture}
+    from: ${CIRCUITGATE_MAIL_FROM:no-reply@circuitgate.local}
+  tokens:
+    verification-ttl: 24h
+    reset-ttl: 1h
+    resend-window: 15m
+    resend-max: 3
+    reset-request-window: 15m
+    reset-request-max: 5
+    cleanup-cron: "0 30 3 * * *"
+  throttle:
+    login:
+      threshold: 5
+      base-delay: 1s
+      max-delay: 15m
+    cleanup-cron: "0 45 3 * * *"
+  security:
+    remember-me:
+      key: ${CIRCUITGATE_REMEMBER_ME_KEY:circuitgate-development-remember-me-key}
+      ttl: 14d
+      secure-cookie: true
+      cookie-name: circuitgate-remember-me
+  network:
+    trusted-proxies: ${CIRCUITGATE_TRUSTED_PROXIES:}
