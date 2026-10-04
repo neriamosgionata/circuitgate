@@ -122,8 +122,10 @@
 				new Worker(new URL('../../../workers/engine.worker.ts', import.meta.url), {
 					type: 'module'
 				}) as unknown as WorkerLike,
-			document,
-			definitions,
+			// The worker boundary only accepts structured-cloneable data, so
+			// strip Svelte's reactive proxies before posting the init command.
+			document: $state.snapshot(document),
+			definitions: $state.snapshot(definitions),
 			mode: nextMode,
 			onEvent: handleEvent
 		});
@@ -134,15 +136,17 @@
 		return () => session?.dispose();
 	});
 
-	let lastCircuit = untrack(() => snapshot.circuit);
-	let lastDefinitions = untrack(() => snapshot.definitions);
+	let lastCircuit: CircuitDocument | null = untrack(() => store.snapshot.circuit);
+	let lastDefinitions: SubcircuitDefinitions | null = untrack(() => store.snapshot.definitions);
 	$effect(() => {
-		const circuit = snapshot.circuit;
-		const definitions = snapshot.definitions;
-		if (circuit === lastCircuit && definitions === lastDefinitions) return;
-		lastCircuit = circuit;
-		lastDefinitions = definitions;
-		if (session) startSession(circuit, definitions, mode);
+		// Re-runs on every store emission; the raw references behind the
+		// reactive snapshot only change when the document actually changes.
+		void snapshot;
+		const current = store.snapshot;
+		if (current.circuit === lastCircuit && current.definitions === lastDefinitions) return;
+		lastCircuit = current.circuit;
+		lastDefinitions = current.definitions;
+		if (session) startSession(current.circuit, current.definitions, mode);
 	});
 
 	function run() {

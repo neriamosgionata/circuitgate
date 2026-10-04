@@ -5,7 +5,11 @@
 		"types": [
 			"$app/types",
 			"node"
-		]
+		],
+		"paths": {
+			"#lib": ["./src/lib"],
+			"#lib/*": ["./src/lib/*"]
+		}
 	},
 	"include": [
 		"src",

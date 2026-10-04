@@ -2,6 +2,13 @@ import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const apiProxy = {
+	'/api': {
+		target: 'http://localhost:8080',
+		changeOrigin: true
+	}
+};
+
 export default defineConfig({
 	plugins: [
 		sveltekit({
@@ -13,6 +20,8 @@ export default defineConfig({
 			adapter: adapter()
 		})
 	],
+	server: { proxy: apiProxy },
+	preview: { proxy: apiProxy },
 	test: {
 		expect: { requireAssertions: true },
 		projects: [
