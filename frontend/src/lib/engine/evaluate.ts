@@ -1,6 +1,6 @@
 import type { CircuitDocument } from '../model/circuit';
 import { compile, type CompiledNetlist, type ComponentKinds } from './compile';
-import { EventQueue } from './eventQueue';
+import { EventQueue, type QueueEntry } from './eventQueue';
 import { resolveDrivers, type LogicValue } from './values';
 
 export interface SettleOptions {
@@ -17,6 +17,10 @@ export interface TimedOptions {
 	ticks: number;
 }
 
+export interface TimedStepOptions {
+	ticks?: number;
+}
+
 export interface TimedResult {
 	snapshots: LogicValue[][];
 }
@@ -27,6 +31,8 @@ export class Simulator {
 	readonly netlist: CompiledNetlist;
 	private values: LogicValue[];
 	private states: unknown[];
+	private timedQueue: EventQueue | null = null;
+	private timedTick = 0;
 
 	constructor(
 		document: CircuitDocument,
@@ -129,60 +135,99 @@ export class Simulator {
 		}
 
 		const snapshots: LogicValue[][] = [];
-
 		for (let tick = 0; tick < ticks; tick++) {
-			const due: number[] = [];
-			while (queue.size > 0 && (queue.peek() as { tick: number }).tick === tick) {
-				due.push((queue.pop() as { index: number }).index);
-			}
-
-			if (due.length > 0) {
-				const staged = new Map<number, LogicValue[]>();
-				const nextStates = new Map<number, unknown>();
-
-				for (const index of due) {
-					const component = this.netlist.components[index];
-					const inputs = component.inputNets.map<LogicValue>((net) => this.values[net]);
-					const outcome = component.kind.evaluate(inputs, this.states[index]);
-					nextStates.set(index, outcome.state === undefined ? this.states[index] : outcome.state);
-					outcome.outputs.forEach((value, pin) => {
-						const net = component.outputNets[pin];
-						const drivers = staged.get(net);
-						if (drivers) {
-							drivers.push(value);
-						} else {
-							staged.set(net, [value]);
-						}
-					});
-				}
-
-				const changed = new Set<number>();
-				for (const [net, drivers] of staged) {
-					const resolved = resolveDrivers(drivers);
-					if (this.values[net] !== resolved) {
-						this.values[net] = resolved;
-						changed.add(net);
-					}
-				}
-				for (const [index, state] of nextStates) {
-					this.states[index] = state;
-				}
-
-				for (const net of changed) {
-					for (const dependent of this.netlist.dependents[net]) {
-						queue.push(tick + 1, dependent);
-					}
-				}
-				for (const index of due) {
-					if (this.netlist.components[index].selfScheduling) {
-						queue.push(tick + 1, index);
-					}
-				}
-			}
-
+			this.processTimedTick(queue, tick);
 			snapshots.push(this.values.slice());
 		}
 
+		return { snapshots };
+	}
+
+	private processTimedTick(queue: EventQueue, tick: number): void {
+		const due: number[] = [];
+		while (queue.size > 0 && (queue.peek() as QueueEntry).tick === tick) {
+			due.push((queue.pop() as QueueEntry).index);
+		}
+		if (due.length === 0) return;
+
+		const staged = new Map<number, LogicValue[]>();
+		const nextStates = new Map<number, unknown>();
+
+		for (const index of due) {
+			const component = this.netlist.components[index];
+			const inputs = component.inputNets.map<LogicValue>((net) => this.values[net]);
+			const outcome = component.kind.evaluate(inputs, this.states[index]);
+			nextStates.set(index, outcome.state === undefined ? this.states[index] : outcome.state);
+			outcome.outputs.forEach((value, pin) => {
+				const net = component.outputNets[pin];
+				const drivers = staged.get(net);
+				if (drivers) {
+					drivers.push(value);
+				} else {
+					staged.set(net, [value]);
+				}
+			});
+		}
+
+		const changed = new Set<number>();
+		for (const [net, drivers] of staged) {
+			const resolved = resolveDrivers(drivers);
+			if (this.values[net] !== resolved) {
+				this.values[net] = resolved;
+				changed.add(net);
+			}
+		}
+		for (const [index, state] of nextStates) {
+			this.states[index] = state;
+		}
+
+		for (const net of changed) {
+			for (const dependent of this.netlist.dependents[net]) {
+				queue.push(tick + 1, dependent);
+			}
+		}
+		for (const index of due) {
+			if (this.netlist.components[index].selfScheduling) {
+				queue.push(tick + 1, index);
+			}
+		}
+	}
+
+	private ensureTimedQueue(): EventQueue {
+		if (!this.timedQueue) {
+			this.timedQueue = new EventQueue();
+			for (const component of this.netlist.components) {
+				this.timedQueue.push(0, component.index);
+			}
+			this.timedTick = 0;
+		}
+		return this.timedQueue;
+	}
+
+	wake(componentId: string, delay = 1): void {
+		const component = this.netlist.components.find((candidate) => candidate.id === componentId);
+		if (!component) {
+			throw new Error(`unknown component: ${componentId}`);
+		}
+		if (!Number.isInteger(delay) || delay < 0) {
+			throw new Error(`delay must be a non-negative integer, got ${delay}`);
+		}
+		const queue = this.ensureTimedQueue();
+		queue.push(Math.max(this.timedTick, this.timedTick + delay), component.index);
+	}
+
+	stepTimed(options: TimedStepOptions = {}): TimedResult {
+		const ticks = options.ticks ?? 1;
+		if (!Number.isInteger(ticks) || ticks < 0) {
+			throw new Error(`ticks must be a non-negative integer, got ${ticks}`);
+		}
+		const queue = this.ensureTimedQueue();
+		const snapshots: LogicValue[][] = [];
+		for (let index = 0; index < ticks; index++) {
+			this.processTimedTick(queue, this.timedTick);
+			snapshots.push(this.values.slice());
+			this.timedTick += 1;
+		}
 		return { snapshots };
 	}
 }

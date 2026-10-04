@@ -329,4 +329,24 @@ describe('inspector property edits', () => {
 		store.clearNetValues();
 		expect(store.snapshot.netValues).toEqual({});
 	});
+
+	it('applies a batch of simulation values with a single notification', () => {
+		const store = seedStore();
+		let notifications = 0;
+		const unsubscribe = store.subscribe(() => {
+			notifications += 1;
+		});
+		const before = notifications;
+		store.applyNetValues([
+			{ net: 'D', value: 1, oscillating: false },
+			{ net: 'Q', value: 0, oscillating: false },
+			{ net: 'CLK', value: 'X', oscillating: true }
+		]);
+		expect(notifications - before).toBe(1);
+		expect(store.snapshot.netValues).toEqual({ D: 1, Q: 0, CLK: 'X' });
+		expect([...store.snapshot.oscillatingNets]).toEqual(['CLK']);
+		store.applyNetValues([{ net: 'CLK', value: 1, oscillating: false }]);
+		expect(store.snapshot.oscillatingNets.size).toBe(0);
+		unsubscribe();
+	});
 });

@@ -3,6 +3,7 @@
 	import Canvas from '../../../../lib/components/editor/Canvas.svelte';
 	import Inspector from '../../../../lib/components/editor/Inspector.svelte';
 	import Palette from '../../../../lib/components/editor/Palette.svelte';
+	import SimulationPanel from '../../../../lib/components/sim/SimulationPanel.svelte';
 	import { CircuitEditorStore } from '../../../../lib/state/circuitStore';
 
 	// U4 keeps the editor on an in-memory store; U8 replaces this seed with a
@@ -62,7 +63,10 @@
 	<main class="editor">
 		<Palette {store} />
 		<div class="canvas-area">
-			<Canvas {store} />
+			<div class="canvas-slot">
+				<Canvas {store} />
+			</div>
+			<SimulationPanel {store} />
 		</div>
 		<Inspector {store} />
 	</main>
@@ -121,10 +125,20 @@
 		gap: 10px;
 		padding: 10px;
 		min-height: 0;
+		overflow: auto;
 	}
 
 	.canvas-area {
 		flex: 1;
 		min-width: 0;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	.canvas-slot {
+		flex: 1 1 auto;
+		min-height: 420px;
 	}
 </style>

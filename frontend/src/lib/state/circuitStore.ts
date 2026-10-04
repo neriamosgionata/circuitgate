@@ -622,6 +622,22 @@ export class CircuitEditorStore {
 		this.emit();
 	}
 
+	applyNetValues(
+		changes: ReadonlyArray<{ net: NetId; value: LogicValue; oscillating: boolean }>
+	): void {
+		if (changes.length === 0) return;
+		const values = { ...this.netValues };
+		const oscillating = new Set(this.oscillatingNets);
+		for (const change of changes) {
+			values[change.net] = change.value;
+			if (change.oscillating) oscillating.add(change.net);
+			else oscillating.delete(change.net);
+		}
+		this.netValues = values;
+		this.oscillatingNets = oscillating;
+		this.emit();
+	}
+
 	clearNetValues(): void {
 		this.netValues = {};
 		this.oscillatingNets = new Set();
