@@ -11,6 +11,10 @@ import dev.circuitgate.project.InvalidProjectDocumentException;
 import dev.circuitgate.project.ProjectConflictException;
 import dev.circuitgate.project.ProjectNotFoundException;
 import dev.circuitgate.project.ProjectPayloadTooLargeException;
+import dev.circuitgate.team.MemberNotAvailableException;
+import dev.circuitgate.team.OwnerCannotBeRemovedException;
+import dev.circuitgate.team.TeamMemberNotFoundException;
+import dev.circuitgate.team.TeamNotFoundException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +59,24 @@ public class ApiExceptionHandler {
 	@ResponseStatus(HttpStatus.NOT_FOUND)
 	public Map<String, String> projectNotFound() {
 		return Map.of("error", "not_found");
+	}
+
+	@ExceptionHandler({ TeamNotFoundException.class, TeamMemberNotFoundException.class })
+	@ResponseStatus(HttpStatus.NOT_FOUND)
+	public Map<String, String> teamNotFound() {
+		return Map.of("error", "not_found");
+	}
+
+	@ExceptionHandler(MemberNotAvailableException.class)
+	@ResponseStatus(HttpStatus.NOT_FOUND)
+	public Map<String, String> memberNotAvailable() {
+		return Map.of("error", "member_not_available");
+	}
+
+	@ExceptionHandler(OwnerCannotBeRemovedException.class)
+	@ResponseStatus(HttpStatus.CONFLICT)
+	public Map<String, String> ownerCannotBeRemoved() {
+		return Map.of("error", "owner_cannot_be_removed");
 	}
 
 	@ExceptionHandler(ProjectConflictException.class)

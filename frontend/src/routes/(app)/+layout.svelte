@@ -26,6 +26,7 @@
 	<a class="brand" href="/projects">CircuitGate</a>
 	<nav>
 		<a href="/projects">Projects</a>
+		<a href="/teams">Teams</a>
 		<a href="/account">Account</a>
 		<span class="email" title={data.user.email}>{data.user.email}</span>
 		<button type="button" data-testid="logout" onclick={signOut} disabled={signingOut}>Log out</button>
