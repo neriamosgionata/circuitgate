@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.util.unit.DataSize;
 
 @ConfigurationProperties(prefix = "circuitgate")
 public class CircuitGateProperties {
@@ -19,6 +20,8 @@ public class CircuitGateProperties {
 	private final Security security = new Security();
 
 	private final Network network = new Network();
+
+	private final Projects projects = new Projects();
 
 	public App getApp() {
 		return app;
@@ -42,6 +45,10 @@ public class CircuitGateProperties {
 
 	public Network getNetwork() {
 		return network;
+	}
+
+	public Projects getProjects() {
+		return projects;
 	}
 
 	public static class App {
@@ -267,6 +274,49 @@ public class CircuitGateProperties {
 
 		public void setTrustedProxies(List<String> trustedProxies) {
 			this.trustedProxies = trustedProxies;
+		}
+	}
+
+	public static class Projects {
+
+		private DataSize maxDocumentBytes = DataSize.ofMegabytes(2);
+
+		private int maxDepth = 50;
+
+		private int maxStringLength = 10000;
+
+		private int schemaVersion = 1;
+
+		public DataSize getMaxDocumentBytes() {
+			return maxDocumentBytes;
+		}
+
+		public void setMaxDocumentBytes(DataSize maxDocumentBytes) {
+			this.maxDocumentBytes = maxDocumentBytes;
+		}
+
+		public int getMaxDepth() {
+			return maxDepth;
+		}
+
+		public void setMaxDepth(int maxDepth) {
+			this.maxDepth = maxDepth;
+		}
+
+		public int getMaxStringLength() {
+			return maxStringLength;
+		}
+
+		public void setMaxStringLength(int maxStringLength) {
+			this.maxStringLength = maxStringLength;
+		}
+
+		public int getSchemaVersion() {
+			return schemaVersion;
+		}
+
+		public void setSchemaVersion(int schemaVersion) {
+			this.schemaVersion = schemaVersion;
 		}
 	}
 }

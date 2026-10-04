@@ -53,3 +53,8 @@ circuitgate:
       cookie-name: circuitgate-remember-me
   network:
     trusted-proxies: ${CIRCUITGATE_TRUSTED_PROXIES:}
+  projects:
+    max-document-bytes: 2MB
+    max-depth: 50
+    max-string-length: 10000
+    schema-version: 1

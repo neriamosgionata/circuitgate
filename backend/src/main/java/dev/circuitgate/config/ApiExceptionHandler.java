@@ -1,11 +1,16 @@
 package dev.circuitgate.config;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import dev.circuitgate.account.InvalidPasswordException;
 import dev.circuitgate.account.InvalidTokenException;
 import dev.circuitgate.account.RateLimitedException;
 import dev.circuitgate.account.SendMailException;
+import dev.circuitgate.project.InvalidProjectDocumentException;
+import dev.circuitgate.project.ProjectConflictException;
+import dev.circuitgate.project.ProjectNotFoundException;
+import dev.circuitgate.project.ProjectPayloadTooLargeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +20,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -45,6 +51,33 @@ public class ApiExceptionHandler {
 		return Map.of("error", "mail_unavailable");
 	}
 
+	@ExceptionHandler(ProjectNotFoundException.class)
+	@ResponseStatus(HttpStatus.NOT_FOUND)
+	public Map<String, String> projectNotFound() {
+		return Map.of("error", "not_found");
+	}
+
+	@ExceptionHandler(ProjectConflictException.class)
+	@ResponseStatus(HttpStatus.CONFLICT)
+	public Map<String, Object> projectConflict(ProjectConflictException ex) {
+		Map<String, Object> body = new LinkedHashMap<>();
+		body.put("error", "conflict");
+		body.put("version", ex.getCurrentVersion());
+		return body;
+	}
+
+	@ExceptionHandler(InvalidProjectDocumentException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, String> invalidProjectDocument() {
+		return Map.of("error", "invalid_project_document");
+	}
+
+	@ExceptionHandler(ProjectPayloadTooLargeException.class)
+	@ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+	public Map<String, String> projectPayloadTooLarge() {
+		return Map.of("error", "payload_too_large");
+	}
+
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public Map<String, String> invalidRequest() {
@@ -54,6 +87,12 @@ public class ApiExceptionHandler {
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public Map<String, String> unreadableRequest() {
+		return Map.of("error", "invalid_request");
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public Map<String, String> invalidPathParameter() {
 		return Map.of("error", "invalid_request");
 	}
 
