@@ -48,53 +48,82 @@
 
 	const endTick = $derived(Math.max(tick, startTick + 1));
 
-	function drawSegment(
+	function drawSegments(
 		ctx: CanvasRenderingContext2D,
-		segment: WaveformSegment,
+		segments: readonly WaveformSegment[],
 		firstTick: number,
 		tickScale: number,
 		rowTop: number,
 		rowBottom: number
 	) {
-		const signal = presentSignal(segment.value, segment.oscillating);
-		const x0 = GUTTER + tickToX(segment.startTick, firstTick, tickScale);
-		const x1 = GUTTER + tickToX(segment.endTick, firstTick, tickScale);
+		if (segments.length === 0) return;
+		const first = segments[0];
+		const signal = presentSignal(first.value, first.oscillating);
 		const highY = rowTop + 4;
 		const lowY = rowBottom - 5;
 		const midY = (highY + lowY) / 2;
-		ctx.save();
+		const x = (tick: number) => GUTTER + tickToX(tick, firstTick, tickScale);
+
 		ctx.strokeStyle = signal.color;
-		ctx.lineWidth = segment.oscillating ? 2.5 : 1.8;
+		ctx.lineWidth = first.oscillating ? 2.5 : 1.8;
 		if (signal.pattern === 'hatched') {
 			ctx.fillStyle = 'rgba(178, 106, 0, 0.18)';
-			ctx.fillRect(x0, highY, Math.max(1, x1 - x0), lowY - highY);
 			ctx.beginPath();
-			for (let x = x0; x < x1; x += 6) {
-				ctx.moveTo(x, lowY);
-				ctx.lineTo(Math.min(x + (lowY - highY), x1), highY);
+			for (const segment of segments) {
+				const x0 = x(segment.startTick);
+				const x1 = x(segment.endTick);
+				ctx.rect(x0, highY, Math.max(1, x1 - x0), lowY - highY);
+			}
+			ctx.fill();
+			ctx.beginPath();
+			for (const segment of segments) {
+				const x0 = x(segment.startTick);
+				const x1 = x(segment.endTick);
+				for (let hatch = x0; hatch < x1; hatch += 6) {
+					ctx.moveTo(hatch, lowY);
+					ctx.lineTo(Math.min(hatch + (lowY - highY), x1), highY);
+				}
 			}
 			ctx.stroke();
-		} else if (signal.pattern === 'dashed') {
+			return;
+		}
+		if (signal.pattern === 'dashed') {
 			ctx.setLineDash([5, 4]);
 			ctx.beginPath();
-			ctx.moveTo(x0, midY);
-			ctx.lineTo(x1, midY);
+			for (const segment of segments) {
+				const x0 = x(segment.startTick);
+				const x1 = x(segment.endTick);
+				ctx.moveTo(x0, midY);
+				ctx.lineTo(x1, midY);
+			}
 			ctx.stroke();
-		} else {
-			const y = signal.level === 'high' ? highY : lowY;
-			ctx.beginPath();
+			ctx.setLineDash([]);
+			return;
+		}
+		const levelOf = (segment: WaveformSegment) =>
+			presentSignal(segment.value, segment.oscillating).level === 'high' ? highY : lowY;
+		ctx.beginPath();
+		for (const segment of segments) {
+			const x0 = x(segment.startTick);
+			const x1 = x(segment.endTick);
+			const y = levelOf(segment);
 			ctx.moveTo(x0, y);
 			ctx.lineTo(x1, y);
-			ctx.stroke();
-			if (segment.oscillating) {
-				ctx.setLineDash([3, 3]);
-				ctx.beginPath();
+		}
+		ctx.stroke();
+		if (first.oscillating) {
+			ctx.setLineDash([3, 3]);
+			ctx.beginPath();
+			for (const segment of segments) {
+				const x0 = x(segment.startTick);
+				const x1 = x(segment.endTick);
+				const y = levelOf(segment);
 				ctx.moveTo(x0, y);
 				ctx.lineTo(x1, y);
-				ctx.stroke();
 			}
+			ctx.stroke();
+			ctx.setLineDash([]);
 		}
-		ctx.restore();
 	}
 
 	function draw() {
@@ -129,15 +158,26 @@
 			ctx.fillRect(0, rowTop, width, ROW_HEIGHT);
 			ctx.fillStyle = selectedNets.has(net) ? '#1565c0' : '#37474f';
 			ctx.fillText(net, 8, rowTop + ROW_HEIGHT / 2, GUTTER - 16);
+			const groups = new Map<string, WaveformSegment[]>();
 			for (const segment of windowSegments(historyFor(net), startTick, endTick)) {
-				drawSegment(ctx, segment, startTick, tickScale, rowTop, rowBottom);
+				const signal = presentSignal(segment.value, segment.oscillating);
+				const key = `${signal.color}|${signal.pattern}|${segment.oscillating ? 1 : 0}`;
+				const bucket = groups.get(key) ?? [];
+				bucket.push(segment);
+				groups.set(key, bucket);
 			}
-			ctx.strokeStyle = '#cfd8dc';
-			ctx.beginPath();
+			for (const segments of groups.values()) {
+				drawSegments(ctx, segments, startTick, tickScale, rowTop, rowBottom);
+			}
+		}
+		ctx.strokeStyle = '#cfd8dc';
+		ctx.beginPath();
+		for (let index = range.start; index < range.end; index++) {
+			const rowBottom = offset + (index - range.start + 1) * ROW_HEIGHT;
 			ctx.moveTo(0, rowBottom - 0.5);
 			ctx.lineTo(width, rowBottom - 0.5);
-			ctx.stroke();
 		}
+		ctx.stroke();
 		ctx.strokeStyle = '#b0bec5';
 		ctx.beginPath();
 		ctx.moveTo(GUTTER - 0.5, 0);
@@ -153,6 +193,52 @@
 		onSelectNet(nets[index]);
 	}
 
+	let frame = 0;
+
+	// The waveform is a secondary visualisation: repaint it when the main
+	// thread is idle so a large recording never delays an interactive value
+	// update in the editor. requestIdleCallback falls back to a frame where
+	// it is unavailable.
+	function scheduleDraw() {
+		if (frame !== 0) return;
+		const requestIdle = (
+			window as unknown as {
+				requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+			}
+		).requestIdleCallback;
+		if (typeof requestIdle === 'function') {
+			frame = requestIdle(() => {
+				frame = 0;
+				draw();
+			}, { timeout: 250 });
+			return;
+		}
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			draw();
+		});
+	}
+
+	function cancelScheduledDraw() {
+		if (frame === 0) return;
+		const cancelIdle = (window as unknown as { cancelIdleCallback?: (handle: number) => void })
+			.cancelIdleCallback;
+		if (typeof cancelIdle === 'function') cancelIdle(frame);
+		else cancelAnimationFrame(frame);
+		frame = 0;
+	}
+
+	$effect(() => {
+		void nets;
+		void version;
+		void tick;
+		void scrollTop;
+		void width;
+		void height;
+		void selectedNets;
+		scheduleDraw();
+	});
+
 	onMount(() => {
 		const resizeObserver = new ResizeObserver(() => {
 			if (!wrapper) return;
@@ -160,14 +246,9 @@
 			height = Math.max(1, wrapper.clientHeight);
 		});
 		if (wrapper) resizeObserver.observe(wrapper);
-		let frame = 0;
-		const loop = () => {
-			draw();
-			frame = requestAnimationFrame(loop);
-		};
-		frame = requestAnimationFrame(loop);
+		scheduleDraw();
 		return () => {
-			cancelAnimationFrame(frame);
+			cancelScheduledDraw();
 			resizeObserver.disconnect();
 		};
 	});

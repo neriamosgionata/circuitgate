@@ -1,0 +1,25 @@
+# Production reverse proxy for CircuitGate (see docs/operations.md).
+# CIRCUITGATE_DOMAIN is the public hostname, for example circuitgate.example.edu.
+# Caddy obtains and renews TLS certificates automatically; add a global
+# `email` option at the top of this file if an ACME account contact is wanted.
+
+{$CIRCUITGATE_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	@backend path /api/* /ws /ws/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

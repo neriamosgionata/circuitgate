@@ -1,0 +1,996 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "sw_clk",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nCLK"
+        },
+        "initialState": {
+          "value": 0
+        }
+      },
+      {
+        "id": "sw_sel",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nSEL"
+        },
+        "initialState": {
+          "value": 0
+        }
+      },
+      {
+        "id": "pc0",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nPC_D0",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nPC0",
+          "qn": "nPC0N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "pc1",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nPC_D1",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nPC1",
+          "qn": "nPC1N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "pc_not",
+        "kind": "not",
+        "inputs": {
+          "a": "nPC0"
+        },
+        "outputs": {
+          "out": "nPC_D0"
+        }
+      },
+      {
+        "id": "pc_xor",
+        "kind": "xor",
+        "inputs": {
+          "a": "nPC1",
+          "b": "nPC0"
+        },
+        "outputs": {
+          "out": "nPC_D1"
+        }
+      },
+      {
+        "id": "acc0",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nAD0",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nA0",
+          "qn": "nA0N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "acc1",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nAD1",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nA1",
+          "qn": "nA1N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "acc2",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nAD2",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nA2",
+          "qn": "nA2N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "acc3",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nAD3",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nA3",
+          "qn": "nA3N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "u_inc",
+        "kind": "subcircuit",
+        "params": {
+          "definition": "increment4"
+        },
+        "inputs": {
+          "a0": "nA0",
+          "a1": "nA1",
+          "a2": "nA2",
+          "a3": "nA3"
+        },
+        "outputs": {
+          "s0": "nINC0",
+          "s1": "nINC1",
+          "s2": "nINC2",
+          "s3": "nINC3"
+        }
+      },
+      {
+        "id": "amux0",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nINC0",
+          "d1": "nA0",
+          "sel": "nPC0"
+        },
+        "outputs": {
+          "out": "nAD0"
+        }
+      },
+      {
+        "id": "amux1",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nINC1",
+          "d1": "nA1",
+          "sel": "nPC0"
+        },
+        "outputs": {
+          "out": "nAD1"
+        }
+      },
+      {
+        "id": "amux2",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nINC2",
+          "d1": "nA2",
+          "sel": "nPC0"
+        },
+        "outputs": {
+          "out": "nAD2"
+        }
+      },
+      {
+        "id": "amux3",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nINC3",
+          "d1": "nA3",
+          "sel": "nPC0"
+        },
+        "outputs": {
+          "out": "nAD3"
+        }
+      },
+      {
+        "id": "m00",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD00",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM00",
+          "qn": "nM00N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m01",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD01",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM01",
+          "qn": "nM01N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m02",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD02",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM02",
+          "qn": "nM02N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m03",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD03",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM03",
+          "qn": "nM03N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m10",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD10",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM10",
+          "qn": "nM10N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m11",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD11",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM11",
+          "qn": "nM11N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m12",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD12",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM12",
+          "qn": "nM12N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "m13",
+        "kind": "dFlipFlop",
+        "inputs": {
+          "d": "nMD13",
+          "clk": "nCLK"
+        },
+        "outputs": {
+          "q": "nM13",
+          "qn": "nM13N"
+        },
+        "initialState": {
+          "q": 0,
+          "lastClk": 0
+        }
+      },
+      {
+        "id": "addr_not",
+        "kind": "not",
+        "inputs": {
+          "a": "nPC1"
+        },
+        "outputs": {
+          "out": "nPC1N"
+        }
+      },
+      {
+        "id": "we0",
+        "kind": "and",
+        "inputs": {
+          "a": "nPC1N",
+          "b": "nPC0"
+        },
+        "outputs": {
+          "out": "nWE0"
+        }
+      },
+      {
+        "id": "we1",
+        "kind": "and",
+        "inputs": {
+          "a": "nPC1",
+          "b": "nPC0"
+        },
+        "outputs": {
+          "out": "nWE1"
+        }
+      },
+      {
+        "id": "wm00",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM00",
+          "d1": "nA0",
+          "sel": "nWE0"
+        },
+        "outputs": {
+          "out": "nMD00"
+        }
+      },
+      {
+        "id": "wm01",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM01",
+          "d1": "nA1",
+          "sel": "nWE0"
+        },
+        "outputs": {
+          "out": "nMD01"
+        }
+      },
+      {
+        "id": "wm02",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM02",
+          "d1": "nA2",
+          "sel": "nWE0"
+        },
+        "outputs": {
+          "out": "nMD02"
+        }
+      },
+      {
+        "id": "wm03",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM03",
+          "d1": "nA3",
+          "sel": "nWE0"
+        },
+        "outputs": {
+          "out": "nMD03"
+        }
+      },
+      {
+        "id": "wm10",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM10",
+          "d1": "nA0",
+          "sel": "nWE1"
+        },
+        "outputs": {
+          "out": "nMD10"
+        }
+      },
+      {
+        "id": "wm11",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM11",
+          "d1": "nA1",
+          "sel": "nWE1"
+        },
+        "outputs": {
+          "out": "nMD11"
+        }
+      },
+      {
+        "id": "wm12",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM12",
+          "d1": "nA2",
+          "sel": "nWE1"
+        },
+        "outputs": {
+          "out": "nMD12"
+        }
+      },
+      {
+        "id": "wm13",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM13",
+          "d1": "nA3",
+          "sel": "nWE1"
+        },
+        "outputs": {
+          "out": "nMD13"
+        }
+      },
+      {
+        "id": "rm0",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM00",
+          "d1": "nM10",
+          "sel": "nSEL"
+        },
+        "outputs": {
+          "out": "nRD0"
+        }
+      },
+      {
+        "id": "probe_a0",
+        "kind": "probe",
+        "inputs": {
+          "in": "nA0"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_rd0",
+        "kind": "probe",
+        "inputs": {
+          "in": "nRD0"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "rm1",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM01",
+          "d1": "nM11",
+          "sel": "nSEL"
+        },
+        "outputs": {
+          "out": "nRD1"
+        }
+      },
+      {
+        "id": "probe_a1",
+        "kind": "probe",
+        "inputs": {
+          "in": "nA1"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_rd1",
+        "kind": "probe",
+        "inputs": {
+          "in": "nRD1"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "rm2",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM02",
+          "d1": "nM12",
+          "sel": "nSEL"
+        },
+        "outputs": {
+          "out": "nRD2"
+        }
+      },
+      {
+        "id": "probe_a2",
+        "kind": "probe",
+        "inputs": {
+          "in": "nA2"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_rd2",
+        "kind": "probe",
+        "inputs": {
+          "in": "nRD2"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "rm3",
+        "kind": "mux2",
+        "inputs": {
+          "d0": "nM03",
+          "d1": "nM13",
+          "sel": "nSEL"
+        },
+        "outputs": {
+          "out": "nRD3"
+        }
+      },
+      {
+        "id": "probe_a3",
+        "kind": "probe",
+        "inputs": {
+          "in": "nA3"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_rd3",
+        "kind": "probe",
+        "inputs": {
+          "in": "nRD3"
+        },
+        "outputs": {}
+      }
+    ]
+  },
+  "definitions": {
+    "increment4": {
+      "name": "increment4",
+      "inputs": {
+        "a0": "a0",
+        "a1": "a1",
+        "a2": "a2",
+        "a3": "a3"
+      },
+      "outputs": {
+        "s0": "s0",
+        "s1": "s1",
+        "s2": "s2",
+        "s3": "s3"
+      },
+      "document": {
+        "schemaVersion": 1,
+        "components": [
+          {
+            "id": "inc_not0",
+            "kind": "not",
+            "inputs": {
+              "a": "a0"
+            },
+            "outputs": {
+              "out": "s0"
+            }
+          },
+          {
+            "id": "inc_xor1",
+            "kind": "xor",
+            "inputs": {
+              "a": "a1",
+              "b": "a0"
+            },
+            "outputs": {
+              "out": "s1"
+            }
+          },
+          {
+            "id": "inc_and01",
+            "kind": "and",
+            "inputs": {
+              "a": "a0",
+              "b": "a1"
+            },
+            "outputs": {
+              "out": "p1"
+            }
+          },
+          {
+            "id": "inc_xor2",
+            "kind": "xor",
+            "inputs": {
+              "a": "a2",
+              "b": "p1"
+            },
+            "outputs": {
+              "out": "s2"
+            }
+          },
+          {
+            "id": "inc_and012",
+            "kind": "and",
+            "inputs": {
+              "a": "p1",
+              "b": "a2"
+            },
+            "outputs": {
+              "out": "p2"
+            }
+          },
+          {
+            "id": "inc_xor3",
+            "kind": "xor",
+            "inputs": {
+              "a": "a3",
+              "b": "p2"
+            },
+            "outputs": {
+              "out": "s3"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layouts": {
+    "": {
+      "sw_clk": {
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "label": "CLK"
+      },
+      "sw_sel": {
+        "position": {
+          "x": 150,
+          "y": 40
+        },
+        "label": "SEL"
+      },
+      "pc0": {
+        "position": {
+          "x": 260,
+          "y": 40
+        }
+      },
+      "pc1": {
+        "position": {
+          "x": 370,
+          "y": 40
+        }
+      },
+      "pc_not": {
+        "position": {
+          "x": 480,
+          "y": 40
+        }
+      },
+      "pc_xor": {
+        "position": {
+          "x": 590,
+          "y": 40
+        }
+      },
+      "acc0": {
+        "position": {
+          "x": 700,
+          "y": 40
+        }
+      },
+      "acc1": {
+        "position": {
+          "x": 810,
+          "y": 40
+        }
+      },
+      "acc2": {
+        "position": {
+          "x": 40,
+          "y": 95
+        }
+      },
+      "acc3": {
+        "position": {
+          "x": 150,
+          "y": 95
+        }
+      },
+      "u_inc": {
+        "position": {
+          "x": 260,
+          "y": 95
+        }
+      },
+      "amux0": {
+        "position": {
+          "x": 370,
+          "y": 95
+        }
+      },
+      "amux1": {
+        "position": {
+          "x": 480,
+          "y": 95
+        }
+      },
+      "amux2": {
+        "position": {
+          "x": 590,
+          "y": 95
+        }
+      },
+      "amux3": {
+        "position": {
+          "x": 700,
+          "y": 95
+        }
+      },
+      "m00": {
+        "position": {
+          "x": 810,
+          "y": 95
+        }
+      },
+      "m01": {
+        "position": {
+          "x": 40,
+          "y": 150
+        }
+      },
+      "m02": {
+        "position": {
+          "x": 150,
+          "y": 150
+        }
+      },
+      "m03": {
+        "position": {
+          "x": 260,
+          "y": 150
+        }
+      },
+      "m10": {
+        "position": {
+          "x": 370,
+          "y": 150
+        }
+      },
+      "m11": {
+        "position": {
+          "x": 480,
+          "y": 150
+        }
+      },
+      "m12": {
+        "position": {
+          "x": 590,
+          "y": 150
+        }
+      },
+      "m13": {
+        "position": {
+          "x": 700,
+          "y": 150
+        }
+      },
+      "addr_not": {
+        "position": {
+          "x": 810,
+          "y": 150
+        }
+      },
+      "we0": {
+        "position": {
+          "x": 40,
+          "y": 205
+        }
+      },
+      "we1": {
+        "position": {
+          "x": 150,
+          "y": 205
+        }
+      },
+      "wm00": {
+        "position": {
+          "x": 260,
+          "y": 205
+        }
+      },
+      "wm01": {
+        "position": {
+          "x": 370,
+          "y": 205
+        }
+      },
+      "wm02": {
+        "position": {
+          "x": 480,
+          "y": 205
+        }
+      },
+      "wm03": {
+        "position": {
+          "x": 590,
+          "y": 205
+        }
+      },
+      "wm10": {
+        "position": {
+          "x": 700,
+          "y": 205
+        }
+      },
+      "wm11": {
+        "position": {
+          "x": 810,
+          "y": 205
+        }
+      },
+      "wm12": {
+        "position": {
+          "x": 40,
+          "y": 260
+        }
+      },
+      "wm13": {
+        "position": {
+          "x": 150,
+          "y": 260
+        }
+      },
+      "rm0": {
+        "position": {
+          "x": 260,
+          "y": 260
+        }
+      },
+      "probe_a0": {
+        "position": {
+          "x": 370,
+          "y": 260
+        },
+        "label": "A0"
+      },
+      "probe_rd0": {
+        "position": {
+          "x": 480,
+          "y": 260
+        },
+        "label": "RD0"
+      },
+      "rm1": {
+        "position": {
+          "x": 590,
+          "y": 260
+        }
+      },
+      "probe_a1": {
+        "position": {
+          "x": 700,
+          "y": 260
+        },
+        "label": "A1"
+      },
+      "probe_rd1": {
+        "position": {
+          "x": 810,
+          "y": 260
+        },
+        "label": "RD1"
+      },
+      "rm2": {
+        "position": {
+          "x": 40,
+          "y": 315
+        }
+      },
+      "probe_a2": {
+        "position": {
+          "x": 150,
+          "y": 315
+        },
+        "label": "A2"
+      },
+      "probe_rd2": {
+        "position": {
+          "x": 260,
+          "y": 315
+        },
+        "label": "RD2"
+      },
+      "rm3": {
+        "position": {
+          "x": 370,
+          "y": 315
+        }
+      },
+      "probe_a3": {
+        "position": {
+          "x": 480,
+          "y": 315
+        },
+        "label": "A3"
+      },
+      "probe_rd3": {
+        "position": {
+          "x": 590,
+          "y": 315
+        },
+        "label": "RD3"
+      }
+    },
+    "increment4": {
+      "inc_not0": {
+        "position": {
+          "x": 40,
+          "y": 40
+        }
+      },
+      "inc_xor1": {
+        "position": {
+          "x": 150,
+          "y": 40
+        }
+      },
+      "inc_and01": {
+        "position": {
+          "x": 260,
+          "y": 40
+        }
+      },
+      "inc_xor2": {
+        "position": {
+          "x": 40,
+          "y": 110
+        }
+      },
+      "inc_and012": {
+        "position": {
+          "x": 150,
+          "y": 110
+        }
+      },
+      "inc_xor3": {
+        "position": {
+          "x": 260,
+          "y": 110
+        }
+      }
+    }
+  }
+}

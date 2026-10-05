@@ -111,11 +111,15 @@
 
 	function currentDocument(): ProjectDocument | null {
 		if (!snapshot) return null;
-		return toProjectDocument({
-			circuit: snapshot.circuit,
-			definitions: snapshot.definitions,
-			layouts: snapshot.layouts
-		});
+		// structuredClone inside toProjectDocument cannot clone Svelte's
+		// reactive proxies, so unwrap the snapshot before exporting/saving.
+		return toProjectDocument(
+			$state.snapshot({
+				circuit: snapshot.circuit,
+				definitions: snapshot.definitions,
+				layouts: snapshot.layouts
+			}) as ProjectDocument
+		);
 	}
 
 	function countComponents(document: unknown): number {

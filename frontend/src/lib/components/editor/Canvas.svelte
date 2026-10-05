@@ -12,7 +12,13 @@
 		type Rect,
 		type Viewport
 	} from '../../render/geometry';
-	import { buildScene, SIGNAL_COLORS, type SceneWire, type SignalPresentation } from '../../render/scene';
+	import {
+		buildScene,
+		presentSignal,
+		SIGNAL_COLORS,
+		type SceneWire,
+		type SignalPresentation
+	} from '../../render/scene';
 	import { cullScene } from '../../render/culling';
 	import { hitTest, type PinHit } from '../../render/hitTest';
 	import type { CircuitEditorStore, EditorSnapshot, PinRef } from '../../state/circuitStore';
@@ -49,15 +55,36 @@
 	let drag: Drag = { kind: 'none' };
 	let overlaySignature = '';
 
-	const scene = $derived(
-		buildScene({
-			document: snapshot.document,
-			layout: snapshot.layout,
-			definitions: snapshot.definitions,
-			values: snapshot.netValues,
-			oscillating: snapshot.oscillatingNets
-		})
-	);
+	// Scene geometry is independent of simulated values: value changes only
+	// recolour wires and pins, so the 2,000-component route is not rebuilt
+	// on every toggle. The cache keys on the store's stable document,
+	// layout, and definitions references rather than the snapshot object.
+	let sceneCache: ReturnType<typeof buildScene> | null = null;
+	let sceneCacheKey: { circuit: unknown; layout: unknown; definitions: unknown } = {
+		circuit: null,
+		layout: null,
+		definitions: null
+	};
+	const scene = $derived.by(() => {
+		const { circuit, layout, definitions } = snapshot;
+		if (
+			sceneCache &&
+			sceneCacheKey.circuit === circuit &&
+			sceneCacheKey.layout === layout &&
+			sceneCacheKey.definitions === definitions
+		) {
+			return sceneCache;
+		}
+		sceneCache = buildScene({ document: circuit, layout, definitions });
+		sceneCacheKey = { circuit, layout, definitions };
+		return sceneCache;
+	});
+
+	function signalForNet(net: string | undefined): SignalPresentation | null {
+		if (!net) return null;
+		const value = snapshot.netValues[net];
+		return value === undefined ? null : presentSignal(value, snapshot.oscillatingNets.has(net));
+	}
 
 	$effect(() => {
 		snapshot = store.snapshot;
@@ -255,9 +282,9 @@
 		return { color: signal.color, dash, width: signal.oscillating ? 2.5 : 2 };
 	}
 
-	function drawWire(ctx: CanvasRenderingContext2D, wire: SceneWire) {
+	function drawWire(ctx: CanvasRenderingContext2D, wire: SceneWire, signal: SignalPresentation | null) {
 		if (wire.points.length < 2) return;
-		const style = styleFor(wire.signal);
+		const style = styleFor(signal);
 		const screenPoints = wire.points.map((point) => worldToScreen(viewport, point));
 		ctx.save();
 		ctx.strokeStyle = style.color;
@@ -269,7 +296,7 @@
 			ctx.lineTo(screenPoints[index].x, screenPoints[index].y);
 		}
 		ctx.stroke();
-		if (wire.signal?.pattern === 'hatched') {
+		if (signal?.pattern === 'hatched') {
 			ctx.setLineDash([]);
 			ctx.lineWidth = 1;
 			for (let index = 1; index < screenPoints.length; index++) {
@@ -291,31 +318,47 @@
 		ctx.restore();
 	}
 
-	function drawGrid(ctx: CanvasRenderingContext2D) {
-		const step = 20;
-		const screenStep = step * viewport.scale;
-		if (screenStep < 8) return;
-		const worldRect = viewportWorldRect(viewport, size.width, size.height);
-		const startX = Math.floor(worldRect.x / step) * step;
-		const startY = Math.floor(worldRect.y / step) * step;
-		ctx.save();
-		ctx.strokeStyle = '#eceff1';
-		ctx.lineWidth = 1;
-		for (let x = startX; x <= worldRect.x + worldRect.width; x += step) {
-			const screen = worldToScreen(viewport, { x, y: 0 });
-			ctx.beginPath();
-			ctx.moveTo(screen.x, 0);
-			ctx.lineTo(screen.x, size.height);
-			ctx.stroke();
+	let gridLayer: HTMLCanvasElement | null = null;
+	let gridKey = '';
+
+	// The grid is static between viewport changes; rasterise it once per
+	// viewport and blit it as a single image. Software rasterisation of the
+	// dozens of grid strokes otherwise dominated each repaint.
+	function gridFor(width: number, height: number, dpr: number): HTMLCanvasElement {
+		const key = `${width}:${height}:${dpr}:${viewport.scale}:${viewport.offset.x}:${viewport.offset.y}`;
+		if (gridLayer && gridKey === key) return gridLayer;
+		const layer = document.createElement('canvas');
+		layer.width = Math.max(1, Math.round(width * dpr));
+		layer.height = Math.max(1, Math.round(height * dpr));
+		const grid = layer.getContext('2d');
+		if (grid) {
+			grid.setTransform(dpr, 0, 0, dpr, 0, 0);
+			const step = 20;
+			if (step * viewport.scale >= 8) {
+				const worldRect = viewportWorldRect(viewport, width, height);
+				const startX = Math.floor(worldRect.x / step) * step;
+				const startY = Math.floor(worldRect.y / step) * step;
+				grid.strokeStyle = '#eceff1';
+				grid.lineWidth = 1;
+				for (let x = startX; x <= worldRect.x + worldRect.width; x += step) {
+					const screen = worldToScreen(viewport, { x, y: 0 });
+					grid.beginPath();
+					grid.moveTo(screen.x, 0);
+					grid.lineTo(screen.x, height);
+					grid.stroke();
+				}
+				for (let y = startY; y <= worldRect.y + worldRect.height; y += step) {
+					const screen = worldToScreen(viewport, { x: 0, y });
+					grid.beginPath();
+					grid.moveTo(0, screen.y);
+					grid.lineTo(width, screen.y);
+					grid.stroke();
+				}
+			}
 		}
-		for (let y = startY; y <= worldRect.y + worldRect.height; y += step) {
-			const screen = worldToScreen(viewport, { x: 0, y });
-			ctx.beginPath();
-			ctx.moveTo(0, screen.y);
-			ctx.lineTo(size.width, screen.y);
-			ctx.stroke();
-		}
-		ctx.restore();
+		gridLayer = layer;
+		gridKey = key;
+		return layer;
 	}
 
 	function draw() {
@@ -333,38 +376,97 @@
 		ctx.clearRect(0, 0, size.width, size.height);
 		ctx.fillStyle = '#fafafa';
 		ctx.fillRect(0, 0, size.width, size.height);
-		drawGrid(ctx);
+		ctx.drawImage(gridFor(size.width, size.height, dpr), 0, 0, size.width, size.height);
 
 		const worldRect = viewportWorldRect(viewport, size.width, size.height);
 		const visible = cullScene(scene, scene.index, worldRect);
 
-		for (const wire of visible.wires) drawWire(ctx, wire);
+		// Group solid wires by style so a whole class draws as one path.
+		const wireGroups = new Map<string, { color: string; width: number; paths: Point[][] }>();
+		for (const wire of visible.wires) {
+			if (wire.points.length < 2) continue;
+			const signal = signalForNet(wire.netId);
+			const style = styleFor(signal);
+			if (signal?.pattern !== 'solid') {
+				drawWire(ctx, wire, signal);
+				continue;
+			}
+			const key = `${style.color}|${style.width}`;
+			const group = wireGroups.get(key) ?? { color: style.color, width: style.width, paths: [] };
+			group.paths.push(wire.points);
+			wireGroups.set(key, group);
+		}
+		for (const group of wireGroups.values()) {
+			ctx.strokeStyle = group.color;
+			ctx.lineWidth = group.width;
+			ctx.beginPath();
+			for (const points of group.paths) {
+				const first = worldToScreen(viewport, points[0]);
+				ctx.moveTo(first.x, first.y);
+				for (let index = 1; index < points.length; index++) {
+					const point = worldToScreen(viewport, points[index]);
+					ctx.lineTo(point.x, point.y);
+				}
+			}
+			ctx.stroke();
+		}
 
+		// Bodies as one fill/stroke pass, labels grouped by font, pins grouped
+		// by colour: per-component state changes dominate at 2,000 components.
+		ctx.fillStyle = '#ffffff';
+		ctx.strokeStyle = '#37474f';
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			ctx.rect(
+				topLeft.x,
+				topLeft.y,
+				component.rect.width * viewport.scale,
+				component.rect.height * viewport.scale
+			);
+		}
+		ctx.fill();
+		ctx.stroke();
+
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.font = '12px sans-serif';
+		ctx.fillStyle = '#263238';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
 			const height = component.rect.height * viewport.scale;
-			ctx.save();
-			ctx.fillStyle = '#ffffff';
-			ctx.fillRect(topLeft.x, topLeft.y, width, height);
-			ctx.strokeStyle = '#37474f';
-			ctx.lineWidth = 1.5;
-			ctx.strokeRect(topLeft.x, topLeft.y, width, height);
-			ctx.fillStyle = '#263238';
-			ctx.font = '12px sans-serif';
-			ctx.textAlign = 'center';
-			ctx.textBaseline = 'middle';
-			ctx.fillText(component.label, topLeft.x + width / 2, topLeft.y + height / 2 - 6, Math.max(width - 6, 10));
-			ctx.fillStyle = '#78909c';
-			ctx.font = '9px sans-serif';
-			ctx.fillText(component.kind, topLeft.x + width / 2, topLeft.y + height / 2 + 8, Math.max(width - 6, 10));
+			ctx.fillText(
+				component.label,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 - 6,
+				Math.max(width - 6, 10)
+			);
+		}
+		ctx.font = '9px sans-serif';
+		ctx.fillStyle = '#78909c';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			ctx.fillText(
+				component.kind,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 + 8,
+				Math.max(width - 6, 10)
+			);
+		}
+
+		const pinBuckets = new Map<string, Point[]>();
+		const pinPoints: Point[] = [];
+		for (const component of visible.components) {
 			for (const pin of component.pins) {
 				const point = worldToScreen(viewport, pin.point);
+				pinPoints.push(point);
 				const net = pin.side === 'output' ? component.outputs[pin.name] : component.inputs[pin.name];
 				const value = net ? snapshot.netValues[net] : undefined;
-				ctx.beginPath();
-				ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
-				ctx.fillStyle =
+				const color =
 					value === undefined
 						? '#ffffff'
 						: value === 0
@@ -374,12 +476,28 @@
 								: value === 'X'
 									? SIGNAL_COLORS.unknown
 									: SIGNAL_COLORS.highZ;
-				ctx.fill();
-				ctx.strokeStyle = '#455a64';
-				ctx.stroke();
+				const bucket = pinBuckets.get(color) ?? [];
+				bucket.push(point);
+				pinBuckets.set(color, bucket);
 			}
-			ctx.restore();
 		}
+		for (const [color, points] of pinBuckets) {
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			for (const point of points) {
+				ctx.moveTo(point.x + 3, point.y);
+				ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+			}
+			ctx.fill();
+		}
+		ctx.strokeStyle = '#455a64';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		for (const point of pinPoints) {
+			ctx.moveTo(point.x + 3, point.y);
+			ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+		}
+		ctx.stroke();
 
 		if (marquee) {
 			const topLeft = worldToScreen(viewport, { x: marquee.x, y: marquee.y });
@@ -422,6 +540,27 @@
 		}
 	}
 
+	let frame = 0;
+
+	function scheduleDraw() {
+		if (frame !== 0) return;
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			draw();
+		});
+	}
+
+	// Redraw on state changes rather than every frame: at ALU/CPU scale a
+	// full repaint must not delay simulation-value updates.
+	$effect(() => {
+		void snapshot;
+		void viewport;
+		void size;
+		void marquee;
+		void wirePreview;
+		scheduleDraw();
+	});
+
 	onMount(() => {
 		const resizeObserver = new ResizeObserver(() => {
 			if (!wrapper) return;
@@ -430,15 +569,10 @@
 		if (wrapper) resizeObserver.observe(wrapper);
 		const onWindowKeyDown = (event: KeyboardEvent) => onKeyDown(event);
 		window.addEventListener('keydown', onWindowKeyDown);
-
-		let frame = 0;
-		const loop = () => {
-			draw();
-			frame = requestAnimationFrame(loop);
-		};
-		frame = requestAnimationFrame(loop);
+		scheduleDraw();
 		return () => {
-			cancelAnimationFrame(frame);
+			if (frame !== 0) cancelAnimationFrame(frame);
+			frame = 0;
 			resizeObserver.disconnect();
 			window.removeEventListener('keydown', onWindowKeyDown);
 		};
@@ -493,6 +627,8 @@
 	}
 
 	canvas {
+		position: absolute;
+		inset: 0;
 		display: block;
 		width: 100%;
 		height: 100%;
