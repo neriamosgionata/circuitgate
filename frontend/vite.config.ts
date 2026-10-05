@@ -22,6 +22,17 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
+			csp: {
+				mode: 'auto',
+				directives: {
+					'default-src': ['self'],
+					'base-uri': ['self'],
+					'object-src': ['none'],
+					'frame-ancestors': ['none'],
+					'img-src': ['self', 'data:'],
+					'connect-src': ['self', 'ws:', 'wss:']
+				}
+			},
 			adapter: adapter()
 		})
 	],
