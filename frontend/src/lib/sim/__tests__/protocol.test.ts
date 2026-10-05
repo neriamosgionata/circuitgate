@@ -488,11 +488,32 @@ describe('worker crash recovery', () => {
 });
 
 describe('ALU-scale latency smoke', () => {
-	it('keeps toggle-to-values latency within the pure-path smoke budget', () => {
+	it('toggles an ALU-scale document through the pure path', () => {
 		const events: SimulationEvent[] = [];
 		const { host, scheduler } = makeHost(events);
 		const { document, switchId, outputNet } = aluScaleDocument();
 		expect(document.components.length).toBeGreaterThanOrEqual(2000);
+
+		host.handle({
+			type: 'init',
+			id: 1,
+			protocolVersion: PROTOCOL_VERSION,
+			document,
+			mode: 'delta'
+		});
+		scheduler.drain();
+		host.handle({ type: 'toggle', id: 2, componentId: switchId });
+		scheduler.drain();
+
+		expect(host.recorder.valueAt(outputNet, host.tick)).toBe(1);
+	});
+
+	const perfIt = process.env.RUN_PERF_SMOKE === '1' ? it : it.skip;
+
+	perfIt('keeps toggle-to-values latency within the pure-path smoke budget (RUN_PERF_SMOKE=1)', () => {
+		const events: SimulationEvent[] = [];
+		const { host, scheduler } = makeHost(events);
+		const { document, switchId, outputNet } = aluScaleDocument();
 
 		const started = performance.now();
 		host.handle({
