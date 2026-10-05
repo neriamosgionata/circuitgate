@@ -1,0 +1,17 @@
+server:
+  servlet:
+    session:
+      cookie:
+        name: circuitgate-session
+        secure: false
+
+circuitgate:
+  security:
+    remember-me:
+      secure-cookie: false
+  realtime:
+    allowed-origins:
+      - http://localhost:5173
+      - http://127.0.0.1:5173
+      - http://localhost:4173
+      - http://127.0.0.1:4173

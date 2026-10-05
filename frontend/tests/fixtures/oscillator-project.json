@@ -1,0 +1,72 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "osc_clock",
+        "kind": "clock",
+        "inputs": {},
+        "outputs": {
+          "out": "nCLK"
+        }
+      },
+      {
+        "id": "osc_not",
+        "kind": "not",
+        "inputs": {
+          "a": "nCLK"
+        },
+        "outputs": {
+          "out": "nINV"
+        }
+      },
+      {
+        "id": "probe_osc",
+        "kind": "probe",
+        "inputs": {
+          "in": "nCLK"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_inv",
+        "kind": "probe",
+        "inputs": {
+          "in": "nINV"
+        },
+        "outputs": {}
+      }
+    ]
+  },
+  "definitions": {},
+  "layouts": {
+    "": {
+      "osc_clock": {
+        "position": {
+          "x": 40,
+          "y": 40
+        }
+      },
+      "osc_not": {
+        "position": {
+          "x": 150,
+          "y": 40
+        }
+      },
+      "probe_osc": {
+        "position": {
+          "x": 40,
+          "y": 110
+        },
+        "label": "OSC"
+      },
+      "probe_inv": {
+        "position": {
+          "x": 150,
+          "y": 110
+        },
+        "label": "INV"
+      }
+    }
+  }
+}

@@ -1,0 +1,1441 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "sw_a0",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA0"
+        }
+      },
+      {
+        "id": "sw_b0",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB0"
+        }
+      },
+      {
+        "id": "sw_a1",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA1"
+        }
+      },
+      {
+        "id": "sw_b1",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB1"
+        }
+      },
+      {
+        "id": "sw_a2",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA2"
+        }
+      },
+      {
+        "id": "sw_b2",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB2"
+        }
+      },
+      {
+        "id": "sw_a3",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA3"
+        }
+      },
+      {
+        "id": "sw_b3",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB3"
+        }
+      },
+      {
+        "id": "sw_a4",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA4"
+        }
+      },
+      {
+        "id": "sw_b4",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB4"
+        }
+      },
+      {
+        "id": "sw_a5",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA5"
+        }
+      },
+      {
+        "id": "sw_b5",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB5"
+        }
+      },
+      {
+        "id": "sw_a6",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA6"
+        }
+      },
+      {
+        "id": "sw_b6",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB6"
+        }
+      },
+      {
+        "id": "sw_a7",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nA7"
+        }
+      },
+      {
+        "id": "sw_b7",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nB7"
+        }
+      },
+      {
+        "id": "sw_op0",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nOP0"
+        }
+      },
+      {
+        "id": "sw_op1",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nOP1"
+        }
+      },
+      {
+        "id": "sw_cin",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nCIN"
+        },
+        "initialState": {
+          "value": 0
+        }
+      },
+      {
+        "id": "u_adder",
+        "kind": "subcircuit",
+        "params": {
+          "definition": "adder8"
+        },
+        "inputs": {
+          "A0": "nA0",
+          "A1": "nA1",
+          "A2": "nA2",
+          "A3": "nA3",
+          "A4": "nA4",
+          "A5": "nA5",
+          "A6": "nA6",
+          "A7": "nA7",
+          "B0": "nB0",
+          "B1": "nB1",
+          "B2": "nB2",
+          "B3": "nB3",
+          "B4": "nB4",
+          "B5": "nB5",
+          "B6": "nB6",
+          "B7": "nB7",
+          "cin": "nCIN"
+        },
+        "outputs": {
+          "S0": "nS0",
+          "S1": "nS1",
+          "S2": "nS2",
+          "S3": "nS3",
+          "S4": "nS4",
+          "S5": "nS5",
+          "S6": "nS6",
+          "S7": "nS7",
+          "cout": "nCARRY"
+        }
+      },
+      {
+        "id": "g_and0",
+        "kind": "and",
+        "inputs": {
+          "a": "nA0",
+          "b": "nB0"
+        },
+        "outputs": {
+          "out": "nAND0"
+        }
+      },
+      {
+        "id": "g_or0",
+        "kind": "or",
+        "inputs": {
+          "a": "nA0",
+          "b": "nB0"
+        },
+        "outputs": {
+          "out": "nOR0"
+        }
+      },
+      {
+        "id": "g_xor0",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA0",
+          "b": "nB0"
+        },
+        "outputs": {
+          "out": "nXOR0"
+        }
+      },
+      {
+        "id": "g_and1",
+        "kind": "and",
+        "inputs": {
+          "a": "nA1",
+          "b": "nB1"
+        },
+        "outputs": {
+          "out": "nAND1"
+        }
+      },
+      {
+        "id": "g_or1",
+        "kind": "or",
+        "inputs": {
+          "a": "nA1",
+          "b": "nB1"
+        },
+        "outputs": {
+          "out": "nOR1"
+        }
+      },
+      {
+        "id": "g_xor1",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA1",
+          "b": "nB1"
+        },
+        "outputs": {
+          "out": "nXOR1"
+        }
+      },
+      {
+        "id": "g_and2",
+        "kind": "and",
+        "inputs": {
+          "a": "nA2",
+          "b": "nB2"
+        },
+        "outputs": {
+          "out": "nAND2"
+        }
+      },
+      {
+        "id": "g_or2",
+        "kind": "or",
+        "inputs": {
+          "a": "nA2",
+          "b": "nB2"
+        },
+        "outputs": {
+          "out": "nOR2"
+        }
+      },
+      {
+        "id": "g_xor2",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA2",
+          "b": "nB2"
+        },
+        "outputs": {
+          "out": "nXOR2"
+        }
+      },
+      {
+        "id": "g_and3",
+        "kind": "and",
+        "inputs": {
+          "a": "nA3",
+          "b": "nB3"
+        },
+        "outputs": {
+          "out": "nAND3"
+        }
+      },
+      {
+        "id": "g_or3",
+        "kind": "or",
+        "inputs": {
+          "a": "nA3",
+          "b": "nB3"
+        },
+        "outputs": {
+          "out": "nOR3"
+        }
+      },
+      {
+        "id": "g_xor3",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA3",
+          "b": "nB3"
+        },
+        "outputs": {
+          "out": "nXOR3"
+        }
+      },
+      {
+        "id": "g_and4",
+        "kind": "and",
+        "inputs": {
+          "a": "nA4",
+          "b": "nB4"
+        },
+        "outputs": {
+          "out": "nAND4"
+        }
+      },
+      {
+        "id": "g_or4",
+        "kind": "or",
+        "inputs": {
+          "a": "nA4",
+          "b": "nB4"
+        },
+        "outputs": {
+          "out": "nOR4"
+        }
+      },
+      {
+        "id": "g_xor4",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA4",
+          "b": "nB4"
+        },
+        "outputs": {
+          "out": "nXOR4"
+        }
+      },
+      {
+        "id": "g_and5",
+        "kind": "and",
+        "inputs": {
+          "a": "nA5",
+          "b": "nB5"
+        },
+        "outputs": {
+          "out": "nAND5"
+        }
+      },
+      {
+        "id": "g_or5",
+        "kind": "or",
+        "inputs": {
+          "a": "nA5",
+          "b": "nB5"
+        },
+        "outputs": {
+          "out": "nOR5"
+        }
+      },
+      {
+        "id": "g_xor5",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA5",
+          "b": "nB5"
+        },
+        "outputs": {
+          "out": "nXOR5"
+        }
+      },
+      {
+        "id": "g_and6",
+        "kind": "and",
+        "inputs": {
+          "a": "nA6",
+          "b": "nB6"
+        },
+        "outputs": {
+          "out": "nAND6"
+        }
+      },
+      {
+        "id": "g_or6",
+        "kind": "or",
+        "inputs": {
+          "a": "nA6",
+          "b": "nB6"
+        },
+        "outputs": {
+          "out": "nOR6"
+        }
+      },
+      {
+        "id": "g_xor6",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA6",
+          "b": "nB6"
+        },
+        "outputs": {
+          "out": "nXOR6"
+        }
+      },
+      {
+        "id": "g_and7",
+        "kind": "and",
+        "inputs": {
+          "a": "nA7",
+          "b": "nB7"
+        },
+        "outputs": {
+          "out": "nAND7"
+        }
+      },
+      {
+        "id": "g_or7",
+        "kind": "or",
+        "inputs": {
+          "a": "nA7",
+          "b": "nB7"
+        },
+        "outputs": {
+          "out": "nOR7"
+        }
+      },
+      {
+        "id": "g_xor7",
+        "kind": "xor",
+        "inputs": {
+          "a": "nA7",
+          "b": "nB7"
+        },
+        "outputs": {
+          "out": "nXOR7"
+        }
+      },
+      {
+        "id": "mux0",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS0",
+          "d1": "nAND0",
+          "d2": "nOR0",
+          "d3": "nXOR0",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR0"
+        }
+      },
+      {
+        "id": "probe_r0",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR0"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux1",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS1",
+          "d1": "nAND1",
+          "d2": "nOR1",
+          "d3": "nXOR1",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR1"
+        }
+      },
+      {
+        "id": "probe_r1",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR1"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux2",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS2",
+          "d1": "nAND2",
+          "d2": "nOR2",
+          "d3": "nXOR2",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR2"
+        }
+      },
+      {
+        "id": "probe_r2",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR2"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux3",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS3",
+          "d1": "nAND3",
+          "d2": "nOR3",
+          "d3": "nXOR3",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR3"
+        }
+      },
+      {
+        "id": "probe_r3",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR3"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux4",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS4",
+          "d1": "nAND4",
+          "d2": "nOR4",
+          "d3": "nXOR4",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR4"
+        }
+      },
+      {
+        "id": "probe_r4",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR4"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux5",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS5",
+          "d1": "nAND5",
+          "d2": "nOR5",
+          "d3": "nXOR5",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR5"
+        }
+      },
+      {
+        "id": "probe_r5",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR5"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux6",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS6",
+          "d1": "nAND6",
+          "d2": "nOR6",
+          "d3": "nXOR6",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR6"
+        }
+      },
+      {
+        "id": "probe_r6",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR6"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "mux7",
+        "kind": "mux4",
+        "inputs": {
+          "d0": "nS7",
+          "d1": "nAND7",
+          "d2": "nOR7",
+          "d3": "nXOR7",
+          "sel0": "nOP0",
+          "sel1": "nOP1"
+        },
+        "outputs": {
+          "out": "nR7"
+        }
+      },
+      {
+        "id": "probe_r7",
+        "kind": "probe",
+        "inputs": {
+          "in": "nR7"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "carry_not0",
+        "kind": "not",
+        "inputs": {
+          "a": "nOP0"
+        },
+        "outputs": {
+          "out": "nNOP0"
+        }
+      },
+      {
+        "id": "carry_not1",
+        "kind": "not",
+        "inputs": {
+          "a": "nOP1"
+        },
+        "outputs": {
+          "out": "nNOP1"
+        }
+      },
+      {
+        "id": "carry_and0",
+        "kind": "and",
+        "inputs": {
+          "a": "nCARRY",
+          "b": "nNOP0"
+        },
+        "outputs": {
+          "out": "nCARRY0"
+        }
+      },
+      {
+        "id": "carry_and1",
+        "kind": "and",
+        "inputs": {
+          "a": "nCARRY0",
+          "b": "nNOP1"
+        },
+        "outputs": {
+          "out": "nCARRY_GATED"
+        }
+      },
+      {
+        "id": "probe_carry",
+        "kind": "probe",
+        "inputs": {
+          "in": "nCARRY_GATED"
+        },
+        "outputs": {}
+      }
+    ]
+  },
+  "definitions": {
+    "fullAdder1": {
+      "name": "fullAdder1",
+      "inputs": {
+        "a": "a",
+        "b": "b",
+        "cin": "cin"
+      },
+      "outputs": {
+        "sum": "sum",
+        "cout": "cout"
+      },
+      "document": {
+        "schemaVersion": 1,
+        "components": [
+          {
+            "id": "fa_xor_p",
+            "kind": "xor",
+            "inputs": {
+              "a": "a",
+              "b": "b"
+            },
+            "outputs": {
+              "out": "p"
+            }
+          },
+          {
+            "id": "fa_xor_sum",
+            "kind": "xor",
+            "inputs": {
+              "a": "p",
+              "b": "cin"
+            },
+            "outputs": {
+              "out": "sum"
+            }
+          },
+          {
+            "id": "fa_and_g",
+            "kind": "and",
+            "inputs": {
+              "a": "a",
+              "b": "b"
+            },
+            "outputs": {
+              "out": "g"
+            }
+          },
+          {
+            "id": "fa_and_h",
+            "kind": "and",
+            "inputs": {
+              "a": "p",
+              "b": "cin"
+            },
+            "outputs": {
+              "out": "h"
+            }
+          },
+          {
+            "id": "fa_or_cout",
+            "kind": "or",
+            "inputs": {
+              "a": "g",
+              "b": "h"
+            },
+            "outputs": {
+              "out": "cout"
+            }
+          }
+        ]
+      }
+    },
+    "adder8": {
+      "name": "adder8",
+      "inputs": {
+        "A0": "A0",
+        "A1": "A1",
+        "A2": "A2",
+        "A3": "A3",
+        "A4": "A4",
+        "A5": "A5",
+        "A6": "A6",
+        "A7": "A7",
+        "B0": "B0",
+        "B1": "B1",
+        "B2": "B2",
+        "B3": "B3",
+        "B4": "B4",
+        "B5": "B5",
+        "B6": "B6",
+        "B7": "B7",
+        "cin": "cin"
+      },
+      "outputs": {
+        "S0": "S0",
+        "S1": "S1",
+        "S2": "S2",
+        "S3": "S3",
+        "S4": "S4",
+        "S5": "S5",
+        "S6": "S6",
+        "S7": "S7",
+        "cout": "cout"
+      },
+      "document": {
+        "schemaVersion": 1,
+        "components": [
+          {
+            "id": "fa0",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A0",
+              "b": "B0",
+              "cin": "cin"
+            },
+            "outputs": {
+              "sum": "S0",
+              "cout": "c1"
+            }
+          },
+          {
+            "id": "fa1",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A1",
+              "b": "B1",
+              "cin": "c1"
+            },
+            "outputs": {
+              "sum": "S1",
+              "cout": "c2"
+            }
+          },
+          {
+            "id": "fa2",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A2",
+              "b": "B2",
+              "cin": "c2"
+            },
+            "outputs": {
+              "sum": "S2",
+              "cout": "c3"
+            }
+          },
+          {
+            "id": "fa3",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A3",
+              "b": "B3",
+              "cin": "c3"
+            },
+            "outputs": {
+              "sum": "S3",
+              "cout": "c4"
+            }
+          },
+          {
+            "id": "fa4",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A4",
+              "b": "B4",
+              "cin": "c4"
+            },
+            "outputs": {
+              "sum": "S4",
+              "cout": "c5"
+            }
+          },
+          {
+            "id": "fa5",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A5",
+              "b": "B5",
+              "cin": "c5"
+            },
+            "outputs": {
+              "sum": "S5",
+              "cout": "c6"
+            }
+          },
+          {
+            "id": "fa6",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A6",
+              "b": "B6",
+              "cin": "c6"
+            },
+            "outputs": {
+              "sum": "S6",
+              "cout": "c7"
+            }
+          },
+          {
+            "id": "fa7",
+            "kind": "subcircuit",
+            "params": {
+              "definition": "fullAdder1"
+            },
+            "inputs": {
+              "a": "A7",
+              "b": "B7",
+              "cin": "c7"
+            },
+            "outputs": {
+              "sum": "S7",
+              "cout": "cout"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layouts": {
+    "": {
+      "sw_a0": {
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "label": "A0"
+      },
+      "sw_b0": {
+        "position": {
+          "x": 160,
+          "y": 40
+        },
+        "label": "B0"
+      },
+      "sw_a1": {
+        "position": {
+          "x": 280,
+          "y": 40
+        },
+        "label": "A1"
+      },
+      "sw_b1": {
+        "position": {
+          "x": 400,
+          "y": 40
+        },
+        "label": "B1"
+      },
+      "sw_a2": {
+        "position": {
+          "x": 520,
+          "y": 40
+        },
+        "label": "A2"
+      },
+      "sw_b2": {
+        "position": {
+          "x": 640,
+          "y": 40
+        },
+        "label": "B2"
+      },
+      "sw_a3": {
+        "position": {
+          "x": 760,
+          "y": 40
+        },
+        "label": "A3"
+      },
+      "sw_b3": {
+        "position": {
+          "x": 40,
+          "y": 100
+        },
+        "label": "B3"
+      },
+      "sw_a4": {
+        "position": {
+          "x": 160,
+          "y": 100
+        },
+        "label": "A4"
+      },
+      "sw_b4": {
+        "position": {
+          "x": 280,
+          "y": 100
+        },
+        "label": "B4"
+      },
+      "sw_a5": {
+        "position": {
+          "x": 400,
+          "y": 100
+        },
+        "label": "A5"
+      },
+      "sw_b5": {
+        "position": {
+          "x": 520,
+          "y": 100
+        },
+        "label": "B5"
+      },
+      "sw_a6": {
+        "position": {
+          "x": 640,
+          "y": 100
+        },
+        "label": "A6"
+      },
+      "sw_b6": {
+        "position": {
+          "x": 760,
+          "y": 100
+        },
+        "label": "B6"
+      },
+      "sw_a7": {
+        "position": {
+          "x": 40,
+          "y": 160
+        },
+        "label": "A7"
+      },
+      "sw_b7": {
+        "position": {
+          "x": 160,
+          "y": 160
+        },
+        "label": "B7"
+      },
+      "sw_op0": {
+        "position": {
+          "x": 280,
+          "y": 160
+        },
+        "label": "OP0"
+      },
+      "sw_op1": {
+        "position": {
+          "x": 400,
+          "y": 160
+        },
+        "label": "OP1"
+      },
+      "sw_cin": {
+        "position": {
+          "x": 520,
+          "y": 160
+        },
+        "label": "CIN"
+      },
+      "u_adder": {
+        "position": {
+          "x": 640,
+          "y": 160
+        }
+      },
+      "g_and0": {
+        "position": {
+          "x": 760,
+          "y": 160
+        }
+      },
+      "g_or0": {
+        "position": {
+          "x": 40,
+          "y": 220
+        }
+      },
+      "g_xor0": {
+        "position": {
+          "x": 160,
+          "y": 220
+        }
+      },
+      "g_and1": {
+        "position": {
+          "x": 280,
+          "y": 220
+        }
+      },
+      "g_or1": {
+        "position": {
+          "x": 400,
+          "y": 220
+        }
+      },
+      "g_xor1": {
+        "position": {
+          "x": 520,
+          "y": 220
+        }
+      },
+      "g_and2": {
+        "position": {
+          "x": 640,
+          "y": 220
+        }
+      },
+      "g_or2": {
+        "position": {
+          "x": 760,
+          "y": 220
+        }
+      },
+      "g_xor2": {
+        "position": {
+          "x": 40,
+          "y": 280
+        }
+      },
+      "g_and3": {
+        "position": {
+          "x": 160,
+          "y": 280
+        }
+      },
+      "g_or3": {
+        "position": {
+          "x": 280,
+          "y": 280
+        }
+      },
+      "g_xor3": {
+        "position": {
+          "x": 400,
+          "y": 280
+        }
+      },
+      "g_and4": {
+        "position": {
+          "x": 520,
+          "y": 280
+        }
+      },
+      "g_or4": {
+        "position": {
+          "x": 640,
+          "y": 280
+        }
+      },
+      "g_xor4": {
+        "position": {
+          "x": 760,
+          "y": 280
+        }
+      },
+      "g_and5": {
+        "position": {
+          "x": 40,
+          "y": 340
+        }
+      },
+      "g_or5": {
+        "position": {
+          "x": 160,
+          "y": 340
+        }
+      },
+      "g_xor5": {
+        "position": {
+          "x": 280,
+          "y": 340
+        }
+      },
+      "g_and6": {
+        "position": {
+          "x": 400,
+          "y": 340
+        }
+      },
+      "g_or6": {
+        "position": {
+          "x": 520,
+          "y": 340
+        }
+      },
+      "g_xor6": {
+        "position": {
+          "x": 640,
+          "y": 340
+        }
+      },
+      "g_and7": {
+        "position": {
+          "x": 760,
+          "y": 340
+        }
+      },
+      "g_or7": {
+        "position": {
+          "x": 40,
+          "y": 400
+        }
+      },
+      "g_xor7": {
+        "position": {
+          "x": 160,
+          "y": 400
+        }
+      },
+      "mux0": {
+        "position": {
+          "x": 280,
+          "y": 400
+        }
+      },
+      "probe_r0": {
+        "position": {
+          "x": 400,
+          "y": 400
+        },
+        "label": "R0"
+      },
+      "mux1": {
+        "position": {
+          "x": 520,
+          "y": 400
+        }
+      },
+      "probe_r1": {
+        "position": {
+          "x": 640,
+          "y": 400
+        },
+        "label": "R1"
+      },
+      "mux2": {
+        "position": {
+          "x": 760,
+          "y": 400
+        }
+      },
+      "probe_r2": {
+        "position": {
+          "x": 40,
+          "y": 460
+        },
+        "label": "R2"
+      },
+      "mux3": {
+        "position": {
+          "x": 160,
+          "y": 460
+        }
+      },
+      "probe_r3": {
+        "position": {
+          "x": 280,
+          "y": 460
+        },
+        "label": "R3"
+      },
+      "mux4": {
+        "position": {
+          "x": 400,
+          "y": 460
+        }
+      },
+      "probe_r4": {
+        "position": {
+          "x": 520,
+          "y": 460
+        },
+        "label": "R4"
+      },
+      "mux5": {
+        "position": {
+          "x": 640,
+          "y": 460
+        }
+      },
+      "probe_r5": {
+        "position": {
+          "x": 760,
+          "y": 460
+        },
+        "label": "R5"
+      },
+      "mux6": {
+        "position": {
+          "x": 40,
+          "y": 520
+        }
+      },
+      "probe_r6": {
+        "position": {
+          "x": 160,
+          "y": 520
+        },
+        "label": "R6"
+      },
+      "mux7": {
+        "position": {
+          "x": 280,
+          "y": 520
+        }
+      },
+      "probe_r7": {
+        "position": {
+          "x": 400,
+          "y": 520
+        },
+        "label": "R7"
+      },
+      "probe_carry": {
+        "position": {
+          "x": 520,
+          "y": 520
+        },
+        "label": "CARRY"
+      },
+      "carry_not0": {
+        "position": {
+          "x": 640,
+          "y": 520
+        }
+      },
+      "carry_not1": {
+        "position": {
+          "x": 760,
+          "y": 520
+        }
+      },
+      "carry_and0": {
+        "position": {
+          "x": 640,
+          "y": 590
+        }
+      },
+      "carry_and1": {
+        "position": {
+          "x": 760,
+          "y": 590
+        }
+      }
+    },
+    "fullAdder1": {
+      "fa_xor_p": {
+        "position": {
+          "x": 40,
+          "y": 40
+        }
+      },
+      "fa_xor_sum": {
+        "position": {
+          "x": 150,
+          "y": 40
+        }
+      },
+      "fa_and_g": {
+        "position": {
+          "x": 260,
+          "y": 40
+        }
+      },
+      "fa_and_h": {
+        "position": {
+          "x": 40,
+          "y": 110
+        }
+      },
+      "fa_or_cout": {
+        "position": {
+          "x": 150,
+          "y": 110
+        }
+      }
+    },
+    "adder8": {
+      "fa0": {
+        "position": {
+          "x": 40,
+          "y": 40
+        }
+      },
+      "fa1": {
+        "position": {
+          "x": 150,
+          "y": 40
+        }
+      },
+      "fa2": {
+        "position": {
+          "x": 260,
+          "y": 40
+        }
+      },
+      "fa3": {
+        "position": {
+          "x": 370,
+          "y": 40
+        }
+      },
+      "fa4": {
+        "position": {
+          "x": 40,
+          "y": 110
+        }
+      },
+      "fa5": {
+        "position": {
+          "x": 150,
+          "y": 110
+        }
+      },
+      "fa6": {
+        "position": {
+          "x": 260,
+          "y": 110
+        }
+      },
+      "fa7": {
+        "position": {
+          "x": 370,
+          "y": 110
+        }
+      }
+    }
+  }
+}

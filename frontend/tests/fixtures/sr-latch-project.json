@@ -1,0 +1,106 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "sw_s",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nS"
+        }
+      },
+      {
+        "id": "sw_r",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": {
+          "out": "nR"
+        }
+      },
+      {
+        "id": "nor_q",
+        "kind": "nor",
+        "inputs": {
+          "a": "nR",
+          "b": "nQN"
+        },
+        "outputs": {
+          "out": "nQ"
+        }
+      },
+      {
+        "id": "nor_qn",
+        "kind": "nor",
+        "inputs": {
+          "a": "nS",
+          "b": "nQ"
+        },
+        "outputs": {
+          "out": "nQN"
+        }
+      },
+      {
+        "id": "probe_q",
+        "kind": "probe",
+        "inputs": {
+          "in": "nQ"
+        },
+        "outputs": {}
+      },
+      {
+        "id": "probe_qn",
+        "kind": "probe",
+        "inputs": {
+          "in": "nQN"
+        },
+        "outputs": {}
+      }
+    ]
+  },
+  "definitions": {},
+  "layouts": {
+    "": {
+      "sw_s": {
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "label": "S"
+      },
+      "sw_r": {
+        "position": {
+          "x": 150,
+          "y": 40
+        },
+        "label": "R"
+      },
+      "nor_q": {
+        "position": {
+          "x": 260,
+          "y": 40
+        }
+      },
+      "nor_qn": {
+        "position": {
+          "x": 40,
+          "y": 110
+        }
+      },
+      "probe_q": {
+        "position": {
+          "x": 150,
+          "y": 110
+        },
+        "label": "Q"
+      },
+      "probe_qn": {
+        "position": {
+          "x": 260,
+          "y": 110
+        },
+        "label": "QN"
+      }
+    }
+  }
+}

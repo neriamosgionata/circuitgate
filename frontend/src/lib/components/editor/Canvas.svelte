@@ -1,0 +1,676 @@
+<script lang="ts">
+	import { onMount, untrack } from 'svelte';
+	import {
+		clamp,
+		panViewport,
+		screenToWorld,
+		snapPoint,
+		worldToScreen,
+		zoomViewport,
+		viewportWorldRect,
+		type Point,
+		type Rect,
+		type Viewport
+	} from '../../render/geometry';
+	import {
+		buildScene,
+		presentSignal,
+		SIGNAL_COLORS,
+		type SceneWire,
+		type SignalPresentation
+	} from '../../render/scene';
+	import { cullScene } from '../../render/culling';
+	import { hitTest, type PinHit } from '../../render/hitTest';
+	import type { CircuitEditorStore, EditorSnapshot, PinRef } from '../../state/circuitStore';
+
+	interface Props {
+		store: CircuitEditorStore;
+		readonly?: boolean;
+	}
+
+	let { store, readonly = false }: Props = $props();
+
+	interface OverlayRect {
+		id: string;
+		left: number;
+		top: number;
+		width: number;
+		height: number;
+	}
+
+	type Drag =
+		| { kind: 'none' }
+		| { kind: 'pan'; last: Point }
+		| { kind: 'move'; origin: Map<string, Point>; start: Point }
+		| { kind: 'marquee'; start: Point };
+
+	let wrapper: HTMLDivElement | undefined = $state();
+	let canvas: HTMLCanvasElement | undefined = $state();
+	let viewport = $state<Viewport>({ scale: 1, offset: { x: 48, y: 48 } });
+	let size = $state({ width: 960, height: 640 });
+	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
+	let overlay = $state<OverlayRect[]>([]);
+	let marquee = $state<Rect | null>(null);
+	let wirePreview = $state<{ from: Point; to: Point } | null>(null);
+	let drag: Drag = { kind: 'none' };
+	let overlaySignature = '';
+
+	// Scene geometry is independent of simulated values: value changes only
+	// recolour wires and pins, so the 2,000-component route is not rebuilt
+	// on every toggle. The cache keys on the store's stable document,
+	// layout, and definitions references rather than the snapshot object.
+	let sceneCache: ReturnType<typeof buildScene> | null = null;
+	let sceneCacheKey: { circuit: unknown; layout: unknown; definitions: unknown } = {
+		circuit: null,
+		layout: null,
+		definitions: null
+	};
+	const scene = $derived.by(() => {
+		const { circuit, layout, definitions } = snapshot;
+		if (
+			sceneCache &&
+			sceneCacheKey.circuit === circuit &&
+			sceneCacheKey.layout === layout &&
+			sceneCacheKey.definitions === definitions
+		) {
+			return sceneCache;
+		}
+		sceneCache = buildScene({ document: circuit, layout, definitions });
+		sceneCacheKey = { circuit, layout, definitions };
+		return sceneCache;
+	});
+
+	function signalForNet(net: string | undefined): SignalPresentation | null {
+		if (!net) return null;
+		const value = snapshot.netValues[net];
+		return value === undefined ? null : presentSignal(value, snapshot.oscillatingNets.has(net));
+	}
+
+	$effect(() => {
+		snapshot = store.snapshot;
+		return store.subscribe(() => {
+			snapshot = store.snapshot;
+		});
+	});
+
+	function localPoint(event: PointerEvent | WheelEvent): Point {
+		if (!canvas) return { x: 0, y: 0 };
+		const rect = canvas.getBoundingClientRect();
+		return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+	}
+
+	function asPinRef(hit: PinHit): PinRef {
+		return { componentId: hit.componentId, pin: hit.pin, side: hit.side };
+	}
+
+	function onPointerDown(event: PointerEvent) {
+		if (!canvas) return;
+		canvas.setPointerCapture(event.pointerId);
+		const screen = localPoint(event);
+		const world = screenToWorld(viewport, screen);
+
+		if (event.button === 1 || event.button === 2) {
+			drag = { kind: 'pan', last: screen };
+			return;
+		}
+
+		if (readonly) {
+			const inspected = hitTest(scene, viewport, screen);
+			if (inspected?.type === 'component') {
+				if (event.shiftKey) {
+					store.toggleSelection(inspected.id);
+				} else {
+					store.setSelection([inspected.id]);
+				}
+			} else if (!event.shiftKey) {
+				store.clearSelection();
+			}
+			return;
+		}
+
+		if (snapshot.pendingKind) {
+			store.placeComponent(snapshot.pendingKind, world);
+			store.cancelPlacement();
+			return;
+		}
+
+		const hit = hitTest(scene, viewport, screen);
+		if (hit?.type === 'pin') {
+			const pin = asPinRef(hit);
+			if (snapshot.pendingWire) {
+				store.completeWire(pin);
+				wirePreview = null;
+			} else if (store.beginWire(pin).ok) {
+				wirePreview = { from: hit.point, to: hit.point };
+			}
+			return;
+		}
+
+		if (hit?.type === 'component') {
+			if (snapshot.pendingWire) {
+				store.cancelWire();
+				wirePreview = null;
+			}
+			if (event.shiftKey) {
+				store.toggleSelection(hit.id);
+			} else if (!snapshot.selection.has(hit.id)) {
+				store.setSelection([hit.id]);
+			}
+			const origin = new Map<string, Point>();
+			for (const id of store.snapshot.selection) {
+				const entry = store.snapshot.layout[id];
+				if (entry) origin.set(id, { ...entry.position });
+			}
+			drag = { kind: 'move', origin, start: world };
+			return;
+		}
+
+		if (snapshot.pendingWire) {
+			store.cancelWire();
+			wirePreview = null;
+		}
+		if (!event.shiftKey) store.clearSelection();
+		drag = { kind: 'marquee', start: world };
+		marquee = { x: world.x, y: world.y, width: 0, height: 0 };
+	}
+
+	function onPointerMove(event: PointerEvent) {
+		if (!canvas) return;
+		const screen = localPoint(event);
+		const world = screenToWorld(viewport, screen);
+		if (drag.kind === 'pan') {
+			viewport = panViewport(viewport, screen.x - drag.last.x, screen.y - drag.last.y);
+			drag.last = screen;
+			return;
+		}
+		if (drag.kind === 'move') {
+			const total = { x: world.x - drag.start.x, y: world.y - drag.start.y };
+			const positions: Record<string, Point> = {};
+			for (const [id, origin] of drag.origin) {
+				positions[id] = snapPoint({ x: origin.x + total.x, y: origin.y + total.y });
+			}
+			store.setPositions(positions);
+			return;
+		}
+		if (drag.kind === 'marquee') {
+			marquee = {
+				x: Math.min(drag.start.x, world.x),
+				y: Math.min(drag.start.y, world.y),
+				width: Math.abs(world.x - drag.start.x),
+				height: Math.abs(world.y - drag.start.y)
+			};
+			return;
+		}
+		if (snapshot.pendingWire && wirePreview) {
+			const hit = hitTest(scene, viewport, screen);
+			wirePreview = {
+				from: wirePreview.from,
+				to: hit?.type === 'pin' ? hit.point : world
+			};
+		}
+	}
+
+	function onPointerUp(event: PointerEvent) {
+		if (!canvas) return;
+		const screen = localPoint(event);
+		if (drag.kind === 'marquee' && marquee) {
+			store.selectInRect(marquee);
+		}
+		if (snapshot.pendingWire) {
+			const hit = hitTest(scene, viewport, screen);
+			store.endWire(hit?.type === 'pin' ? asPinRef(hit) : null);
+			wirePreview = null;
+		}
+		drag = { kind: 'none' };
+		marquee = null;
+		overlaySignature = '';
+	}
+
+	function onWheel(event: WheelEvent) {
+		event.preventDefault();
+		const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+		viewport = zoomViewport(viewport, localPoint(event), factor);
+	}
+
+	function onKeyDown(event: KeyboardEvent) {
+		const target = event.target as HTMLElement | null;
+		if (
+			target &&
+			(target instanceof HTMLInputElement ||
+				target instanceof HTMLTextAreaElement ||
+				target instanceof HTMLSelectElement ||
+				target.isContentEditable)
+		) {
+			return;
+		}
+		if ((event.key === 'Delete' || event.key === 'Backspace') && !readonly) {
+			event.preventDefault();
+			store.deleteSelection();
+		} else if (event.key === 'Escape') {
+			store.cancelPlacement();
+			store.cancelWire();
+			store.cancelPackaging();
+			wirePreview = null;
+		}
+	}
+
+	function zoomAtCenter(factor: number) {
+		viewport = zoomViewport(viewport, { x: size.width / 2, y: size.height / 2 }, factor);
+	}
+
+	function fitView() {
+		const bounds = scene.bounds;
+		if (bounds.width <= 0 && bounds.height <= 0) return;
+		const padding = 48;
+		const scale = clamp(
+			Math.min(
+				(size.width - padding * 2) / Math.max(bounds.width, 1),
+				(size.height - padding * 2) / Math.max(bounds.height, 1)
+			),
+			0.2,
+			8
+		);
+		viewport = {
+			scale,
+			offset: { x: padding - bounds.x * scale, y: padding - bounds.y * scale }
+		};
+	}
+
+	function styleFor(signal: SignalPresentation | null): { color: string; dash: number[]; width: number } {
+		if (!signal) return { color: SIGNAL_COLORS.idle, dash: [], width: 1.5 };
+		const dash = signal.pattern === 'dashed' ? [6, 4] : signal.oscillating ? [3, 3] : [];
+		return { color: signal.color, dash, width: signal.oscillating ? 2.5 : 2 };
+	}
+
+	function drawWire(ctx: CanvasRenderingContext2D, wire: SceneWire, signal: SignalPresentation | null) {
+		if (wire.points.length < 2) return;
+		const style = styleFor(signal);
+		const screenPoints = wire.points.map((point) => worldToScreen(viewport, point));
+		ctx.save();
+		ctx.strokeStyle = style.color;
+		ctx.lineWidth = style.width;
+		ctx.setLineDash(style.dash);
+		ctx.beginPath();
+		ctx.moveTo(screenPoints[0].x, screenPoints[0].y);
+		for (let index = 1; index < screenPoints.length; index++) {
+			ctx.lineTo(screenPoints[index].x, screenPoints[index].y);
+		}
+		ctx.stroke();
+		if (signal?.pattern === 'hatched') {
+			ctx.setLineDash([]);
+			ctx.lineWidth = 1;
+			for (let index = 1; index < screenPoints.length; index++) {
+				const from = screenPoints[index - 1];
+				const to = screenPoints[index];
+				const length = Math.hypot(to.x - from.x, to.y - from.y);
+				const steps = Math.floor(length / 8);
+				for (let step = 0; step <= steps; step++) {
+					const t = steps === 0 ? 0 : step / steps;
+					const x = from.x + (to.x - from.x) * t;
+					const y = from.y + (to.y - from.y) * t;
+					ctx.beginPath();
+					ctx.moveTo(x - 2, y + 3);
+					ctx.lineTo(x + 2, y - 3);
+					ctx.stroke();
+				}
+			}
+		}
+		ctx.restore();
+	}
+
+	let gridLayer: HTMLCanvasElement | null = null;
+	let gridKey = '';
+
+	// The grid is static between viewport changes; rasterise it once per
+	// viewport and blit it as a single image. Software rasterisation of the
+	// dozens of grid strokes otherwise dominated each repaint.
+	function gridFor(width: number, height: number, dpr: number): HTMLCanvasElement {
+		const key = `${width}:${height}:${dpr}:${viewport.scale}:${viewport.offset.x}:${viewport.offset.y}`;
+		if (gridLayer && gridKey === key) return gridLayer;
+		const layer = document.createElement('canvas');
+		layer.width = Math.max(1, Math.round(width * dpr));
+		layer.height = Math.max(1, Math.round(height * dpr));
+		const grid = layer.getContext('2d');
+		if (grid) {
+			grid.setTransform(dpr, 0, 0, dpr, 0, 0);
+			const step = 20;
+			if (step * viewport.scale >= 8) {
+				const worldRect = viewportWorldRect(viewport, width, height);
+				const startX = Math.floor(worldRect.x / step) * step;
+				const startY = Math.floor(worldRect.y / step) * step;
+				grid.strokeStyle = '#eceff1';
+				grid.lineWidth = 1;
+				for (let x = startX; x <= worldRect.x + worldRect.width; x += step) {
+					const screen = worldToScreen(viewport, { x, y: 0 });
+					grid.beginPath();
+					grid.moveTo(screen.x, 0);
+					grid.lineTo(screen.x, height);
+					grid.stroke();
+				}
+				for (let y = startY; y <= worldRect.y + worldRect.height; y += step) {
+					const screen = worldToScreen(viewport, { x: 0, y });
+					grid.beginPath();
+					grid.moveTo(0, screen.y);
+					grid.lineTo(width, screen.y);
+					grid.stroke();
+				}
+			}
+		}
+		gridLayer = layer;
+		gridKey = key;
+		return layer;
+	}
+
+	function draw() {
+		if (!canvas) return;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		const dpr = window.devicePixelRatio || 1;
+		const pixelWidth = Math.max(1, Math.round(size.width * dpr));
+		const pixelHeight = Math.max(1, Math.round(size.height * dpr));
+		if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+			canvas.width = pixelWidth;
+			canvas.height = pixelHeight;
+		}
+		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		ctx.clearRect(0, 0, size.width, size.height);
+		ctx.fillStyle = '#fafafa';
+		ctx.fillRect(0, 0, size.width, size.height);
+		ctx.drawImage(gridFor(size.width, size.height, dpr), 0, 0, size.width, size.height);
+
+		const worldRect = viewportWorldRect(viewport, size.width, size.height);
+		const visible = cullScene(scene, scene.index, worldRect);
+
+		// Group solid wires by style so a whole class draws as one path.
+		const wireGroups = new Map<string, { color: string; width: number; paths: Point[][] }>();
+		for (const wire of visible.wires) {
+			if (wire.points.length < 2) continue;
+			const signal = signalForNet(wire.netId);
+			const style = styleFor(signal);
+			if (signal?.pattern !== 'solid') {
+				drawWire(ctx, wire, signal);
+				continue;
+			}
+			const key = `${style.color}|${style.width}`;
+			const group = wireGroups.get(key) ?? { color: style.color, width: style.width, paths: [] };
+			group.paths.push(wire.points);
+			wireGroups.set(key, group);
+		}
+		for (const group of wireGroups.values()) {
+			ctx.strokeStyle = group.color;
+			ctx.lineWidth = group.width;
+			ctx.beginPath();
+			for (const points of group.paths) {
+				const first = worldToScreen(viewport, points[0]);
+				ctx.moveTo(first.x, first.y);
+				for (let index = 1; index < points.length; index++) {
+					const point = worldToScreen(viewport, points[index]);
+					ctx.lineTo(point.x, point.y);
+				}
+			}
+			ctx.stroke();
+		}
+
+		// Bodies as one fill/stroke pass, labels grouped by font, pins grouped
+		// by colour: per-component state changes dominate at 2,000 components.
+		ctx.fillStyle = '#ffffff';
+		ctx.strokeStyle = '#37474f';
+		ctx.lineWidth = 1.5;
+		ctx.beginPath();
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			ctx.rect(
+				topLeft.x,
+				topLeft.y,
+				component.rect.width * viewport.scale,
+				component.rect.height * viewport.scale
+			);
+		}
+		ctx.fill();
+		ctx.stroke();
+
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.font = '12px sans-serif';
+		ctx.fillStyle = '#263238';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			ctx.fillText(
+				component.label,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 - 6,
+				Math.max(width - 6, 10)
+			);
+		}
+		ctx.font = '9px sans-serif';
+		ctx.fillStyle = '#78909c';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			ctx.fillText(
+				component.kind,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 + 8,
+				Math.max(width - 6, 10)
+			);
+		}
+
+		const pinBuckets = new Map<string, Point[]>();
+		const pinPoints: Point[] = [];
+		for (const component of visible.components) {
+			for (const pin of component.pins) {
+				const point = worldToScreen(viewport, pin.point);
+				pinPoints.push(point);
+				const net = pin.side === 'output' ? component.outputs[pin.name] : component.inputs[pin.name];
+				const value = net ? snapshot.netValues[net] : undefined;
+				const color =
+					value === undefined
+						? '#ffffff'
+						: value === 0
+							? SIGNAL_COLORS.low
+							: value === 1
+								? SIGNAL_COLORS.high
+								: value === 'X'
+									? SIGNAL_COLORS.unknown
+									: SIGNAL_COLORS.highZ;
+				const bucket = pinBuckets.get(color) ?? [];
+				bucket.push(point);
+				pinBuckets.set(color, bucket);
+			}
+		}
+		for (const [color, points] of pinBuckets) {
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			for (const point of points) {
+				ctx.moveTo(point.x + 3, point.y);
+				ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+			}
+			ctx.fill();
+		}
+		ctx.strokeStyle = '#455a64';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		for (const point of pinPoints) {
+			ctx.moveTo(point.x + 3, point.y);
+			ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+		}
+		ctx.stroke();
+
+		if (marquee) {
+			const topLeft = worldToScreen(viewport, { x: marquee.x, y: marquee.y });
+			ctx.save();
+			ctx.strokeStyle = '#1565c0';
+			ctx.setLineDash([4, 3]);
+			ctx.strokeRect(topLeft.x, topLeft.y, marquee.width * viewport.scale, marquee.height * viewport.scale);
+			ctx.restore();
+		}
+		if (wirePreview) {
+			const from = worldToScreen(viewport, wirePreview.from);
+			const to = worldToScreen(viewport, wirePreview.to);
+			ctx.save();
+			ctx.strokeStyle = '#d84315';
+			ctx.setLineDash([5, 4]);
+			ctx.beginPath();
+			ctx.moveTo(from.x, from.y);
+			ctx.lineTo(to.x, to.y);
+			ctx.stroke();
+			ctx.restore();
+		}
+
+		const selected = visible.components.filter((component) => snapshot.selection.has(component.id));
+		const nextOverlay = selected.map((component) => {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			return {
+				id: component.id,
+				left: topLeft.x,
+				top: topLeft.y,
+				width: component.rect.width * viewport.scale,
+				height: component.rect.height * viewport.scale
+			};
+		});
+		const signature = nextOverlay
+			.map((entry) => `${entry.id}:${entry.left.toFixed(1)}:${entry.top.toFixed(1)}:${entry.width.toFixed(1)}`)
+			.join('|');
+		if (signature !== overlaySignature) {
+			overlaySignature = signature;
+			overlay = nextOverlay;
+		}
+	}
+
+	let frame = 0;
+
+	function scheduleDraw() {
+		if (frame !== 0) return;
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			draw();
+		});
+	}
+
+	// Redraw on state changes rather than every frame: at ALU/CPU scale a
+	// full repaint must not delay simulation-value updates.
+	$effect(() => {
+		void snapshot;
+		void viewport;
+		void size;
+		void marquee;
+		void wirePreview;
+		scheduleDraw();
+	});
+
+	onMount(() => {
+		const resizeObserver = new ResizeObserver(() => {
+			if (!wrapper) return;
+			size = { width: Math.max(1, wrapper.clientWidth), height: Math.max(1, wrapper.clientHeight) };
+		});
+		if (wrapper) resizeObserver.observe(wrapper);
+		const onWindowKeyDown = (event: KeyboardEvent) => onKeyDown(event);
+		window.addEventListener('keydown', onWindowKeyDown);
+		scheduleDraw();
+		return () => {
+			if (frame !== 0) cancelAnimationFrame(frame);
+			frame = 0;
+			resizeObserver.disconnect();
+			window.removeEventListener('keydown', onWindowKeyDown);
+		};
+	});
+</script>
+
+<div class="canvas-wrapper" bind:this={wrapper}>
+	<canvas
+		bind:this={canvas}
+		onpointerdown={onPointerDown}
+		onpointermove={onPointerMove}
+		onpointerup={onPointerUp}
+		onpointercancel={onPointerUp}
+		onwheel={onWheel}
+		oncontextmenu={(event) => event.preventDefault()}
+	></canvas>
+	<div class="overlay">
+		{#each overlay as entry (entry.id)}
+			<div
+				class="selection"
+				style:left="{entry.left}px"
+				style:top="{entry.top}px"
+				style:width="{entry.width}px"
+				style:height="{entry.height}px"
+			></div>
+		{/each}
+	</div>
+	<div class="controls">
+		<button type="button" onclick={() => zoomAtCenter(1.2)} aria-label="Zoom in">+</button>
+		<button type="button" onclick={() => zoomAtCenter(1 / 1.2)} aria-label="Zoom out">-</button>
+		<button type="button" onclick={fitView}>Fit</button>
+		<span class="hint">
+			{snapshot.pendingKind
+				? `Click to place ${snapshot.pendingKind}`
+				: snapshot.pendingWire
+					? 'Click a pin to finish the wire (Esc cancels)'
+					: 'Drag pins to wire, shift-click to multi-select, middle-drag to pan'}
+		</span>
+	</div>
+</div>
+
+<style>
+	.canvas-wrapper {
+		position: relative;
+		width: 100%;
+		height: 100%;
+		min-height: 420px;
+		overflow: hidden;
+		background: #fafafa;
+		border: 1px solid #cfd8dc;
+		border-radius: 6px;
+	}
+
+	canvas {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		touch-action: none;
+		cursor: crosshair;
+	}
+
+	.overlay {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+	}
+
+	.selection {
+		position: absolute;
+		border: 2px solid #1565c0;
+		border-radius: 2px;
+		box-sizing: border-box;
+	}
+
+	.controls {
+		position: absolute;
+		right: 12px;
+		bottom: 12px;
+		display: flex;
+		gap: 6px;
+		align-items: center;
+		background: rgba(255, 255, 255, 0.92);
+		border: 1px solid #cfd8dc;
+		border-radius: 6px;
+		padding: 6px 8px;
+	}
+
+	.controls button {
+		min-width: 28px;
+		height: 26px;
+		cursor: pointer;
+	}
+
+	.hint {
+		font-size: 11px;
+		color: #607d8b;
+		max-width: 340px;
+	}
+</style>
