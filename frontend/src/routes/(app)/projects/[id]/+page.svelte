@@ -7,6 +7,7 @@
 	import Palette from '../../../../lib/components/editor/Palette.svelte';
 	import ShareDialog from '../../../../lib/components/editor/ShareDialog.svelte';
 	import SimulationPanel from '../../../../lib/components/sim/SimulationPanel.svelte';
+	import AnalysisPanel from '../../../../lib/components/sim/analog/AnalysisPanel.svelte';
 	import { login } from '../../../../lib/api/auth';
 	import { ApiError, apiErrorMessage, authErrorMessage } from '../../../../lib/api/client';
 	import {
@@ -601,7 +602,11 @@
 				<div class="canvas-slot">
 					<Canvas {store} readonly={readOnly} />
 				</div>
-				<SimulationPanel {store} />
+				{#if snapshot.domain === 'analog'}
+					<AnalysisPanel {store} />
+				{:else}
+					<SimulationPanel {store} />
+				{/if}
 			</div>
 			<Inspector {store} readonly={readOnly} />
 		</main>

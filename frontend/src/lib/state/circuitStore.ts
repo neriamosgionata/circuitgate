@@ -1,10 +1,12 @@
 import { SUB_CIRCUIT_KIND, flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
+import { defaultAnalysisParams } from '../engine/analog/netlist';
 import { defaultParamsForKind } from '../engine/analog/primitives';
 import { kindExistsInOtherDomain, resolveKind } from '../engine/kinds';
 import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
 import type {
 	AnalogAnalysis,
+	AnalogAnalysisKind,
 	AnalogModel,
 	CircuitDocument,
 	Component,
@@ -671,6 +673,83 @@ export class CircuitEditorStore {
 				component.id === next.id ? next : component
 			)
 		});
+	}
+
+	// ---- analysis configuration ---------------------------------------------
+
+	private analysisEntries(): AnalogAnalysis[] {
+		return [...(this.currentDocument().analyses ?? [])];
+	}
+
+	private nextAnalysisId(taken: ReadonlySet<string>): string {
+		let index = this.counterSeed(taken) + 1;
+		let id = `a${index}`;
+		while (taken.has(id)) {
+			index += 1;
+			id = `a${index}`;
+		}
+		return id;
+	}
+
+	private counterSeed(taken: ReadonlySet<string>): number {
+		let highest = 0;
+		for (const id of taken) {
+			const match = /^a(\d+)$/.exec(id);
+			if (match) highest = Math.max(highest, Number(match[1]));
+		}
+		return highest;
+	}
+
+	addAnalysis(kind: AnalogAnalysisKind, params: Record<string, unknown> = {}): Result<AnalogAnalysis> {
+		const document = this.currentDocument();
+		const entries = this.analysisEntries();
+		const taken = new Set(entries.map((entry) => entry.id));
+		const entry: AnalogAnalysis = {
+			id: this.nextAnalysisId(taken),
+			kind,
+			params: { ...defaultAnalysisParams(kind), ...params }
+		};
+		this.updateCurrentDocument({ ...document, analyses: [...entries, entry] });
+		this.emit();
+		return { ok: true, value: entry };
+	}
+
+	updateAnalysis(id: string, params: Record<string, unknown>): UnitResult {
+		const document = this.currentDocument();
+		const entries = this.analysisEntries();
+		if (!entries.some((entry) => entry.id === id)) return { ok: false, error: 'unknown-analysis' };
+		this.updateCurrentDocument({
+			...document,
+			analyses: entries.map((entry) => (entry.id === id ? { ...entry, params: { ...params } } : entry))
+		});
+		this.emit();
+		return { ok: true };
+	}
+
+	removeAnalysis(id: string): boolean {
+		const document = this.currentDocument();
+		const entries = this.analysisEntries();
+		const remaining = entries.filter((entry) => entry.id !== id);
+		if (remaining.length === entries.length) return false;
+		this.updateCurrentDocument({ ...document, analyses: remaining });
+		this.emit();
+		return true;
+	}
+
+	duplicateAnalysis(id: string): Result<AnalogAnalysis> {
+		const document = this.currentDocument();
+		const entries = this.analysisEntries();
+		const source = entries.find((entry) => entry.id === id);
+		if (!source) return { ok: false, error: 'unknown-analysis' };
+		const taken = new Set(entries.map((entry) => entry.id));
+		const params = structuredClone(source.params ?? {});
+		if (source.kind === 'meas' && typeof params['name'] === 'string' && params['name'].length > 0) {
+			params['name'] = `${params['name']} copy`;
+		}
+		const entry: AnalogAnalysis = { id: this.nextAnalysisId(taken), kind: source.kind, params };
+		this.updateCurrentDocument({ ...document, analyses: [...entries, entry] });
+		this.emit();
+		return { ok: true, value: entry };
 	}
 
 	// ---- signal values (rendered now, driven by the sim worker in U5) -------

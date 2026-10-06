@@ -5,16 +5,23 @@
 		diagnostics: readonly Diagnostic[];
 		onDismiss: (id: string) => void;
 		onFocus: (componentIds: readonly string[]) => void;
+		onLocateNet?: (nets: readonly string[]) => void;
 	}
 
-	let { diagnostics, onDismiss, onFocus }: Props = $props();
+	let { diagnostics, onDismiss, onFocus, onLocateNet }: Props = $props();
+
+	function kindLabel(diagnostic: Diagnostic): string {
+		if (diagnostic.kind === 'compile-error') return 'compile error';
+		if (diagnostic.kind === 'analog') return 'analysis';
+		return 'oscillation';
+	}
 </script>
 
 {#if diagnostics.length > 0}
 	<div class="diagnostics" role="status">
 		{#each diagnostics as diagnostic (diagnostic.id)}
 			<div class="entry" class:error={diagnostic.kind === 'compile-error'}>
-				<span class="kind">{diagnostic.kind === 'compile-error' ? 'compile error' : 'oscillation'}</span>
+				<span class="kind">{kindLabel(diagnostic)}</span>
 				<span class="message">{diagnostic.message}</span>
 				{#if diagnostic.componentIds && diagnostic.componentIds.length > 0}
 					<button
@@ -22,6 +29,15 @@
 						onclick={() => onFocus(diagnostic.componentIds ?? [])}
 					>
 						Show components
+					</button>
+				{/if}
+				{#if onLocateNet && diagnostic.nets && diagnostic.nets.length > 0}
+					<button
+						type="button"
+						class="locate-net"
+						onclick={() => onLocateNet?.(diagnostic.nets ?? [])}
+					>
+						Show net
 					</button>
 				{/if}
 				<button type="button" class="dismiss" onclick={() => onDismiss(diagnostic.id)}>

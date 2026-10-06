@@ -1,0 +1,55 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "v1",
+				"kind": "vsource",
+				"inputs": { "p1": "0" },
+				"outputs": { "p2": "a" },
+				"params": { "waveform": "dc", "voltage": 1 }
+			},
+			{
+				"id": "l1",
+				"kind": "inductor",
+				"inputs": { "p1": "a" },
+				"outputs": { "p2": "0" },
+				"params": { "inductance": 0.001 }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"analyses": [
+			{ "id": "op1", "kind": "op", "params": {} },
+			{ "id": "tran1", "kind": "tran", "params": { "duration": 0.001, "maxStep": 0.000001 } },
+			{
+				"id": "ac1",
+				"kind": "ac",
+				"params": { "startHz": 10, "stopHz": 100000, "pointsPerDecade": 20 }
+			},
+			{
+				"id": "meas1",
+				"kind": "meas",
+				"params": {
+					"name": "coil-power",
+					"type": "power",
+					"signal": "i(v1)",
+					"window": { "start": 0, "stop": 0.001 }
+				}
+			}
+		]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"v1": { "position": { "x": 60, "y": 100 } },
+			"l1": { "position": { "x": 240, "y": 80 } },
+			"g1": { "position": { "x": 240, "y": 280 } }
+		}
+	}
+}

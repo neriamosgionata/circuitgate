@@ -1,4 +1,4 @@
-export type DiagnosticKind = 'compile-error' | 'oscillation' | 'protocol';
+export type DiagnosticKind = 'compile-error' | 'oscillation' | 'protocol' | 'analog';
 
 export interface Diagnostic {
 	id: string;
@@ -7,6 +7,7 @@ export interface Diagnostic {
 	code?: string;
 	componentIds?: string[];
 	nets?: string[];
+	analysisId?: string;
 	tick?: number;
 }
 

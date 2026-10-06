@@ -1,0 +1,48 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "v1",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vin" },
+				"params": { "waveform": "dc", "voltage": 5 }
+			},
+			{
+				"id": "r1",
+				"kind": "resistor",
+				"inputs": { "p1": "vin" },
+				"outputs": { "p2": "vout" },
+				"params": { "resistance": 1000 }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"analyses": [
+			{ "id": "op1", "kind": "op", "params": {} },
+			{
+				"id": "meas1",
+				"kind": "meas",
+				"params": {
+					"name": "missing-signal",
+					"type": "rms",
+					"signal": "v(nowhere)"
+				}
+			}
+		]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"v1": { "position": { "x": 60, "y": 100 } },
+			"r1": { "position": { "x": 240, "y": 80 } },
+			"g1": { "position": { "x": 240, "y": 280 } }
+		}
+	}
+}
