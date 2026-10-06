@@ -9,6 +9,7 @@
 	import AnalysisPanel from '../../../../lib/components/sim/analog/AnalysisPanel.svelte';
 	import { login } from '../../../../lib/api/auth';
 	import { ApiError, apiErrorMessage, authErrorMessage } from '../../../../lib/api/client';
+	import { MODEL_FORMAT_VERSION, parseModelSource } from '../../../../lib/engine/analog/parser';
 	import {
 		acquireLock,
 		getLockState,
@@ -476,6 +477,59 @@
 		if (!document) return;
 		downloadDocument(localExportEnvelope(name.trim() || data.project.name, version, document));
 	}
+
+	// ---- model import -------------------------------------------------------
+
+	let importOpen = $state(false);
+	let importText = $state('');
+	let importError = $state<string | null>(null);
+	let importSuccess = $state<string | null>(null);
+
+	function openImport() {
+		if (readOnly) return;
+		importOpen = true;
+		importError = null;
+		importSuccess = null;
+	}
+
+	function closeImport() {
+		importOpen = false;
+	}
+
+	async function loadImportFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		if (!file) return;
+		importError = null;
+		importSuccess = null;
+		try {
+			importText = await file.text();
+		} catch {
+			importError = 'Could not read that file.';
+		}
+	}
+
+	function submitImport() {
+		if (readOnly || !store) return;
+		importError = null;
+		importSuccess = null;
+		const parsed = parseModelSource(null, importText);
+		if (!parsed.ok) {
+			importError = parsed.message;
+			return;
+		}
+		const result = store.addModel({
+			name: parsed.model.name,
+			formatVersion: MODEL_FORMAT_VERSION,
+			source: importText
+		});
+		if (!result.ok) {
+			importError = result.error;
+			return;
+		}
+		importSuccess = `Imported model ${result.value.name}`;
+		importText = '';
+	}
 </script>
 
 <svelte:head>
@@ -518,6 +572,16 @@
 			{#if data.project.owned}
 				<button type="button" data-testid="share-project" onclick={() => (shareOpen = true)}>
 					Share
+				</button>
+			{/if}
+			{#if snapshot.domain === 'analog'}
+				<button
+					type="button"
+					data-testid="import-model"
+					onclick={openImport}
+					disabled={readOnly}
+				>
+					Import model
 				</button>
 			{/if}
 			<button
@@ -628,6 +692,53 @@
 			open={shareOpen}
 			onClose={() => (shareOpen = false)}
 		/>
+
+		{#if importOpen}
+			<div
+				class="import-modal"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Import SPICE model"
+				data-testid="import-model-dialog"
+			>
+				<h2>Import model</h2>
+				<p class="muted">
+					Paste a .model or .subckt definition, or choose a file. Imports are stored in the project
+					document; .include and .lib are not supported.
+				</p>
+				<textarea
+					data-testid="import-model-text"
+					rows="10"
+					bind:value={importText}
+					placeholder=".model name type(...) or .subckt name ..."
+				></textarea>
+				<input
+					type="file"
+					data-testid="import-model-file"
+					accept=".cir,.lib,.subckt,.model,.sp,.txt"
+					onchange={loadImportFile}
+				/>
+				{#if importError}
+					<p class="error-inline" role="alert" data-testid="import-model-error">{importError}</p>
+				{/if}
+				{#if importSuccess}
+					<p class="saved" role="status" data-testid="import-model-success">{importSuccess}</p>
+				{/if}
+				<div class="import-actions">
+					<button
+						type="button"
+						data-testid="import-model-submit"
+						onclick={submitImport}
+						disabled={readOnly || importText.trim().length === 0}
+					>
+						Import
+					</button>
+					<button type="button" data-testid="import-model-cancel" onclick={closeImport}>
+						Close
+					</button>
+				</div>
+			</div>
+		{/if}
 	</div>
 {/if}
 
@@ -800,5 +911,62 @@
 		overflow: hidden;
 		clip: rect(0 0 0 0);
 		white-space: nowrap;
+	}
+
+	.import-modal {
+		position: fixed;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		z-index: 20;
+		width: min(560px, calc(100vw - 32px));
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 16px;
+		background: #ffffff;
+		border: 1px solid #b0bec5;
+		border-radius: 8px;
+		box-shadow: 0 12px 32px rgba(38, 50, 56, 0.25);
+	}
+
+	.import-modal h2 {
+		font-size: 16px;
+		margin: 0;
+	}
+
+	.import-modal textarea {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 12px;
+		padding: 8px;
+		border: 1px solid #b0bec5;
+		border-radius: 4px;
+		resize: vertical;
+	}
+
+	.import-actions {
+		display: flex;
+		gap: 8px;
+		justify-content: flex-end;
+	}
+
+	.import-actions button {
+		padding: 6px 12px;
+		border: 1px solid #90a4ae;
+		border-radius: 4px;
+		background: #1565c0;
+		color: #ffffff;
+		font-size: 13px;
+		cursor: pointer;
+	}
+
+	.import-actions button:last-child {
+		background: #ffffff;
+		color: #263238;
+	}
+
+	.import-actions button:disabled {
+		opacity: 0.6;
+		cursor: default;
 	}
 </style>

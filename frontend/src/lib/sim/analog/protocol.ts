@@ -1,3 +1,4 @@
+import type { AnalogModel } from '../../model/circuit';
 import type { Diagnostic } from '../diagnostics';
 
 /**
@@ -17,6 +18,12 @@ export interface AnalogAnalysisRequest {
 	kind: AnalogAnalysisKind;
 	/** Netlist emitted by the front end; the worker re-validates it on every run. */
 	deck: string;
+	/**
+	 * Stored model sources carried alongside the deck so the worker repeats
+	 * the parse and every cap before engine handoff (KTD6); a hand-crafted
+	 * project document cannot skip import-time validation.
+	 */
+	models?: AnalogModel[];
 	/** Variable names to return; all variables when omitted. */
 	variables?: string[];
 }

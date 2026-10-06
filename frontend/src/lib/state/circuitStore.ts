@@ -14,6 +14,7 @@ import type {
 	Domain,
 	NetId
 } from '../model/circuit';
+import { MAX_MODEL_TEXT_LENGTH } from '../model/schema';
 import {
 	screenToWorld,
 	snapPoint,
@@ -750,6 +751,28 @@ export class CircuitEditorStore {
 		this.updateCurrentDocument({ ...document, analyses: [...entries, entry] });
 		this.emit();
 		return { ok: true, value: entry };
+	}
+
+	// ---- imported models ----------------------------------------------------
+
+	addModel(model: AnalogModel): Result<AnalogModel> {
+		if (typeof model.name !== 'string' || model.name.trim().length === 0) {
+			return { ok: false, error: 'model name is required' };
+		}
+		if (typeof model.source !== 'string' || model.source.length === 0) {
+			return { ok: false, error: 'model source is required' };
+		}
+		if (model.source.length > MAX_MODEL_TEXT_LENGTH) {
+			return { ok: false, error: `model source exceeds ${MAX_MODEL_TEXT_LENGTH} characters` };
+		}
+		const models = this.circuit.models ?? [];
+		if (models.some((entry) => entry.name === model.name)) {
+			return { ok: false, error: `a model named ${model.name} is already stored` };
+		}
+		const stored: AnalogModel = { ...model };
+		this.circuit = { ...this.circuit, models: [...models, stored] };
+		this.emit();
+		return { ok: true, value: { ...stored } };
 	}
 
 	// ---- signal values (rendered now, driven by the sim worker in U5) -------

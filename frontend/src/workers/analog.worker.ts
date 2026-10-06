@@ -8,6 +8,7 @@
 /// <reference lib="webworker" />
 
 import type { NgspiceModule, NgspiceModuleOptions } from '#lib/engine/analog/ngspice/ngspice.js';
+import { validateStoredModels } from '#lib/engine/analog/parser';
 import { findVariable, parseRaw, type RawPlot } from '#lib/engine/analog/raw';
 import { RESULT_POINT_CAP } from '#lib/sim/analog/decimate';
 import {
@@ -103,6 +104,17 @@ const runner = async (
 	analysis: AnalogAnalysisRequest,
 	report: (update: AnalogProgressUpdate) => void
 ): Promise<AnalogAnalysisOutcome> => {
+	// Repeat the stored-model parse and every cap before the engine exists
+	// (KTD6). The main thread already re-emits canonically, but a hostile
+	// document that reaches this path still must never reach the engine.
+	const models = analysis.models ?? [];
+	if (models.length > 0) {
+		const validation = validateStoredModels(models);
+		if (!validation.ok) {
+			throw new Error(`stored model validation failed: ${validation.message}`);
+		}
+	}
+
 	report({ phase: 'loading-engine' });
 	const asset = await loadEngineAsset();
 

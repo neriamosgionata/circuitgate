@@ -463,7 +463,14 @@
 		const analyses = [...decks.entries()].map(([id, entry]) => ({
 			id,
 			kind: entry.kind,
-			deck: entry.deck
+			deck: entry.deck,
+			// Svelte state proxies are not structured-cloneable; send plain
+			// snapshots of the stored models so the worker can re-validate.
+			models: snapshot.models.map((model) => ({
+				name: model.name,
+				formatVersion: model.formatVersion,
+				source: model.source
+			}))
 		}));
 		activeCommandId = nextCommandId();
 		status = 'loading';

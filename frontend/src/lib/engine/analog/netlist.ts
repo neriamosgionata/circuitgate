@@ -7,6 +7,7 @@ import type {
 } from '../../model/circuit';
 import { analogKinds, defaultParamsForKind } from './primitives';
 import { resolveModel } from './models';
+import { parseModelSource } from './parser';
 
 export type NetlistProblemCode =
 	| 'unsupported-kind'
@@ -87,11 +88,6 @@ const IDEAL_OPAMP_LINES = [
 	`.ends ${IDEAL_OPAMP_SUBCKT}`
 ];
 
-const MODEL_NAME = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
-const PRINTABLE = /^[ -~]+$/;
-const FORBIDDEN_DIRECTIVE =
-	/^\.(include|inc|lib|control|end|param|global|option|options|csparam|func|if|else|endif|temp)\b/i;
-
 function finiteNumber(value: unknown): number | null {
 	return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
@@ -133,68 +129,29 @@ function paramNumber(
 	return value;
 }
 
-function canonicalModelLines(
-	name: string,
-	source: string
-): { lines: string[]; terminals: string[] | null } | null {
-	if (!MODEL_NAME.test(name)) return null;
-	const lines: string[] = [];
-	let terminals: string[] | null = null;
-	let previousAllowed = false;
-	for (const rawLine of source.split('\n')) {
-		const line = rawLine.trim();
-		if (line.length === 0 || line.startsWith('*')) continue;
-		if (!PRINTABLE.test(line)) return null;
-		if (line.startsWith('+')) {
-			if (!previousAllowed) return null;
-			lines.push(line);
-			continue;
-		}
-		if (line.startsWith('.')) {
-			if (FORBIDDEN_DIRECTIVE.test(line)) return null;
-			if (!/^\.(model|subckt|ends)\b/i.test(line)) return null;
-			if (/^\.subckt\b/i.test(line)) {
-				const match = /^\.subckt\s+(\S+)\s*(.*)$/i.exec(line);
-				if (!match) return null;
-				if (match[1].toLowerCase() !== name.toLowerCase()) return null;
-				const rest = match[2];
-				const paramsIndex = rest.toLowerCase().indexOf('params:');
-				const head = paramsIndex >= 0 ? rest.slice(0, paramsIndex) : rest;
-				terminals = head.split(/\s+/).filter((token) => token.length > 0);
-				if (terminals.length === 0) return null;
-			}
-			if (/^\.model\b/i.test(line)) {
-				const match = /^\.model\s+(\S+)/i.exec(line);
-				if (!match || match[1].toLowerCase() !== name.toLowerCase()) return null;
-			}
-			lines.push(line);
-			previousAllowed = true;
-			continue;
-		}
-		if (!/^[A-Za-z]/.test(line)) return null;
-		lines.push(line);
-		previousAllowed = true;
-	}
-	if (lines.length === 0) return null;
-	return { lines, terminals };
-}
-
 function canonicalModelText(
 	name: string,
 	source: string,
 	componentId: string,
 	problems: NetlistProblem[]
 ): { model: ResolvedModelText; lines: string[] } | null {
-	const canonical = canonicalModelLines(name, source);
-	if (!canonical) {
+	// Untrusted model text is re-parsed on every emission and only the
+	// canonical re-emission from the parsed structure reaches the deck (KTD6).
+	const parsed = parseModelSource(name, source);
+	if (!parsed.ok) {
 		problems.push(
-			problem('model-unsupported', `model ${name} contains text that cannot be emitted safely`, {
+			problem('model-unsupported', `model ${name}: ${parsed.message}`, {
 				componentIds: [componentId]
 			})
 		);
 		return null;
 	}
-	return { model: { name, terminals: canonical.terminals }, lines: canonical.lines };
+	const terminals =
+		parsed.model.root.kind === 'subckt' ? [...parsed.model.root.terminals] : null;
+	return {
+		model: { name, terminals },
+		lines: [...parsed.model.canonical]
+	};
 }
 
 function analysisTranParams(
