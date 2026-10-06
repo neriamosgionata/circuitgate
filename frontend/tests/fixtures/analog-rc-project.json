@@ -7,7 +7,7 @@
 				"id": "v1",
 				"kind": "vsource",
 				"inputs": {},
-				"outputs": { "p": "vin" },
+				"outputs": { "p2": "vin" },
 				"params": { "waveform": "pulse", "voltage": 5, "frequency": 1000 }
 			},
 			{

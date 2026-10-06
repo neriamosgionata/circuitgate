@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
+	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
+	import { parseSI } from '../../engine/analog/si';
+	import { kindNamesForDomain } from '../../engine/kinds';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
-	import { primitiveKinds } from '../../engine/primitives';
-	import type { Component } from '../../model/circuit';
+	import type { Component, ComponentId } from '../../model/circuit';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
 
 	interface Props {
@@ -12,6 +15,8 @@
 
 	let { store, readonly = false }: Props = $props();
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
+	let kindError = $state<string | null>(null);
+	let paramError = $state<{ key: string; message: string } | null>(null);
 
 	$effect(() => {
 		snapshot = store.snapshot;
@@ -29,7 +34,49 @@
 	const selected = $derived(resolveSelected(snapshot));
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
 	const widthKinds = ['rom', 'ram', 'register', 'registerFile', 'rippleCarryAdder'];
-	const kindOptions = $derived(Object.keys(primitiveKinds));
+	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
+	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
+	const modelOptions = $derived(
+		selected ? modelOptionsForKind(selected.kind, snapshot.models) : []
+	);
+	const modelIssue = $derived(
+		selected ? modelReferenceIssue(selected.kind, selected.params, snapshot.models) : null
+	);
+	const currentModel = $derived(
+		selected && typeof selected.params?.['model'] === 'string'
+			? String(selected.params['model'])
+			: ''
+	);
+	const parameterSpecs = $derived(selected ? analogKind(selected.kind)?.parameters ?? [] : []);
+
+	function enumOptions(key: string): readonly string[] | null {
+		if (snapshot.domain !== 'analog') return null;
+		const spec = parameterSpecs.find((candidate) => candidate.name === key);
+		return spec?.kind === 'enum' ? spec.options ?? [] : null;
+	}
+
+	function changeKind(id: ComponentId, kind: string) {
+		kindError = null;
+		const result = store.setComponentKind(id, kind);
+		if (result.ok) return;
+		kindError =
+			result.error === 'domain-mismatch'
+				? 'Cannot change between logic and analog kinds in this project.'
+				: result.error;
+	}
+
+	function commitAnalogNumber(id: ComponentId, key: string, event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const parsed = parseSI(input.value);
+		if (!parsed.ok) {
+			paramError = { key, message: `Invalid value: ${parsed.error}` };
+			const stored = resolveSelected(store.snapshot)?.params?.[key];
+			input.value = typeof stored === 'number' ? String(stored) : '';
+			return;
+		}
+		paramError = null;
+		store.setParam(id, key, parsed.value);
+	}
 
 	function paramKind(value: unknown): 'number' | 'string' | 'boolean' | 'json' {
 		if (typeof value === 'number') return 'number';
@@ -79,7 +126,7 @@
 				{:else}
 					<select
 						value={selected.kind}
-						onchange={(event) => store.setComponentKind(selected.id, event.currentTarget.value)}
+						onchange={(event) => changeKind(selected.id, event.currentTarget.value)}
 					>
 						{#each kindOptions as kind (kind)}
 							<option value={kind}>{kind}</option>
@@ -87,6 +134,7 @@
 					</select>
 				{/if}
 			</label>
+			{#if kindError}<p class="error" role="alert" data-testid="kind-error">{kindError}</p>{/if}
 			{#if flipFlopKinds.includes(selected.kind)}
 				<label>
 					<span>Flip-flop type</span>
@@ -130,42 +178,90 @@
 			{/if}
 		</fieldset>
 
+		{#if modelBacked}
+			<fieldset>
+				<legend>Model</legend>
+				<label>
+					<span>Model</span>
+					<select
+						value={currentModel}
+						data-testid="model-select"
+						onchange={(event) => {
+							paramError = null;
+							store.setParam(selected.id, 'model', event.currentTarget.value);
+						}}
+					>
+						{#each modelOptions as option (option.name)}
+							<option value={option.name}>{option.name} ({option.origin})</option>
+						{/each}
+						{#if currentModel && !modelOptions.some((option) => option.name === currentModel)}
+							<option value={currentModel}>{currentModel} (unresolved)</option>
+						{/if}
+					</select>
+				</label>
+				{#if modelIssue}<p class="error" role="alert" data-testid="model-error">{modelIssue}</p>{/if}
+			</fieldset>
+		{/if}
+
 		<fieldset>
 			<legend>Parameters</legend>
 			{#if Object.keys(selected.params ?? {}).length === 0}
 				<p class="muted">No parameters.</p>
 			{/if}
 			{#each Object.entries(selected.params ?? {}) as [key, value] (key)}
-				<label>
-					<span>{key}</span>
-					{#if paramKind(value) === 'number'}
-						<input
-							type="number"
-							value={Number(value)}
-							onchange={(event) => store.setParam(selected.id, key, Number(event.currentTarget.value))}
-						/>
-					{:else if paramKind(value) === 'string'}
-						<input
-							value={String(value)}
-							onchange={(event) => store.setParam(selected.id, key, event.currentTarget.value)}
-						/>
-					{:else if paramKind(value) === 'boolean'}
-						<input
-							type="checkbox"
-							checked={Boolean(value)}
-							onchange={(event) => store.setParam(selected.id, key, event.currentTarget.checked)}
-						/>
-					{:else}
-						<textarea
-							rows="3"
-							value={JSON.stringify(value)}
-							onchange={(event) => {
-								const parsed = parseJson(event.currentTarget.value);
-								if (parsed.ok) store.setParam(selected.id, key, parsed.value);
-							}}
-						></textarea>
-					{/if}
-				</label>
+				{#if !(modelBacked && key === 'model')}
+					<label>
+						<span>{key}</span>
+						{#if paramKind(value) === 'number'}
+							{#if snapshot.domain === 'analog'}
+								<input
+									value={String(value)}
+									data-testid={`param-${key}`}
+									onchange={(event) => commitAnalogNumber(selected.id, key, event)}
+								/>
+								{#if paramError?.key === key}
+									<span class="error" role="alert" data-testid="param-error">{paramError.message}</span>
+								{/if}
+							{:else}
+								<input
+									type="number"
+									value={Number(value)}
+									onchange={(event) => store.setParam(selected.id, key, Number(event.currentTarget.value))}
+								/>
+							{/if}
+						{:else if enumOptions(key)}
+							<select
+								value={String(value)}
+								data-testid={`param-${key}`}
+								onchange={(event) => store.setParam(selected.id, key, event.currentTarget.value)}
+							>
+								{#each enumOptions(key) ?? [] as option (option)}
+									<option value={option}>{option}</option>
+								{/each}
+							</select>
+						{:else if paramKind(value) === 'string'}
+							<input
+								value={String(value)}
+								onchange={(event) => store.setParam(selected.id, key, event.currentTarget.value)}
+							/>
+						{:else if paramKind(value) === 'boolean'}
+							<input
+								type="checkbox"
+								checked={Boolean(value)}
+								onchange={(event) => store.setParam(selected.id, key, event.currentTarget.checked)}
+							/>
+						{:else}
+							<textarea
+								rows="3"
+								value={JSON.stringify(value)}
+								onchange={(event) => {
+									const parsed = parseJson(event.currentTarget.value);
+									if (parsed.ok) store.setParam(selected.id, key, parsed.value);
+								}}
+							></textarea>
+						{/if}
+					</label>
+				{/if}
 			{/each}
 		</fieldset>
 		</fieldset>
@@ -237,5 +333,11 @@
 	.muted {
 		font-size: 11px;
 		color: #78909c;
+	}
+
+	.error {
+		font-size: 11px;
+		color: #c62828;
+		margin: 0 0 6px;
 	}
 </style>

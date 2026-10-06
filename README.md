@@ -9,7 +9,7 @@ provides accounts, projects, teams, sharing, edit locks, and realtime state.
 | Path | Description |
 |---|---|
 | `frontend/src/lib/model/` | Circuit document types and validation |
-| `frontend/src/lib/engine/` | Pure TypeScript compiler, delta-cycle simulator, primitives, subcircuits |
+| `frontend/src/lib/engine/` | Pure TypeScript compiler, delta-cycle simulator, primitives, subcircuits, analog kinds and model library |
 | `frontend/src/lib/render/` | Canvas scene, culling, hit testing, geometry |
 | `frontend/src/lib/sim/` | Worker protocol, session, diagnostics, waveform recorder |
 | `frontend/src/lib/state/` | Editor store and selection |
@@ -64,6 +64,35 @@ cd backend && CIRCUITGATE_MAIL_MODE=smtp SPRING_MAIL_HOST=localhost \
   SPRING_MAIL_PORT=1025 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 cd frontend && bun run dev
 ```
+
+## Analog projects
+
+A project's document may declare `"domain": "analog"`; absent means logic. The
+editor then offers analog devices instead of digital primitives, resolved
+through the shared kind resolver in `frontend/src/lib/engine/kinds.ts`:
+
+- Sources with `dc`, `sine`, `pulse`, and `step` waveforms: `vsource`,
+  `isource`.
+- Passives: `resistor`, `capacitor`, `inductor`, `potentiometer`, and a
+  two-state `switch`.
+- Semiconductor devices: `diode`, `led`, `zener`, `bjt`, and `mosfet`, each
+  selecting a curated model card.
+- Amplifiers and ICs: an `idealOpamp`, plus model-backed `opamp`, `comparator`,
+  `timer555`, and `regulator` kinds.
+- `ground`, a single input pin that maps to SPICE node `0`.
+
+Two-terminal devices expose `p1` (input) and `p2` (output) as an editor
+affordance; pin direction is not a netlist constraint. Values accept
+unambiguous SI suffixes (`10k`, `1meg`, `1m` is milli, bare `M` is rejected).
+Model-backed devices list curated and project-imported models in the
+inspector, with a diagnostic for missing or unresolved references.
+
+Curated models live in `frontend/src/lib/engine/analog/models/` as in-house
+macromodels and model cards under neutral in-house terms; every asset is
+recorded in `manifest.json` with source, license, redistribution terms, and
+SHA-256. No asset ships unless its manifest terms permit redistribution in the
+application bundle. See `docs/plans/2026-10-06-1200-feat-circuitgate-analog-v1-plan.md`
+for the full analog lab scope.
 
 ## End-to-end tests
 

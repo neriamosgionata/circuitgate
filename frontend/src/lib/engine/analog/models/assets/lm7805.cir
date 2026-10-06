@@ -1,0 +1,5 @@
+* CircuitGate in-house 3-terminal linear regulator macromodel (functional 5 V, 1.5 V dropout; not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt lm7805 vin vout gnd
+breg vin vout i = (min(v(vin, gnd) - 1.5, 5) - v(vout, gnd)) * 2
+.ends lm7805

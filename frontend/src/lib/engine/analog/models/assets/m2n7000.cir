@@ -1,0 +1,3 @@
+* CircuitGate in-house small-signal N-MOSFET model card (typical published values, not vendor data).
+* Authored for CircuitGate; redistribution permitted with the application.
+.model m2n7000 nmos(level=1 vto=2.1 kp=0.1 lambda=0.01 cgs=50e-12 cgd=10e-12)

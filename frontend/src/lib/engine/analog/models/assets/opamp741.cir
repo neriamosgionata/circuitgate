@@ -1,0 +1,7 @@
+* CircuitGate in-house 741-class op-amp macromodel (functional, not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt opamp741 inp inn vcc vee out
+rin inp inn 2meg
+eout out vee inp inn 200000
+rout out vee 75
+.ends opamp741

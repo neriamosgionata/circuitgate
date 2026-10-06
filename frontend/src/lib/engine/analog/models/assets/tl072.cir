@@ -1,0 +1,7 @@
+* CircuitGate in-house TL072-class JFET-input op-amp macromodel (functional, not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt tl072 inp inn vcc vee out
+rin inp inn 1e12
+eout out vee inp inn 200000
+rout out vee 50
+.ends tl072

@@ -1,0 +1,3 @@
+* CircuitGate in-house red LED model card (typical published values, not vendor data).
+* Authored for CircuitGate; redistribution permitted with the application.
+.model ledred d(is=1e-20 n=1.8 rs=10 cjo=2e-11 tt=10e-9)

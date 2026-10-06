@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { primitiveKinds } from '../../engine/primitives';
+	import { resolveKind } from '../../engine/kinds';
 	import type { CircuitEditorStore, EditorSnapshot, PackagingDraft } from '../../state/circuitStore';
 
 	function pinNameFor(
@@ -25,7 +25,7 @@
 	let packageName = $state('');
 	let packageError = $state<string | null>(null);
 
-	const groups: { title: string; kinds: string[] }[] = [
+	const logicGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Gates', kinds: ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buffer'] },
 		{ title: 'I/O and clock', kinds: ['switch', 'probe', 'led', 'clock'] },
 		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'] },
@@ -35,9 +35,23 @@
 		}
 	];
 
+	const analogGroups: { title: string; kinds: string[] }[] = [
+		{ title: 'Sources', kinds: ['vsource', 'isource'] },
+		{ title: 'Passives', kinds: ['resistor', 'capacitor', 'inductor', 'potentiometer'] },
+		{ title: 'Diodes and transistors', kinds: ['diode', 'led', 'zener', 'bjt', 'mosfet'] },
+		{ title: 'Switching', kinds: ['switch'] },
+		{ title: 'Amplifiers and ICs', kinds: ['idealOpamp', 'opamp', 'comparator', 'timer555', 'regulator'] },
+		{ title: 'Reference', kinds: ['ground'] }
+	];
+
+	const domain = $derived(snapshot.domain);
+	const groups = $derived(domain === 'analog' ? analogGroups : logicGroups);
 	const available = $derived(
 		groups
-			.map((group) => ({ ...group, kinds: group.kinds.filter((kind) => kind in primitiveKinds) }))
+			.map((group) => ({
+				...group,
+				kinds: group.kinds.filter((kind) => resolveKind(kind, domain))
+			}))
 			.filter((group) => group.kinds.length > 0)
 	);
 	const definitionNames = $derived(Object.keys(snapshot.definitions));
@@ -83,7 +97,7 @@
 	const selectedInstance = $derived(selectedDefinitionName());
 </script>
 
-<aside class="palette">
+<aside class="palette" data-domain={domain}>
 	<h2>Components</h2>
 	{#each available as group (group.title)}
 		<section>
@@ -103,6 +117,7 @@
 		</section>
 	{/each}
 
+	{#if domain === 'logic'}
 	<section>
 		<h3>Subcircuits</h3>
 		{#if definitionNames.length === 0}
@@ -164,6 +179,7 @@
 			{#if packageError}<p class="error">{packageError}</p>{/if}
 		{/if}
 	</section>
+	{/if}
 </aside>
 
 <style>

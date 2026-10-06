@@ -36,13 +36,22 @@ function dividerComponents(): Component[] {
 	];
 }
 
+function analogComponents(): Component[] {
+	return [
+		{ id: 'r1', kind: 'resistor', inputs: {}, outputs: { p2: 'A' }, params: { resistance: 1000 } },
+		{ id: 'r2', kind: 'resistor', inputs: {}, outputs: { p2: 'B' }, params: { resistance: 2000 } },
+		{ id: 'c1', kind: 'capacitor', inputs: { p1: 'A' }, outputs: {}, params: { capacitance: 1e-6 } },
+		{ id: 'c2', kind: 'capacitor', inputs: { p1: 'B' }, outputs: {}, params: { capacitance: 1e-6 } }
+	];
+}
+
 function unwiredStore(): CircuitEditorStore {
 	return new CircuitEditorStore({
 		circuit: {
 			schemaVersion: 1,
 			components: [
-				{ id: 'sw9', kind: 'switch', inputs: {}, outputs: {} },
-				{ id: 'p9', kind: 'probe', inputs: {}, outputs: {} }
+				{ id: 'r9', kind: 'resistor', inputs: {}, outputs: {} },
+				{ id: 'c9', kind: 'capacitor', inputs: {}, outputs: {} }
 			],
 			...analogSections()
 		} as CircuitDocument
@@ -52,7 +61,7 @@ function unwiredStore(): CircuitEditorStore {
 function sectionsDocument(): CircuitDocument {
 	return {
 		schemaVersion: 1,
-		components: dividerComponents(),
+		components: analogComponents(),
 		...analogSections()
 	} as CircuitDocument;
 }
@@ -62,10 +71,10 @@ function seededStore(): CircuitEditorStore {
 		circuit: sectionsDocument(),
 		layouts: {
 			'': {
-				sw1: { position: { x: 0, y: 0 } },
-				sw2: { position: { x: 0, y: 100 } },
-				p1: { position: { x: 200, y: 0 } },
-				p2: { position: { x: 200, y: 100 } }
+				r1: { position: { x: 0, y: 0 } },
+				r2: { position: { x: 0, y: 100 } },
+				c1: { position: { x: 200, y: 0 } },
+				c2: { position: { x: 200, y: 100 } }
 			}
 		}
 	});
@@ -105,51 +114,51 @@ describe('document section preservation', () => {
 
 	it('placement preserves domain, models, and analyses', () => {
 		const store = seededStore();
-		expect(store.placeComponent('and', { x: 40, y: 40 }).ok).toBe(true);
+		expect(store.placeComponent('resistor', { x: 40, y: 40 }).ok).toBe(true);
 		expect(store.snapshot.document).toMatchObject(analogSections());
 	});
 
 	it('pin-net assignment preserves sections', () => {
 		const store = unwiredStore();
-		expect(store.beginWire({ componentId: 'sw9', pin: 'out', side: 'output' }).ok).toBe(true);
-		expect(store.completeWire({ componentId: 'p9', pin: 'in', side: 'input' }).ok).toBe(true);
+		expect(store.beginWire({ componentId: 'r9', pin: 'p2', side: 'output' }).ok).toBe(true);
+		expect(store.completeWire({ componentId: 'c9', pin: 'p1', side: 'input' }).ok).toBe(true);
 		expect(store.snapshot.document).toMatchObject(analogSections());
-		const wired = store.snapshot.document.components.find((component) => component.id === 'sw9');
-		expect(wired?.outputs['out']).toBeTypeOf('string');
+		const wired = store.snapshot.document.components.find((component) => component.id === 'r9');
+		expect(wired?.outputs['p2']).toBeTypeOf('string');
 	});
 
 	it('net merge preserves sections', () => {
 		const store = seededStore();
-		expect(store.beginWire({ componentId: 'sw1', pin: 'out', side: 'output' }).ok).toBe(true);
-		expect(store.completeWire({ componentId: 'p1', pin: 'in', side: 'input' }).ok).toBe(true);
-		expect(store.beginWire({ componentId: 'sw2', pin: 'out', side: 'output' }).ok).toBe(true);
-		expect(store.completeWire({ componentId: 'p2', pin: 'in', side: 'input' }).ok).toBe(true);
-		expect(store.beginWire({ componentId: 'sw1', pin: 'out', side: 'output' }).ok).toBe(true);
-		expect(store.completeWire({ componentId: 'p2', pin: 'in', side: 'input' }).ok).toBe(true);
+		expect(store.beginWire({ componentId: 'r1', pin: 'p2', side: 'output' }).ok).toBe(true);
+		expect(store.completeWire({ componentId: 'c1', pin: 'p1', side: 'input' }).ok).toBe(true);
+		expect(store.beginWire({ componentId: 'r2', pin: 'p2', side: 'output' }).ok).toBe(true);
+		expect(store.completeWire({ componentId: 'c2', pin: 'p1', side: 'input' }).ok).toBe(true);
+		expect(store.beginWire({ componentId: 'r1', pin: 'p2', side: 'output' }).ok).toBe(true);
+		expect(store.completeWire({ componentId: 'c2', pin: 'p1', side: 'input' }).ok).toBe(true);
 		expect(store.snapshot.document).toMatchObject(analogSections());
 	});
 
 	it('component replacement preserves sections', () => {
 		const store = seededStore();
-		expect(store.setParam('sw1', 'label', 'main').ok).toBe(true);
-		expect(store.setComponentKind('sw2', 'buffer').ok).toBe(true);
+		expect(store.setParam('r1', 'label', 'main').ok).toBe(true);
+		expect(store.setComponentKind('r2', 'capacitor').ok).toBe(true);
 		expect(store.snapshot.document).toMatchObject(analogSections());
 	});
 
 	it('deletion through the selection module preserves sections', () => {
 		const store = seededStore();
-		store.setSelection(['sw1']);
+		store.setSelection(['r1']);
 		expect(store.deleteSelection()).toBe(1);
 		expect(store.snapshot.document).toMatchObject(analogSections());
 
-		const direct = removeComponents(sectionsDocument(), new Set(['sw2']));
+		const direct = removeComponents(sectionsDocument(), new Set(['r2']));
 		expect(direct).toMatchObject(analogSections());
-		expect(direct.components.map((component) => component.id)).not.toContain('sw2');
+		expect(direct.components.map((component) => component.id)).not.toContain('r2');
 	});
 
 	it('definition save preserves root sections', () => {
 		const store = seededStore();
-		store.setSelection(['sw1', 'sw2']);
+		store.setSelection(['r1', 'r2']);
 		expect(store.beginPackaging().ok).toBe(true);
 		expect(store.confirmPackage('stage').ok).toBe(true);
 		expect(store.snapshot.definitions['stage']).toBeDefined();

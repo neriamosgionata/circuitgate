@@ -1,0 +1,3 @@
+* CircuitGate in-house small-signal NPN model card (typical published values, not vendor data).
+* Authored for CircuitGate; redistribution permitted with the application.
+.model q2n2222 npn(is=1e-14 bf=200 vaf=100 rb=10 rc=1 re=0.5 cjc=8e-12 cje=25e-12 tf=0.4e-9 tr=50e-9)

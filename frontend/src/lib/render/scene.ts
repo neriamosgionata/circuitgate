@@ -1,7 +1,7 @@
 import { SUB_CIRCUIT_KIND, type SubcircuitDefinitions } from '../engine/hierarchy';
-import { primitiveKinds } from '../engine/primitives';
+import { resolveKind } from '../engine/kinds';
 import type { LogicValue } from '../engine/values';
-import type { CircuitDocument, Component, ComponentId, NetId } from '../model/circuit';
+import type { CircuitDocument, Component, ComponentId, Domain, NetId } from '../model/circuit';
 import { buildSceneIndex, type SceneIndex } from './culling';
 import {
 	componentSize,
@@ -104,7 +104,7 @@ interface PinSpec {
 	outputs: readonly string[];
 }
 
-function pinsOf(component: Component, definitions: SubcircuitDefinitions): PinSpec {
+function pinsOf(component: Component, definitions: SubcircuitDefinitions, domain: Domain): PinSpec {
 	if (component.kind === SUB_CIRCUIT_KIND) {
 		const name = component.params?.['definition'];
 		const definition = typeof name === 'string' ? definitions[name] : undefined;
@@ -113,8 +113,7 @@ function pinsOf(component: Component, definitions: SubcircuitDefinitions): PinSp
 		}
 		return { inputs: [], outputs: [] };
 	}
-	const kind = primitiveKinds[component.kind];
-	return kind ? { inputs: kind.inputs, outputs: kind.outputs } : { inputs: [], outputs: [] };
+	return resolveKind(component.kind, domain) ?? { inputs: [], outputs: [] };
 }
 
 export interface Endpoint {
@@ -160,6 +159,7 @@ export function routeWire(endpoints: readonly Endpoint[]): Point[] {
 
 export function buildScene(input: SceneInput): Scene {
 	const definitions = input.definitions ?? {};
+	const domain: Domain = input.document.domain ?? 'logic';
 	const components: SceneComponent[] = [];
 	const endpointsByNet = new Map<NetId, Endpoint[]>();
 
@@ -168,7 +168,7 @@ export function buildScene(input: SceneInput): Scene {
 		const layoutEntry = input.layout[component.id];
 		const position = layoutEntry?.position ?? { x: 0, y: 0 };
 		const label = layoutEntry?.label ?? component.id;
-		const pins = pinsOf(component, definitions);
+		const pins = pinsOf(component, definitions, domain);
 		const size = componentSize(label, pins.inputs.length, pins.outputs.length);
 		const rect: Rect = { x: position.x, y: position.y, width: size.width, height: size.height };
 		const scenePins: ScenePin[] = [];

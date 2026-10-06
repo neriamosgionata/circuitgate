@@ -1,0 +1,15 @@
+* CircuitGate in-house 555 timer macromodel (functional, timing set by external RC; not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt timer555 trig thresh reset ctrl vcc out disch gnd
+rd1 vcc ctrl 5k
+rd2 ctrl gnd 5k
+bset set 0 v = (v(trig) < v(ctrl)/2) ? 1 : 0
+brst rst 0 v = (v(thresh) > v(ctrl)) ? 1 : 0
+bq q 0 v = (v(reset) < 0.7) ? 0 : ((v(rst) > 0.5) ? 0 : ((v(set) > 0.5) ? 1 : v(qb)))
+bqb qb 0 v = (v(reset) < 0.7) ? 1 : ((v(set) > 0.5) ? 0 : ((v(rst) > 0.5) ? 1 : v(q)))
+cq q 0 1p
+cqb qb 0 1p
+bout out 0 v = (v(q) > 0.5) ? v(vcc) : 0
+rout out 0 1k
+bdis disch 0 i = (v(q) > 0.5) ? 0 : v(disch)/100
+.ends timer555

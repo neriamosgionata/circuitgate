@@ -1,4 +1,6 @@
 import { SUB_CIRCUIT_KIND, flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
+import { defaultParamsForKind } from '../engine/analog/primitives';
+import { kindExistsInOtherDomain, resolveKind } from '../engine/kinds';
 import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
 import type {
@@ -306,10 +308,15 @@ export class CircuitEditorStore {
 		return id;
 	}
 
+	// Subcircuit definitions are logic-only in this slice, so the domain
+	// inside a definition is always logic.
+	private domain(): Domain {
+		return this.path.length === 0 ? this.circuit.domain ?? 'logic' : 'logic';
+	}
+
 	private pinsForKind(kind: string): PinSpec | null {
 		if (kind === SUB_CIRCUIT_KIND) return null;
-		const componentKind = primitiveKinds[kind];
-		return componentKind ? { inputs: componentKind.inputs, outputs: componentKind.outputs } : null;
+		return resolveKind(kind, this.domain());
 	}
 
 	private pinsFor(component: Component): PinSpec | null {
@@ -416,8 +423,8 @@ export class CircuitEditorStore {
 			inputs: {},
 			outputs: {}
 		};
-		if (params !== undefined) component.params = params;
-		else if (kind === 'clock') component.params = { polarity: 'rising' };
+		const defaults = params ?? defaultParamsForKind(kind) ?? (kind === 'clock' ? { polarity: 'rising' } : undefined);
+		if (defaults !== undefined) component.params = { ...defaults };
 		const document = this.currentDocument();
 		this.updateCurrentDocument({
 			...document,
@@ -612,7 +619,12 @@ export class CircuitEditorStore {
 		const component = this.findComponent(id);
 		if (!component) return { ok: false, error: 'unknown-component' };
 		const pins = this.pinsForKind(kind);
-		if (!pins) return { ok: false, error: 'unknown-kind' };
+		if (!pins) {
+			return {
+				ok: false,
+				error: kindExistsInOtherDomain(kind, this.domain()) ? 'domain-mismatch' : 'unknown-kind'
+			};
+		}
 		const keep = (record: Record<string, NetId>, names: readonly string[]): Record<string, NetId> => {
 			const next: Record<string, NetId> = {};
 			for (const name of names) {

@@ -1,0 +1,7 @@
+* CircuitGate in-house LM393-class comparator macromodel (functional, not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt lm393 inp inn vcc vee out
+rin inp inn 1meg
+bout out vee v = (v(inp) > v(inn)) ? (v(vcc) - v(vee)) : 0
+rout out vee 1k
+.ends lm393

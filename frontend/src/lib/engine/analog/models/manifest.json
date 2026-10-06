@@ -1,0 +1,105 @@
+{
+	"manifestVersion": 1,
+	"entries": [
+		{
+			"name": "opamp741",
+			"modelClass": "opamp",
+			"file": "assets/opamp741.cir",
+			"source": "CircuitGate in-house macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "2660e8973b032a54f5134ede64f730de715c569115798542e9e6a99295dce7bd"
+		},
+		{
+			"name": "tl072",
+			"modelClass": "opamp",
+			"file": "assets/tl072.cir",
+			"source": "CircuitGate in-house macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "b6b7e6ea95707c8249e46fb81f25b3e5d152dd8e9d20cf05b12b1ead092a772f"
+		},
+		{
+			"name": "lm393",
+			"modelClass": "comparator",
+			"file": "assets/lm393.cir",
+			"source": "CircuitGate in-house macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "efe9a3bb22cd43c6035959f6eb695f44d352909a161b94bfc43398a3706030d4"
+		},
+		{
+			"name": "timer555",
+			"modelClass": "timer",
+			"file": "assets/timer555.cir",
+			"source": "CircuitGate in-house macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "2367de1607118dd7b44e66b5540e9b043a3d566db62c5a67bc79cfa2d7acd86a"
+		},
+		{
+			"name": "lm7805",
+			"modelClass": "regulator",
+			"file": "assets/lm7805.cir",
+			"source": "CircuitGate in-house macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "93d211bfdf9b666f216ef28335cb914a3100d7c9699adc95d5eb94ef166e7152"
+		},
+		{
+			"name": "d1n4148",
+			"modelClass": "diode",
+			"file": "assets/d1n4148.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "03951f5c037e49ff6da1bc85900bdd2c6b984e121442ba1dbb3a2a709e24d471"
+		},
+		{
+			"name": "ledred",
+			"modelClass": "diode",
+			"file": "assets/ledred.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "47820d7f4a5c68eef091b69d297bca69f57bc1989545f80c54326a34da4e748a"
+		},
+		{
+			"name": "d1n4733",
+			"modelClass": "diode",
+			"file": "assets/d1n4733.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "9763bed1da3985c6bf032ed40ff5efea516d60002d1ec3bfd69771b610fb25b5"
+		},
+		{
+			"name": "q2n2222",
+			"modelClass": "bjt",
+			"file": "assets/q2n2222.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "4b058559e9b520e125d8e4f9a1b08fee8b9eeec17331906ad4cb0a1927220507"
+		},
+		{
+			"name": "m2n7000",
+			"modelClass": "mosfet",
+			"file": "assets/m2n7000.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "236518bc536f77b88bbe30e20ea222bb0088f9b52f95a7018c3680adc2c39c42"
+		}
+	]
+}
