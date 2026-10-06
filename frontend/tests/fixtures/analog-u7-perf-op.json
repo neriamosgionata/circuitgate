@@ -1,0 +1,46 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "v1",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vin" },
+				"params": { "waveform": "dc", "voltage": 12 }
+			},
+			{
+				"id": "r1",
+				"kind": "resistor",
+				"inputs": { "p1": "vin" },
+				"outputs": { "p2": "vout" },
+				"params": { "resistance": 10000 }
+			},
+			{
+				"id": "r2",
+				"kind": "resistor",
+				"inputs": { "p1": "vout" },
+				"outputs": { "p2": "0" },
+				"params": { "resistance": 10000 }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"models": [],
+		"analyses": [{ "id": "op1", "kind": "op", "params": {} }]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"v1": { "position": { "x": 60, "y": 80 } },
+			"r1": { "position": { "x": 260, "y": 60 } },
+			"r2": { "position": { "x": 260, "y": 180 } },
+			"g1": { "position": { "x": 260, "y": 300 } }
+		}
+	}
+}

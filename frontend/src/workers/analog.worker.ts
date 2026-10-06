@@ -9,6 +9,7 @@
 
 import type { NgspiceModule, NgspiceModuleOptions } from '#lib/engine/analog/ngspice/ngspice.js';
 import { findVariable, parseRaw, type RawPlot } from '#lib/engine/analog/raw';
+import { RESULT_POINT_CAP } from '#lib/sim/analog/decimate';
 import {
 	isAnalogCommand,
 	type AnalogAnalysisRequest,
@@ -78,9 +79,12 @@ function selectVariables(plot: RawPlot, requested?: string[]): AnalogResultVaria
 	const names = requested && requested.length > 0 ? requested : plot.variables.map((entry) => entry.name);
 	return names.map((name) => {
 		const source = findVariable(plot, name);
-		const real = new Float64Array(source.values.length);
-		const imag = plot.complex ? new Float64Array(source.values.length) : null;
-		for (let index = 0; index < source.values.length; index++) {
+		// Retain the full run up to the explicit point cap; the views state the
+		// bound when a run exceeds it instead of implying full resolution (U7).
+		const length = Math.min(source.values.length, RESULT_POINT_CAP);
+		const real = new Float64Array(length);
+		const imag = plot.complex ? new Float64Array(length) : null;
+		for (let index = 0; index < length; index++) {
 			const value = source.values[index];
 			if (typeof value === 'number') {
 				real[index] = value;

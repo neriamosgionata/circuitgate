@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 
 	import {
 		emitNetlist,
@@ -9,6 +9,8 @@
 	} from '../../../engine/analog/netlist';
 	import { formatSI, parseSI } from '../../../engine/analog/si';
 	import type { AnalogAnalysis, AnalogAnalysisKind } from '../../../model/circuit';
+	import { clearAnnotations, publishAnnotations } from '../../../sim/analog/annotations';
+	import { retainResult } from '../../../sim/analog/decimate';
 	import {
 		analogDiagnostic,
 		floatingDiagnostic,
@@ -16,19 +18,35 @@
 		modelProblemDiagnostic,
 		noGroundDiagnostic,
 		parameterProblemDiagnostic,
-		solverDiagnostic,
-		unboundMeasurementDiagnostic
+		solverDiagnostic
 	} from '../../../sim/analog/diagnostics';
+	import { fixtureToOutcomes, takeInjectedFixture, type AnalogResultsFixture } from '../../../sim/analog/fixture';
+	import {
+		computeMeasurements,
+		type MeasurementDefinition,
+		type MeasurementType
+	} from '../../../sim/analog/measurements';
 	import type {
 		AnalogEvent,
 		AnalogProgressPhase,
 		AnalogResultEvent,
 		AnalogResultVariable
 	} from '../../../sim/analog/protocol';
+	import {
+		RESULT_TABS,
+		tabForKind,
+		type AnalysisOutcome,
+		type MeasurementOutcome,
+		type ResultTab
+	} from '../../../sim/analog/results';
 	import { AnalogWorkerSession, type AnalogWorkerLike } from '../../../sim/analog/session';
 	import type { Diagnostic } from '../../../sim/diagnostics';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../../state/circuitStore';
 	import Diagnostics from '../Diagnostics.svelte';
+	import BodeView from './BodeView.svelte';
+	import MeasurementResults from './MeasurementResults.svelte';
+	import OperatingPointPanel from './OperatingPointPanel.svelte';
+	import ScopeView from './ScopeView.svelte';
 
 	interface Props {
 		store: CircuitEditorStore;
@@ -40,30 +58,6 @@
 	type SolverKind = 'op' | 'tran' | 'ac';
 	type RunStatus = 'idle' | 'loading' | 'running' | 'complete' | 'partial' | 'failed' | 'cancelled';
 	type FailedKind = 'load' | 'validation' | 'solve';
-	type MeasurementType = 'power' | 'rms' | 'minmax';
-
-	interface AnalysisOutcome {
-		analysisId: string;
-		kind: AnalogAnalysisKind;
-		status: 'complete' | 'failed' | 'suppressed';
-		stateLabel?: string;
-		variables: AnalogResultVariable[];
-		durationMs?: number;
-		diagnostic?: Diagnostic;
-	}
-
-	interface MeasurementOutcome {
-		analysisId: string;
-		name: string;
-		type: MeasurementType;
-		signal: string;
-		status: 'complete' | 'failed';
-		value?: number;
-		min?: number;
-		max?: number;
-		samples?: number;
-		diagnostic?: Diagnostic;
-	}
 
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	$effect(() => {
@@ -84,6 +78,7 @@
 	let progressElapsed = $state(0);
 	let committed = $state<AnalysisOutcome[]>([]);
 	let measurementOutcomes = $state<MeasurementOutcome[]>([]);
+	let activeTab = $state<ResultTab>('scope');
 	let runCircuit = $state<EditorSnapshot['circuit'] | null>(null);
 	let drafts = $state<Record<string, string>>({});
 
@@ -289,14 +284,6 @@
 		return null;
 	}
 
-	function variableFor(
-		variables: readonly AnalogResultVariable[],
-		signal: string
-	): AnalogResultVariable | undefined {
-		const target = signal.trim().toLowerCase();
-		return variables.find((variable) => variable.name.toLowerCase() === target);
-	}
-
 	function axisFor(variables: readonly AnalogResultVariable[]): AnalogResultVariable | undefined {
 		return (
 			variables.find((variable) => variable.type === 'time') ??
@@ -305,79 +292,38 @@
 		);
 	}
 
-	function magnitudeAt(variable: AnalogResultVariable, index: number): number {
-		const real = variable.real[index];
-		if (variable.imag) return Math.hypot(real, variable.imag[index]);
-		return real;
-	}
-
-	function computeMeasurements(
-		entries: readonly AnalogAnalysis[],
-		outcomes: readonly AnalysisOutcome[]
-	): MeasurementOutcome[] {
+	function measurementDefinitions(entries: readonly AnalogAnalysis[]): MeasurementDefinition[] {
 		return entries.map((entry) => {
-			const name = String(entry.params?.['name'] ?? '').trim() || entry.id;
-			const type = (entry.params?.['type'] ?? 'rms') as MeasurementType;
-			const signal = String(entry.params?.['signal'] ?? '');
-			const sources = outcomes.filter(
-				(outcome) => outcome.status === 'complete' && outcome.variables.length > 0
-			);
-			for (const source of sources) {
-				const variable = variableFor(source.variables, signal);
-				if (!variable) continue;
-				const axis = axisFor(source.variables);
-				const window = entry.params?.['window'];
-				const start =
-					typeof window === 'object' && window !== null && typeof (window as Record<string, unknown>)['start'] === 'number'
-						? ((window as Record<string, unknown>)['start'] as number)
-						: Number.NEGATIVE_INFINITY;
-				const stop =
-					typeof window === 'object' && window !== null && typeof (window as Record<string, unknown>)['stop'] === 'number'
-						? ((window as Record<string, unknown>)['stop'] as number)
-						: Number.POSITIVE_INFINITY;
-				const values: number[] = [];
-				for (let index = 0; index < variable.real.length; index++) {
-					if (axis) {
-						const x = axis.real[index];
-						if (x < start || x > stop) continue;
-					}
-					values.push(magnitudeAt(variable, index));
-				}
-				if (values.length === 0) continue;
-				if (type === 'minmax') {
-					return {
-						analysisId: entry.id,
-						name,
-						type,
-						signal,
-						status: 'complete' as const,
-						min: Math.min(...values),
-						max: Math.max(...values),
-						samples: values.length
-					};
-				}
-				const meanSquare = values.reduce((sum, value) => sum + value * value, 0) / values.length;
-				return {
-					analysisId: entry.id,
-					name,
-					type,
-					signal,
-					status: 'complete' as const,
-					value: meanSquare,
-					samples: values.length
-				};
-			}
-			const diagnostic = unboundMeasurementDiagnostic(name, signal, entry.id);
-			addDiagnostic(diagnostic);
+			const window = entry.params?.['window'];
+			const start =
+				typeof window === 'object' && window !== null
+					? (window as Record<string, unknown>)['start']
+					: undefined;
+			const stop =
+				typeof window === 'object' && window !== null
+					? (window as Record<string, unknown>)['stop']
+					: undefined;
 			return {
-				analysisId: entry.id,
-				name,
-				type,
-				signal,
-				status: 'failed' as const,
-				diagnostic
+				id: entry.id,
+				name: String(entry.params?.['name'] ?? '').trim() || entry.id,
+				type: (entry.params?.['type'] ?? 'rms') as MeasurementType,
+				signal: String(entry.params?.['signal'] ?? ''),
+				...(typeof start === 'number' || typeof stop === 'number'
+					? {
+							window: {
+								...(typeof start === 'number' ? { start } : {}),
+								...(typeof stop === 'number' ? { stop } : {})
+							}
+						}
+					: {})
 			};
 		});
+	}
+
+	function applyRetention(outcome: AnalysisOutcome): AnalysisOutcome {
+		const retained = retainResult(outcome.variables);
+		if (retained.truncatedFrom === null) return outcome;
+		return { ...outcome, variables: retained.variables, truncatedFrom: retained.truncatedFrom };
 	}
 
 	function finishRun(): void {
@@ -386,7 +332,17 @@
 			(a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)
 		);
 		committed = outcomes;
-		measurementOutcomes = computeMeasurements(measurements, outcomes);
+		measurementOutcomes = computeMeasurements(
+			measurementDefinitions(measurements),
+			outcomes.map((outcome) => ({ analysisId: outcome.analysisId, variables: outcome.variables }))
+		);
+		for (const outcome of measurementOutcomes) {
+			if (outcome.diagnostic) addDiagnostic(outcome.diagnostic);
+		}
+		publishAnnotations(
+			outcomes.find((outcome) => outcome.kind === 'op') ?? null,
+			snapshot.circuit
+		);
 		runCircuit = snapshot.circuit;
 		const solverFailed = outcomes.filter((outcome) => outcome.status !== 'complete').length;
 		const measurementFailed = measurementOutcomes.filter(
@@ -416,6 +372,8 @@
 		if (stageSettled.has(analysisId)) return;
 		stageSettled.add(analysisId);
 		collected.set(analysisId, outcome);
+		const tab = tabForKind(outcome.kind);
+		if (tab) activeTab = tab;
 		if (stageSettled.size < stageExpected.length) return;
 		void advanceStage();
 	}
@@ -437,14 +395,14 @@
 			stage === 'solve' && entryByKind.get('tran')?.id === event.analysisId && stageUsedInitialConditions
 				? 'initial conditions'
 				: undefined;
-		return {
+		return applyRetention({
 			analysisId: event.analysisId,
 			kind: event.kind,
 			status: 'complete',
 			variables: event.variables,
 			durationMs: event.durationMs,
 			...(stateLabel === undefined ? {} : { stateLabel })
-		};
+		});
 	}
 
 	let stageUsedInitialConditions = false;
@@ -591,6 +549,8 @@
 				variables: [],
 				diagnostic: finalDiagnostic
 			});
+			const failedTab = tabForKind(failedKindForEntry);
+			if (failedTab) activeTab = failedTab;
 			stageSettled.add(analysisId);
 			if (stageSettled.size >= stageExpected.length) void advanceStage();
 			return;
@@ -753,29 +713,42 @@
 		return `${points} points`;
 	}
 
-	function variableRows(outcome: AnalysisOutcome): { name: string; value: string }[] {
-		return outcome.variables.slice(0, 24).map((variable) => ({
-			name: variable.name,
-			value: formatSI(magnitudeAt(variable, 0))
-		}));
-	}
-
-	function measurementValue(outcome: MeasurementOutcome): string {
-		if (outcome.status !== 'complete') return '';
-		if (outcome.type === 'minmax') {
-			return `${formatSI(outcome.min ?? 0)} … ${formatSI(outcome.max ?? 0)}`;
-		}
-		return formatSI(outcome.value ?? 0);
-	}
-
 	const failedCount = $derived(
 		committed.filter((outcome) => outcome.status !== 'complete').length +
 			measurementOutcomes.filter((outcome) => outcome.status !== 'complete').length
 	);
 	const totalCount = $derived(committed.length + measurementOutcomes.length);
 
+	const opOutcome = $derived(committed.find((outcome) => outcome.kind === 'op') ?? null);
+	const tranOutcome = $derived(committed.find((outcome) => outcome.kind === 'tran') ?? null);
+	const acOutcome = $derived(committed.find((outcome) => outcome.kind === 'ac') ?? null);
+
+	function seedFixture(fixture: AnalogResultsFixture): void {
+		const seeded = fixtureToOutcomes(fixture);
+		const retained = seeded.outcomes.map(applyRetention);
+		committed = retained;
+		measurementOutcomes = seeded.measurements;
+		runCircuit = snapshot.circuit;
+		status = retained.some((outcome) => outcome.status !== 'complete') ? 'partial' : 'complete';
+		const lastKind =
+			fixture.lastCompletedKind ??
+			[...retained].reverse().find((outcome) => outcome.status === 'complete')?.kind;
+		const tab = lastKind ? tabForKind(lastKind) : null;
+		if (tab) activeTab = tab;
+		publishAnnotations(
+			retained.find((outcome) => outcome.kind === 'op') ?? null,
+			snapshot.circuit
+		);
+	}
+
+	onMount(() => {
+		const fixture = takeInjectedFixture();
+		if (fixture) seedFixture(fixture);
+	});
+
 	onDestroy(() => {
 		session?.dispose();
+		clearAnnotations();
 	});
 </script>
 
@@ -1010,65 +983,129 @@
 		</fieldset>
 	</div>
 
-	{#if committed.length > 0}
-		<div class="results" data-testid="analog-results">
-			{#each committed as outcome (outcome.analysisId)}
-				<div
-					class="result"
-					class:failed={outcome.status !== 'complete'}
-					data-testid="analysis-result"
-					data-analysis-id={outcome.analysisId}
-					data-status={outcome.status}
-				>
-					<div class="result-head">
-						<span class="result-kind">{outcome.kind}</span>
-						<span class="result-id">{outcome.analysisId}</span>
-						{#if outcome.stateLabel}
-							<span class="state" data-testid="analysis-state">{outcome.stateLabel}</span>
-						{/if}
-						<span class="result-summary">
-							{outcome.status === 'complete' ? resultSummary(outcome) : 'no numbers'}
-						</span>
-					</div>
-					{#if outcome.status === 'complete' && outcome.kind === 'op'}
-						<div class="values">
-							{#each variableRows(outcome) as row (row.name)}
-								<span class="value-row"><span>{row.name}</span><span>{row.value}</span></span>
-							{/each}
-						</div>
-					{/if}
-					{#if outcome.diagnostic}
-						<div class="result-diagnostic" data-testid="analysis-result-diagnostic">
-							{outcome.diagnostic.message}
-						</div>
-					{/if}
+	{#snippet outcomeHead(outcome: AnalysisOutcome)}
+		<div
+			class="result"
+			class:failed={outcome.status !== 'complete'}
+			data-testid="analysis-result"
+			data-analysis-id={outcome.analysisId}
+			data-status={outcome.status}
+		>
+			<div class="result-head">
+				<span class="result-kind">{outcome.kind}</span>
+				<span class="result-id">{outcome.analysisId}</span>
+				{#if outcome.stateLabel}
+					<span class="state" data-testid="analysis-state">{outcome.stateLabel}</span>
+				{/if}
+				<span class="result-summary">
+					{outcome.status === 'complete' ? resultSummary(outcome) : 'no numbers'}
+				</span>
+			</div>
+			{#if outcome.diagnostic}
+				<div class="result-diagnostic" data-testid="analysis-result-diagnostic">
+					{outcome.diagnostic.message}
 				</div>
-			{/each}
+			{/if}
+		</div>
+	{/snippet}
 
-			{#each measurementOutcomes as outcome (outcome.analysisId)}
-				<div
-					class="result measurement-result"
-					class:failed={outcome.status !== 'complete'}
-					data-testid="measurement-result"
-					data-analysis-id={outcome.analysisId}
-					data-status={outcome.status}
+	{#snippet staleNotice()}
+		{#if stale}
+			<div class="tab-stale" data-testid="tab-stale">
+				<span>These results are stale after a document edit.</span>
+				<button type="button" data-testid="tab-rerun" onclick={run}>Re-run</button>
+			</div>
+		{/if}
+	{/snippet}
+
+	<section class="results" data-testid="analog-results">
+		<div class="tablist" role="tablist" aria-label="Analog results">
+			{#each RESULT_TABS as tab (tab.id)}
+				<button
+					type="button"
+					role="tab"
+					data-testid="result-tab"
+					data-tab={tab.id}
+					aria-selected={activeTab === tab.id ? 'true' : 'false'}
+					class:active={activeTab === tab.id}
+					onclick={() => (activeTab = tab.id)}
 				>
-					<div class="result-head">
-						<span class="result-kind">{outcome.type}</span>
-						<span class="result-id">{outcome.name}</span>
-						<span class="result-summary">
-							{outcome.status === 'complete' ? measurementValue(outcome) : 'no numbers'}
-						</span>
-					</div>
-					{#if outcome.diagnostic}
-						<div class="result-diagnostic" data-testid="analysis-result-diagnostic">
-							{outcome.diagnostic.message}
-						</div>
-					{/if}
-				</div>
+					{tab.label}
+				</button>
 			{/each}
 		</div>
-	{/if}
+
+		<div
+			class="tab-panel"
+			role="tabpanel"
+			data-testid="tab-scope"
+			data-active={activeTab === 'scope' ? 'true' : 'false'}
+			hidden={activeTab !== 'scope'}
+		>
+			{@render staleNotice()}
+			{#if tranOutcome}
+				{@render outcomeHead(tranOutcome)}
+				{#if tranOutcome.status === 'complete'}
+					<ScopeView outcome={tranOutcome} />
+				{/if}
+			{:else}
+				<p class="empty" data-testid="tab-empty">
+					Run a transient analysis to see node voltage and branch current traces.
+				</p>
+			{/if}
+		</div>
+
+		<div
+			class="tab-panel"
+			role="tabpanel"
+			data-testid="tab-bode"
+			data-active={activeTab === 'bode' ? 'true' : 'false'}
+			hidden={activeTab !== 'bode'}
+		>
+			{@render staleNotice()}
+			{#if acOutcome}
+				{@render outcomeHead(acOutcome)}
+				{#if acOutcome.status === 'complete'}
+					<BodeView outcome={acOutcome} />
+				{/if}
+			{:else}
+				<p class="empty" data-testid="tab-empty">
+					Run an AC sweep to see gain and phase versus frequency.
+				</p>
+			{/if}
+		</div>
+
+		<div
+			class="tab-panel"
+			role="tabpanel"
+			data-testid="tab-op"
+			data-active={activeTab === 'op' ? 'true' : 'false'}
+			hidden={activeTab !== 'op'}
+		>
+			{@render staleNotice()}
+			{#if opOutcome}
+				{@render outcomeHead(opOutcome)}
+				{#if opOutcome.status === 'complete'}
+					<OperatingPointPanel outcome={opOutcome} />
+				{/if}
+			{:else}
+				<p class="empty" data-testid="tab-empty">
+					Run an operating point to see node voltages and branch currents.
+				</p>
+			{/if}
+		</div>
+
+		<div
+			class="tab-panel"
+			role="tabpanel"
+			data-testid="tab-meas"
+			data-active={activeTab === 'meas' ? 'true' : 'false'}
+			hidden={activeTab !== 'meas'}
+		>
+			{@render staleNotice()}
+			<MeasurementResults outcomes={measurementOutcomes} configured={measurements.length} />
+		</div>
+	</section>
 </section>
 
 <style>
@@ -1232,6 +1269,60 @@
 		gap: 6px;
 	}
 
+	.tablist {
+		display: flex;
+		gap: 4px;
+		border-bottom: 1px solid #cfd8dc;
+		flex-wrap: wrap;
+	}
+
+	.tablist button {
+		font-size: 12px;
+		padding: 4px 10px;
+		border: 1px solid transparent;
+		border-bottom: none;
+		border-radius: 4px 4px 0 0;
+		background: transparent;
+		color: #546e7a;
+		cursor: pointer;
+	}
+
+	.tablist button.active {
+		background: #ffffff;
+		border-color: #cfd8dc;
+		color: #1565c0;
+		font-weight: 600;
+	}
+
+	.tab-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-height: 0;
+	}
+
+	.tab-panel[hidden] {
+		display: none;
+	}
+
+	.tab-stale {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 4px 8px;
+		font-size: 12px;
+		border-radius: 4px;
+		background: #fff8e1;
+		border: 1px solid #ffcc80;
+		color: #6d4c41;
+	}
+
+	.empty {
+		font-size: 12px;
+		color: #90a4ae;
+		margin: 12px 0;
+	}
+
 	.result {
 		border: 1px solid #cfd8dc;
 		border-radius: 4px;
@@ -1274,18 +1365,6 @@
 	.result-summary {
 		margin-left: auto;
 		color: #546e7a;
-	}
-
-	.values {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px 12px;
-		margin-top: 4px;
-	}
-
-	.value-row {
-		display: inline-flex;
-		gap: 6px;
 	}
 
 	.result-diagnostic {

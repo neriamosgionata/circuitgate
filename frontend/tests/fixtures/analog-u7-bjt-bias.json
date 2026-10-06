@@ -1,0 +1,68 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "vcc",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vcc" },
+				"params": { "waveform": "dc", "voltage": 12 }
+			},
+			{
+				"id": "r1",
+				"kind": "resistor",
+				"inputs": { "p1": "vcc" },
+				"outputs": { "p2": "base" },
+				"params": { "resistance": 470000 }
+			},
+			{
+				"id": "r2",
+				"kind": "resistor",
+				"inputs": { "p1": "base" },
+				"outputs": { "p2": "0" },
+				"params": { "resistance": 100000 }
+			},
+			{
+				"id": "rc",
+				"kind": "resistor",
+				"inputs": { "p1": "vcc" },
+				"outputs": { "p2": "collector" },
+				"params": { "resistance": 2200 }
+			},
+			{
+				"id": "q1",
+				"kind": "bjt",
+				"inputs": { "base": "base", "collector": "collector" },
+				"outputs": { "emitter": "0" },
+				"params": { "model": "qbias" }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"models": [
+			{
+				"name": "qbias",
+				"formatVersion": 1,
+				"source": ".model qbias npn(is=1e-14 bf=200 vaf=100)"
+			}
+		],
+		"analyses": [{ "id": "op1", "kind": "op", "params": {} }]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"vcc": { "position": { "x": 60, "y": 60 } },
+			"r1": { "position": { "x": 220, "y": 40 } },
+			"r2": { "position": { "x": 220, "y": 160 } },
+			"rc": { "position": { "x": 220, "y": 280 } },
+			"q1": { "position": { "x": 400, "y": 240 } },
+			"g1": { "position": { "x": 220, "y": 360 } }
+		}
+	}
+}

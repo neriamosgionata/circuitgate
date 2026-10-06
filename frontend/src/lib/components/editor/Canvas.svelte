@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
+	import { get } from 'svelte/store';
+
 	import {
 		clamp,
 		panViewport,
@@ -21,6 +23,7 @@
 	} from '../../render/scene';
 	import { cullScene } from '../../render/culling';
 	import { hitTest, type PinHit } from '../../render/hitTest';
+	import { analogAnnotations, type AnalogAnnotation } from '../../sim/analog/annotations';
 	import type { CircuitEditorStore, EditorSnapshot, PinRef } from '../../state/circuitStore';
 
 	interface Props {
@@ -38,6 +41,16 @@
 		height: number;
 	}
 
+	interface AnnotationOverlay {
+		key: string;
+		net?: string;
+		componentId?: string;
+		value: number;
+		text: string;
+		left: number;
+		top: number;
+	}
+
 	type Drag =
 		| { kind: 'none' }
 		| { kind: 'pan'; last: Point }
@@ -50,10 +63,12 @@
 	let size = $state({ width: 960, height: 640 });
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let overlay = $state<OverlayRect[]>([]);
+	let annotationOverlays = $state<AnnotationOverlay[]>([]);
 	let marquee = $state<Rect | null>(null);
 	let wirePreview = $state<{ from: Point; to: Point } | null>(null);
 	let drag: Drag = { kind: 'none' };
 	let overlaySignature = '';
+	let annotationSignature = '';
 
 	// Scene geometry is independent of simulated values: value changes only
 	// recolour wires and pins, so the 2,000-component route is not rebuilt
@@ -84,6 +99,26 @@
 		if (!net) return null;
 		const value = snapshot.netValues[net];
 		return value === undefined ? null : presentSignal(value, snapshot.oscillatingNets.has(net));
+	}
+
+	// Operating-point annotations anchor at the middle of the net's wire, or
+	// under a device for branch currents.
+	function annotationAnchor(annotation: AnalogAnnotation): Point | null {
+		if (annotation.net) {
+			const wire = scene.wireById.get(annotation.net);
+			if (!wire || wire.points.length === 0) return null;
+			const middle = wire.points[Math.floor(wire.points.length / 2)];
+			return { x: middle.x, y: middle.y - 10 };
+		}
+		if (annotation.componentId) {
+			const component = scene.componentById.get(annotation.componentId);
+			if (!component) return null;
+			return {
+				x: component.rect.x + component.rect.width / 2,
+				y: component.rect.y + component.rect.height + 12
+			};
+		}
+		return null;
 	}
 
 	$effect(() => {
@@ -538,6 +573,29 @@
 			overlaySignature = signature;
 			overlay = nextOverlay;
 		}
+
+		const nextAnnotations: AnnotationOverlay[] = [];
+		for (const annotation of get(analogAnnotations)) {
+			const world = annotationAnchor(annotation);
+			if (!world) continue;
+			const screen = worldToScreen(viewport, world);
+			nextAnnotations.push({
+				key: annotation.key,
+				...(annotation.net === undefined ? {} : { net: annotation.net }),
+				...(annotation.componentId === undefined ? {} : { componentId: annotation.componentId }),
+				value: annotation.value,
+				text: annotation.text,
+				left: screen.x,
+				top: screen.y
+			});
+		}
+		const annotationSig = nextAnnotations
+			.map((entry) => `${entry.key}:${entry.left.toFixed(1)}:${entry.top.toFixed(1)}:${entry.text}`)
+			.join('|');
+		if (annotationSig !== annotationSignature) {
+			annotationSignature = annotationSig;
+			annotationOverlays = nextAnnotations;
+		}
 	}
 
 	let frame = 0;
@@ -558,6 +616,11 @@
 		void size;
 		void marquee;
 		void wirePreview;
+		scheduleDraw();
+	});
+
+	$effect(() => {
+		void $analogAnnotations;
 		scheduleDraw();
 	});
 
@@ -598,6 +661,20 @@
 				style:width="{entry.width}px"
 				style:height="{entry.height}px"
 			></div>
+		{/each}
+		{#each annotationOverlays as entry (entry.key)}
+			<div
+				class="annotation"
+				class:component={entry.componentId !== undefined}
+				data-testid="op-annotation"
+				data-net={entry.net ?? ''}
+				data-component-id={entry.componentId ?? ''}
+				data-value={entry.value}
+				style:left="{entry.left}px"
+				style:top="{entry.top}px"
+			>
+				{entry.text}
+			</div>
 		{/each}
 	</div>
 	<div class="controls">
@@ -647,6 +724,24 @@
 		border: 2px solid #1565c0;
 		border-radius: 2px;
 		box-sizing: border-box;
+	}
+
+	.annotation {
+		position: absolute;
+		transform: translate(-50%, -50%);
+		background: rgba(255, 255, 255, 0.92);
+		border: 1px solid #90caf9;
+		border-radius: 3px;
+		padding: 1px 4px;
+		font-size: 10px;
+		font-family: monospace;
+		color: #0d47a1;
+		white-space: nowrap;
+	}
+
+	.annotation.component {
+		border-color: #a5d6a7;
+		color: #1b5e20;
 	}
 
 	.controls {

@@ -1,0 +1,71 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "v1",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vin" },
+				"params": {
+					"waveform": "pulse",
+					"voltage": -5,
+					"offset": 0,
+					"frequency": 1000,
+					"delay": 0,
+					"rise": 1e-6,
+					"fall": 1e-6
+				}
+			},
+			{
+				"id": "r1",
+				"kind": "resistor",
+				"inputs": { "p1": "vin" },
+				"outputs": { "p2": "vout" },
+				"params": { "resistance": 1000 }
+			},
+			{
+				"id": "c1",
+				"kind": "capacitor",
+				"inputs": { "p1": "vout" },
+				"outputs": { "p2": "0" },
+				"params": { "capacitance": 1e-7 }
+			},
+			{
+				"id": "d1",
+				"kind": "diode",
+				"inputs": { "p1": "0" },
+				"outputs": { "p2": "vout" },
+				"params": { "model": "d1n4148" }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"models": [
+			{
+				"name": "d1n4148",
+				"formatVersion": 1,
+				"source": ".model d1n4148 d(is=2.52e-9 rs=0.568 n=1.752 cjo=4e-12 tt=11.54e-9)"
+			}
+		],
+		"analyses": [
+			{ "id": "op1", "kind": "op", "params": {} },
+			{ "id": "tran1", "kind": "tran", "params": { "duration": 0.001, "maxStep": 0.000001 } }
+		]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"v1": { "position": { "x": 60, "y": 80 } },
+			"r1": { "position": { "x": 260, "y": 80 } },
+			"c1": { "position": { "x": 460, "y": 80 } },
+			"d1": { "position": { "x": 460, "y": 200 } },
+			"g1": { "position": { "x": 260, "y": 320 } }
+		}
+	}
+}
