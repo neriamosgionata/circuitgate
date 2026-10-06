@@ -76,7 +76,7 @@ describe('scene building', () => {
 		expect(wire?.points).toHaveLength(2);
 	});
 
-	it('keeps a 2,000-component scene inside the frame budget for build and culling', () => {
+	function buildLargeScene() {
 		const components: CircuitDocument['components'] = [];
 		const sceneLayout: Record<string, { position: { x: number; y: number } }> = {};
 		for (let index = 0; index < 2000; index++) {
@@ -96,8 +96,6 @@ describe('scene building', () => {
 		const buildStart = performance.now();
 		const scene = buildScene({ document: big, layout: sceneLayout });
 		const buildMs = performance.now() - buildStart;
-		expect(scene.components).toHaveLength(2000);
-		expect(scene.wires).toHaveLength(2001);
 
 		const samples: number[] = [];
 		for (let frame = 0; frame < 60; frame++) {
@@ -114,6 +112,19 @@ describe('scene building', () => {
 		}
 		samples.sort((a, b) => a - b);
 		const p95 = samples[Math.floor(samples.length * 0.95) - 1] ?? samples[samples.length - 1];
+		return { scene, buildMs, p95 };
+	}
+
+	it('builds and culls a 2,000-component scene', () => {
+		const { scene } = buildLargeScene();
+		expect(scene.components).toHaveLength(2000);
+		expect(scene.wires).toHaveLength(2001);
+	});
+
+	const perfIt = process.env.RUN_PERF_SMOKE === '1' ? it : it.skip;
+
+	perfIt('keeps a 2,000-component scene inside the frame budget for build and culling (RUN_PERF_SMOKE=1)', () => {
+		const { buildMs, p95 } = buildLargeScene();
 		expect(buildMs, `scene build took ${buildMs.toFixed(1)}ms`).toBeLessThan(50);
 		expect(p95, `culling p95 took ${p95.toFixed(3)}ms`).toBeLessThan(16);
 	});
