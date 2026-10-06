@@ -1,0 +1,150 @@
+{
+	"circuit": {
+		"schemaVersion": 1,
+		"domain": "analog",
+		"components": [
+			{
+				"id": "v1",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "s1" },
+				"params": { "waveform": "dc", "voltage": 12 }
+			},
+			{
+				"id": "r1",
+				"kind": "resistor",
+				"inputs": { "p1": "s1" },
+				"outputs": { "p2": "sa" },
+				"params": { "resistance": 10000 }
+			},
+			{
+				"id": "r2",
+				"kind": "resistor",
+				"inputs": { "p1": "sa" },
+				"outputs": { "p2": "0" },
+				"params": { "resistance": 10000 }
+			},
+			{
+				"id": "v2",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "s2" },
+				"params": { "waveform": "dc", "voltage": 5 }
+			},
+			{
+				"id": "r3",
+				"kind": "resistor",
+				"inputs": { "p1": "s2" },
+				"outputs": { "p2": "sb" },
+				"params": { "resistance": 10000 }
+			},
+			{
+				"id": "r4",
+				"kind": "resistor",
+				"inputs": { "p1": "sb" },
+				"outputs": { "p2": "0" },
+				"params": { "resistance": 30000 }
+			},
+			{
+				"id": "vcc",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vcc" },
+				"params": { "waveform": "dc", "voltage": 15 }
+			},
+			{
+				"id": "vee",
+				"kind": "vsource",
+				"inputs": {},
+				"outputs": { "p2": "vee" },
+				"params": { "waveform": "dc", "voltage": -15 }
+			},
+			{
+				"id": "x1",
+				"kind": "opamp",
+				"inputs": { "inp": "sa", "inn": "outa", "vcc": "vcc", "vee": "vee" },
+				"outputs": { "out": "outa" },
+				"params": { "model": "opamp741" }
+			},
+			{
+				"id": "x2",
+				"kind": "opamp",
+				"inputs": { "inp": "sb", "inn": "outb", "vcc": "vcc", "vee": "vee" },
+				"outputs": { "out": "outb" },
+				"params": { "model": "opamp741" }
+			},
+			{
+				"id": "r5",
+				"kind": "resistor",
+				"inputs": { "p1": "outa" },
+				"outputs": { "p2": "outaf" },
+				"params": { "resistance": 1000 }
+			},
+			{
+				"id": "c1",
+				"kind": "capacitor",
+				"inputs": { "p1": "outaf" },
+				"outputs": { "p2": "0" },
+				"params": { "capacitance": 1e-7 }
+			},
+			{
+				"id": "g1",
+				"kind": "ground",
+				"inputs": { "p1": "0" },
+				"outputs": {}
+			}
+		],
+		"analyses": [
+			{ "id": "op1", "kind": "op", "params": {} },
+			{ "id": "tran1", "kind": "tran", "params": { "step": 1e-5, "stop": 1e-3 } },
+			{
+				"id": "meas1",
+				"kind": "meas",
+				"params": {
+					"name": "sensor-a-rms",
+					"type": "rms",
+					"signal": "v(outaf)",
+					"window": { "start": 2e-4 }
+				}
+			},
+			{
+				"id": "meas2",
+				"kind": "meas",
+				"params": {
+					"name": "sensor-b-rms",
+					"type": "rms",
+					"signal": "v(outb)",
+					"window": { "start": 2e-4 }
+				}
+			},
+			{
+				"id": "meas3",
+				"kind": "meas",
+				"params": {
+					"name": "sensor-b-range",
+					"type": "minmax",
+					"signal": "v(outb)",
+					"window": { "start": 2e-4 }
+				}
+			}
+		]
+	},
+	"definitions": {},
+	"layouts": {
+		"": {
+			"v1": { "position": { "x": 40, "y": 60 } },
+			"r1": { "position": { "x": 200, "y": 40 } },
+			"r2": { "position": { "x": 200, "y": 140 } },
+			"v2": { "position": { "x": 40, "y": 260 } },
+			"r3": { "position": { "x": 200, "y": 240 } },
+			"r4": { "position": { "x": 200, "y": 340 } },
+			"vcc": { "position": { "x": 380, "y": 40 } },
+			"vee": { "position": { "x": 380, "y": 360 } },
+			"x1": { "position": { "x": 480, "y": 120 } },
+			"x2": { "position": { "x": 480, "y": 300 } },
+			"r5": { "position": { "x": 660, "y": 100 } },
+			"c1": { "position": { "x": 660, "y": 200 } },
+			"g1": { "position": { "x": 660, "y": 300 } }
+		}
+	}
+}

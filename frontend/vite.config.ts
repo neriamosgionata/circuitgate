@@ -28,6 +28,9 @@ export default defineConfig({
 					'default-src': ['self'],
 					// WebAssembly.instantiate needs wasm-unsafe-eval; never unsafe-eval.
 					'script-src': ['self', 'wasm-unsafe-eval'],
+					// Dynamic inline styles position progress and probe annotations;
+					// Svelte CSP hashes cannot cover attribute bindings.
+					'style-src': ['self', 'unsafe-inline'],
 					'base-uri': ['self'],
 					'object-src': ['none'],
 					'frame-ancestors': ['none'],

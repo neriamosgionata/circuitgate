@@ -404,4 +404,32 @@ describe('analysis parameter caps', () => {
 		expect(problems.length).toBeGreaterThan(0);
 		expect(problems.every((problem) => problem.analysisId === 'm1')).toBe(true);
 	});
+
+	it('sees DC connectivity through subcircuit instances instead of flagging their outputs', () => {
+		const doc = document([
+			component('v1', 'vsource', {}, { p2: 'rail' }, { waveform: 'dc', voltage: 12 }),
+			component('r1', 'resistor', { p1: 'rail' }, { p2: 'sense' }, { resistance: 10000 }),
+			component('r2', 'resistor', { p1: 'sense' }, { p2: '0' }, { resistance: 10000 }),
+			component('vcc', 'vsource', {}, { p2: 'vcc' }, { waveform: 'dc', voltage: 15 }),
+			component('vee', 'vsource', {}, { p2: 'vee' }, { waveform: 'dc', voltage: -15 }),
+			component(
+				'x1',
+				'opamp',
+				{ inp: 'sense', inn: 'outa', vcc: 'vcc', vee: 'vee' },
+				{ out: 'outa' },
+				{ model: 'opamp741' }
+			),
+			component('g1', 'ground', { p1: '0' }, {})
+		]);
+		expect(floatingNodes(doc)).toEqual({ hasGround: true, floating: [] });
+	});
+
+	it('still flags a capacitor-isolated node with no DC path', () => {
+		const doc = document([
+			component('v1', 'vsource', {}, { p2: 'vin' }, { waveform: 'dc', voltage: 5 }),
+			component('c1', 'capacitor', { p1: 'vin' }, { p2: 'island' }, { capacitance: 1e-6 }),
+			component('g1', 'ground', { p1: '0' }, {})
+		]);
+		expect(floatingNodes(doc).floating).toContain('island');
+	});
 });

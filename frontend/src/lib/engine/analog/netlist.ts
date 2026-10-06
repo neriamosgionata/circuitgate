@@ -294,6 +294,29 @@ function conductionEdges(component: Component): ReadonlyArray<readonly [string, 
 	}
 }
 
+const SUBCIRCUIT_KINDS = new Set([
+	'idealOpamp',
+	'opamp',
+	'comparator',
+	'timer555',
+	'regulator'
+]);
+
+/**
+ * Wired pins of a subcircuit-backed device. Real subcircuits provide internal
+ * DC paths (input resistance, output stage), so the connectivity check treats
+ * each instance's wired pins as one DC-connected group. Without this, every
+ * op-amp output is misreported as a floating node.
+ */
+function wiredSubcircuitPins(component: Component): string[] {
+	if (!SUBCIRCUIT_KINDS.has(component.kind)) return [];
+	const pins: string[] = [];
+	for (const [pin, net] of Object.entries({ ...component.inputs, ...component.outputs })) {
+		if (typeof net === 'string' && net.length > 0) pins.push(pin);
+	}
+	return pins;
+}
+
 export function floatingNodes(document: CircuitDocument): { hasGround: boolean; floating: string[] } {
 	const groundNets = new Set<string>();
 	for (const component of document.components) {
@@ -359,6 +382,10 @@ export function floatingNodes(document: CircuitDocument): { hasGround: boolean; 
 	for (const component of document.components) {
 		for (const [a, b] of conductionEdges(component)) {
 			union(pinNode(component, a), pinNode(component, b));
+		}
+		const subcircuitPins = wiredSubcircuitPins(component);
+		for (let index = 1; index < subcircuitPins.length; index += 1) {
+			union(pinNode(component, subcircuitPins[0]), pinNode(component, subcircuitPins[index]));
 		}
 	}
 

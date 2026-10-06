@@ -345,4 +345,47 @@ test.describe('analog inspection views', () => {
 		});
 		await expect(page.getByTestId('analog-stale')).toHaveCount(0);
 	});
+
+	test('AE4: multi-sensor front-end matches hand calculation in the operating point and measurements', async ({
+		page
+	}) => {
+		await openFixture(page, 'analog-u7-multisensor.json', {
+			emailPrefix: 'analog-u7-ae4',
+			projectName: 'analog-u7-ae4'
+		});
+		await runAndWait(page);
+
+		await tab(page, 'op').click();
+		const expectations: readonly (readonly [string, number, number])[] = [
+			['v(sa)', 6, 0.01],
+			['v(sb)', 3.75, 0.01],
+			['v(outa)', 6, 0.05],
+			['v(outb)', 3.75, 0.05],
+			['v(outaf)', 6, 0.05]
+		];
+		for (const [variable, expected, tolerance] of expectations) {
+			const row = page.locator(`[data-testid="op-value-row"][data-variable="${variable}"]`);
+			await expect(row).toBeVisible();
+			const value = numberFrom(await row.getAttribute('data-value'));
+			expect(relativeError(value, expected), variable).toBeLessThanOrEqual(tolerance);
+		}
+
+		await tab(page, 'meas').click();
+		await expect(page.getByTestId('measurement-result')).toHaveCount(3);
+		const rmsA = page.locator('[data-testid="measurement-result"][data-name="sensor-a-rms"]');
+		expect(
+			relativeError(numberFrom(await rmsA.getAttribute('data-value')), 6)
+		).toBeLessThanOrEqual(0.02);
+		const rmsB = page.locator('[data-testid="measurement-result"][data-name="sensor-b-rms"]');
+		expect(
+			relativeError(numberFrom(await rmsB.getAttribute('data-value')), 3.75)
+		).toBeLessThanOrEqual(0.02);
+		const rangeB = page.locator('[data-testid="measurement-result"][data-name="sensor-b-range"]');
+		expect(
+			relativeError(numberFrom(await rangeB.getAttribute('data-min')), 3.75)
+		).toBeLessThanOrEqual(0.02);
+		expect(
+			relativeError(numberFrom(await rangeB.getAttribute('data-max')), 3.75)
+		).toBeLessThanOrEqual(0.02);
+	});
 });
