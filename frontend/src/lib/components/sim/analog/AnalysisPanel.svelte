@@ -32,9 +32,10 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		readonly?: boolean;
 	}
 
-	let { store }: Props = $props();
+	let { store, readonly = false }: Props = $props();
 
 	type SolverKind = 'op' | 'tran' | 'ac';
 	type RunStatus = 'idle' | 'loading' | 'running' | 'complete' | 'partial' | 'failed' | 'cancelled';
@@ -121,6 +122,7 @@
 	}
 
 	function persistParams(kind: AnalogAnalysisKind, params: Record<string, unknown>): void {
+		if (readonly) return;
 		const existing = analysisOf(kind);
 		if (existing) {
 			store.updateAnalysis(existing.id, params);
@@ -145,6 +147,7 @@
 		field: string,
 		text: string
 	): void {
+		if (readonly) return;
 		drafts = { ...drafts, [draftKey(scope, field)]: text };
 		const parsed = parseSI(text);
 		if (!parsed.ok) return;
@@ -213,6 +216,7 @@
 	}
 
 	function addMeasurement(): void {
+		if (readonly) return;
 		const used = new Set(measurements.map((entry) => String(entry.params?.['name'] ?? '')));
 		let index = measurements.length + 1;
 		let name = `measurement ${index}`;
@@ -228,9 +232,20 @@
 	}
 
 	function updateMeasurement(id: string, field: string, value: unknown): void {
+		if (readonly) return;
 		const entry = snapshot.analyses.find((candidate) => candidate.id === id);
 		if (!entry) return;
 		store.updateAnalysis(id, { ...(entry.params ?? {}), [field]: value });
+	}
+
+	function duplicateMeasurement(id: string): void {
+		if (readonly) return;
+		store.duplicateAnalysis(id);
+	}
+
+	function removeMeasurement(id: string): void {
+		if (readonly) return;
+		store.removeAnalysis(id);
 	}
 
 	function updateMeasurementWindow(
@@ -238,6 +253,7 @@
 		bound: 'start' | 'stop',
 		text: string
 	): void {
+		if (readonly) return;
 		const entry = snapshot.analyses.find((candidate) => candidate.id === id);
 		if (!entry) return;
 		drafts = { ...drafts, [draftKey(id, bound)]: text };
@@ -763,9 +779,14 @@
 	});
 </script>
 
-<section class="analysis-panel">
+<section class="analysis-panel" data-testid="analysis-panel" data-readonly={readonly ? 'true' : 'false'}>
 	<div class="bar">
 		<span class="title">Analog analyses</span>
+		{#if readonly}
+			<span class="readonly" data-testid="analysis-readonly">
+				Read-only — acquire the edit lock to change analyses.
+			</span>
+		{/if}
 		<button type="button" data-testid="analog-run" onclick={run} disabled={busy}>Run</button>
 		{#if busy}
 			<button type="button" data-testid="analog-cancel" onclick={cancel}>Cancel</button>
@@ -839,6 +860,7 @@
 				<input
 					data-testid="analysis-tran-duration"
 					value={numberField('tran', 'duration', paramsOf('tran')['duration'] ?? 0.001)}
+					disabled={readonly}
 					oninput={(event) =>
 						commitNumber('tran', 'tran', 'duration', event.currentTarget.value)}
 					onblur={() => clearDraft('tran', 'duration')}
@@ -849,6 +871,7 @@
 				<input
 					data-testid="analysis-tran-maxstep"
 					value={numberField('tran', 'maxStep', paramsOf('tran')['maxStep'] ?? 0.000001)}
+					disabled={readonly}
 					oninput={(event) =>
 						commitNumber('tran', 'tran', 'maxStep', event.currentTarget.value)}
 					onblur={() => clearDraft('tran', 'maxStep')}
@@ -866,6 +889,7 @@
 				<input
 					data-testid="analysis-ac-start"
 					value={numberField('ac', 'startHz', paramsOf('ac')['startHz'] ?? 10)}
+					disabled={readonly}
 					oninput={(event) => commitNumber('ac', 'ac', 'startHz', event.currentTarget.value)}
 					onblur={() => clearDraft('ac', 'startHz')}
 				/>
@@ -875,6 +899,7 @@
 				<input
 					data-testid="analysis-ac-stop"
 					value={numberField('ac', 'stopHz', paramsOf('ac')['stopHz'] ?? 1000000)}
+					disabled={readonly}
 					oninput={(event) => commitNumber('ac', 'ac', 'stopHz', event.currentTarget.value)}
 					onblur={() => clearDraft('ac', 'stopHz')}
 				/>
@@ -884,6 +909,7 @@
 				<input
 					data-testid="analysis-ac-points"
 					value={numberField('ac', 'pointsPerDecade', paramsOf('ac')['pointsPerDecade'] ?? 20)}
+					disabled={readonly}
 					oninput={(event) =>
 						commitNumber('ac', 'ac', 'pointsPerDecade', event.currentTarget.value)}
 					onblur={() => clearDraft('ac', 'pointsPerDecade')}
@@ -896,7 +922,12 @@
 
 		<fieldset class="measurements" data-testid="analysis-meas-section">
 			<legend>Measurements</legend>
-			<button type="button" data-testid="measurement-add" onclick={addMeasurement}>
+			<button
+				type="button"
+				data-testid="measurement-add"
+				onclick={addMeasurement}
+				disabled={readonly}
+			>
 				Add measurement
 			</button>
 			{#each measurements as entry (entry.id)}
@@ -907,12 +938,14 @@
 						aria-label="Measurement name"
 						placeholder="name"
 						value={String(entry.params?.['name'] ?? '')}
+						disabled={readonly}
 						oninput={(event) => updateMeasurement(entry.id, 'name', event.currentTarget.value)}
 					/>
 					<select
 						data-testid="measurement-type"
 						aria-label="Measurement type"
 						value={String(entry.params?.['type'] ?? 'rms')}
+						disabled={readonly}
 						onchange={(event) => updateMeasurement(entry.id, 'type', event.currentTarget.value)}
 					>
 						<option value="rms">rms</option>
@@ -923,6 +956,7 @@
 						data-testid="measurement-signal"
 						aria-label="Measurement signal"
 						value={String(entry.params?.['signal'] ?? '')}
+						disabled={readonly}
 						onchange={(event) => updateMeasurement(entry.id, 'signal', event.currentTarget.value)}
 					>
 						{#each signalOptions as option (option)}
@@ -939,6 +973,7 @@
 						aria-label="Measurement window start"
 						placeholder="window start"
 						value={windowValue(entry.id, 'start')}
+						disabled={readonly}
 						oninput={(event) =>
 							updateMeasurementWindow(entry.id, 'start', event.currentTarget.value)}
 					/>
@@ -947,20 +982,23 @@
 						aria-label="Measurement window stop"
 						placeholder="window stop"
 						value={windowValue(entry.id, 'stop')}
+						disabled={readonly}
 						oninput={(event) =>
 							updateMeasurementWindow(entry.id, 'stop', event.currentTarget.value)}
 					/>
 					<button
 						type="button"
 						data-testid="measurement-duplicate"
-						onclick={() => store.duplicateAnalysis(entry.id)}
+						onclick={() => duplicateMeasurement(entry.id)}
+						disabled={readonly}
 					>
 						Duplicate
 					</button>
 					<button
 						type="button"
 						data-testid="measurement-remove"
-						onclick={() => store.removeAnalysis(entry.id)}
+						onclick={() => removeMeasurement(entry.id)}
+						disabled={readonly}
 					>
 						Remove
 					</button>
@@ -1061,6 +1099,11 @@
 	.status {
 		font-size: 12px;
 		color: #546e7a;
+	}
+
+	.readonly {
+		font-size: 11px;
+		color: #b26a00;
 	}
 
 	.progress {

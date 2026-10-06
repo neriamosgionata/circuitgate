@@ -220,7 +220,7 @@
 	}
 </script>
 
-<section class="sim-panel">
+<section class="sim-panel" data-testid="simulation-panel">
 	<div class="bar">
 		<Controls
 			{mode}

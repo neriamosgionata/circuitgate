@@ -8,9 +8,11 @@
 		importProject,
 		listProjects,
 		PROJECT_FORMAT,
+		rememberProjectDomain,
 		type ExportEnvelope,
 		type ProjectSummary
 	} from '#lib/api/projects';
+	import type { Domain } from '#lib/model/circuit';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -19,9 +21,29 @@
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let newName = $state('');
+	let domainChoice = $state<Domain>('logic');
 	let creating = $state(false);
 	let importing = $state(false);
 	let actionError = $state<string | null>(null);
+
+	function documentDomain(document: unknown): Domain | null {
+		if (document === null || typeof document !== 'object') return null;
+		const circuit = (document as { circuit?: unknown }).circuit;
+		if (circuit === null || typeof circuit !== 'object') return null;
+		const value = (circuit as { domain?: unknown }).domain;
+		return value === 'logic' || value === 'analog' ? value : null;
+	}
+
+	function withImportedDomain(document: unknown): unknown {
+		if (document === null || typeof document !== 'object') return document;
+		const circuit = (document as { circuit?: unknown }).circuit;
+		if (circuit === null || typeof circuit !== 'object') return document;
+		const target = circuit as { domain?: unknown };
+		// Absent already means logic, so a logic choice leaves a legacy
+		// document untouched; only an analog choice needs materializing.
+		if (target.domain === undefined && domainChoice !== 'logic') target.domain = domainChoice;
+		return document;
+	}
 
 	async function load() {
 		loading = true;
@@ -50,7 +72,8 @@
 		}
 		creating = true;
 		try {
-			const project = await createProject(newName.trim(), emptyProjectDocument());
+			const project = await createProject(newName.trim(), emptyProjectDocument(domainChoice));
+			rememberProjectDomain(project.id, domainChoice);
 			await goto(`/projects/${project.id}`);
 		} catch (cause) {
 			if (isUnauthenticated(cause)) {
@@ -78,7 +101,9 @@
 			if (envelope.format !== PROJECT_FORMAT) {
 				throw new Error('The file is not a CircuitGate project.');
 			}
-			const project = await importProject(envelope);
+			const normalized = withImportedDomain(envelope.document);
+			const project = await importProject({ ...envelope, document: normalized });
+			rememberProjectDomain(project.id, documentDomain(normalized) ?? domainChoice);
 			await goto(`/projects/${project.id}`);
 		} catch (cause) {
 			if (isUnauthenticated(cause)) {
@@ -112,6 +137,17 @@
 		<form onsubmit={create}>
 			<label class="visually-hidden" for="new-project-name">New project name</label>
 			<input id="new-project-name" placeholder="New project name" bind:value={newName} />
+			<label class="domain">
+				<span class="visually-hidden">Project domain</span>
+				<select
+					bind:value={domainChoice}
+					data-testid="new-project-domain"
+					aria-label="Project domain"
+				>
+					<option value="logic">logic</option>
+					<option value="analog">analog</option>
+				</select>
+			</label>
 			<button type="submit" data-testid="create-project" disabled={creating}>
 				{creating ? 'Creating…' : 'Create project'}
 			</button>
@@ -138,6 +174,11 @@
 			{#each projects as project (project.id)}
 				<li data-testid="project-row">
 					<a class="name" data-testid="project-name" href={`/projects/${project.id}`}>{project.name}</a>
+					{#if project.domain}
+						<span class="tag domain" data-testid="project-domain" data-domain={project.domain}>
+							{project.domain}
+						</span>
+					{/if}
 					{#if project.owned === false}
 						<span class="tag" data-testid="shared-tag">shared with you</span>
 					{/if}
@@ -181,11 +222,18 @@
 		gap: 8px;
 	}
 
-	.actions input:not([type]) {
+	.actions input:not([type]),
+	.actions select {
 		padding: 8px 10px;
 		border: 1px solid #b0bec5;
 		border-radius: 4px;
 		font-size: 14px;
+		background: #ffffff;
+	}
+
+	.actions .domain {
+		display: flex;
+		align-items: center;
 	}
 
 	button {
@@ -250,6 +298,11 @@
 		background: #e3f2fd;
 		color: #1565c0;
 		font-size: 11px;
+	}
+
+	.tag.domain[data-domain='analog'] {
+		background: #ede7f6;
+		color: #4527a0;
 	}
 
 	.visually-hidden {

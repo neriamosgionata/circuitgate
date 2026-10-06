@@ -1,5 +1,5 @@
 import { detectDefinitionCycles, type SubcircuitDefinition, type SubcircuitDefinitions } from '../engine/hierarchy';
-import type { AnalogAnalysis, AnalogModel, CircuitDocument, Component } from '../model/circuit';
+import type { AnalogAnalysis, AnalogModel, CircuitDocument, Component, Domain } from '../model/circuit';
 import { validateDocumentShape } from '../model/schema';
 import type { ComponentLayout, LayoutMap, Point } from '../render/geometry';
 import { apiFetch } from './client';
@@ -23,6 +23,7 @@ export interface ProjectSummary {
 	owned: boolean;
 	createdAt: string;
 	updatedAt: string;
+	domain?: Domain;
 }
 
 export interface ProjectDetail extends ProjectSummary {
@@ -238,16 +239,50 @@ function cloneComponent(component: Component): Component {
 	return copy;
 }
 
-export function emptyProjectDocument(): ProjectDocument {
+export function emptyProjectDocument(domain: Domain = 'logic'): ProjectDocument {
 	return {
-		circuit: { schemaVersion: 1, components: [], domain: 'logic', models: [], analyses: [] },
+		circuit: { schemaVersion: 1, components: [], domain, models: [], analyses: [] },
 		definitions: {},
 		layouts: { '': {} }
 	};
 }
 
+const PROJECT_DOMAINS_KEY = 'circuitgate:project-domains';
+
+function readProjectDomains(): Record<string, unknown> {
+	if (typeof localStorage === 'undefined') return {};
+	try {
+		const raw = localStorage.getItem(PROJECT_DOMAINS_KEY);
+		if (raw === null) return {};
+		const parsed: unknown = JSON.parse(raw);
+		return isRecord(parsed) ? parsed : {};
+	} catch {
+		return {};
+	}
+}
+
+// The list endpoint returns project metadata only, so the client remembers a
+// project's domain from documents it has seen (create, import, open) and
+// decorates the list locally. Unknown projects simply carry no tag.
+export function rememberProjectDomain(id: string, domain: Domain): void {
+	if (typeof localStorage === 'undefined') return;
+	try {
+		const domains = readProjectDomains();
+		domains[id] = domain;
+		localStorage.setItem(PROJECT_DOMAINS_KEY, JSON.stringify(domains));
+	} catch {
+		// advisory only; the list omits unknown domains
+	}
+}
+
 export async function listProjects(): Promise<ProjectSummary[]> {
-	return apiFetch<ProjectSummary[]>('/api/projects');
+	const projects = await apiFetch<ProjectSummary[]>('/api/projects');
+	const domains = readProjectDomains();
+	return projects.map((project) => {
+		const value = domains[project.id];
+		const domain = value === 'logic' || value === 'analog' ? value : undefined;
+		return domain === undefined ? project : { ...project, domain };
+	});
 }
 
 export async function getProject(id: string): Promise<ProjectDetail> {

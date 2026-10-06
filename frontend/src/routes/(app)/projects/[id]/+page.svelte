@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { goto } from '$app/navigation';
 	import Canvas from '../../../../lib/components/editor/Canvas.svelte';
 	import Inspector from '../../../../lib/components/editor/Inspector.svelte';
 	import LockBanner from '../../../../lib/components/editor/LockBanner.svelte';
@@ -25,6 +24,7 @@
 		downloadDocument,
 		getProject,
 		localExportEnvelope,
+		rememberProjectDomain,
 		saveProject,
 		toProjectDocument,
 		validateProjectDocument,
@@ -56,6 +56,10 @@
 				layouts: validation.document.layouts
 			})
 		: null;
+
+	if (validation.ok) {
+		rememberProjectDomain(projectId, validation.document.circuit.domain ?? 'logic');
+	}
 
 	let snapshot = $state(store ? store.snapshot : null);
 	let name = $state(untrack(() => data.project.name));
@@ -136,6 +140,7 @@
 			definitions: result.document.definitions,
 			layouts: result.document.layouts
 		});
+		rememberProjectDomain(projectId, result.document.circuit.domain ?? 'logic');
 		return true;
 	}
 
@@ -454,7 +459,11 @@
 		saveError = null;
 		try {
 			const copy = await createProject(`${name.trim() || data.project.name} (copy)`, document);
-			await goto(`/projects/${copy.id}`);
+			// A client-side goto to another project id would reuse this page
+			// component without re-running its untracked initialization, so the
+			// editor would keep the old project's store and lock while the URL
+			// showed the copy. Force a fresh load of the copy instead.
+			window.location.assign(`/projects/${copy.id}`);
 		} catch (cause) {
 			saveError = apiErrorMessage(cause);
 		} finally {
@@ -602,11 +611,13 @@
 				<div class="canvas-slot">
 					<Canvas {store} readonly={readOnly} />
 				</div>
-				{#if snapshot.domain === 'analog'}
-					<AnalysisPanel {store} />
-				{:else}
-					<SimulationPanel {store} />
-				{/if}
+				{#key snapshot.domain}
+					{#if snapshot.domain === 'analog'}
+						<AnalysisPanel {store} readonly={readOnly} />
+					{:else}
+						<SimulationPanel {store} />
+					{/if}
+				{/key}
 			</div>
 			<Inspector {store} readonly={readOnly} />
 		</main>
