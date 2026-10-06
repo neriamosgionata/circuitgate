@@ -1,0 +1,10 @@
+* CircuitGate analog spike: minimal op-amp macromodel (U1-local, not the U5 library)
+* Aol = 1e5, dominant pole at 1 kHz, 50 ohm output
+.subckt OPAMP_MIN INP INN OUT VCC VEE
+RIN INP INN 1Meg
+E1 3 0 INP INN 1e5
+RP1 3 4 159.155
+CP1 4 0 1u
+EOUT 5 0 4 0 1
+ROUT 5 OUT 50
+.ends OPAMP_MIN

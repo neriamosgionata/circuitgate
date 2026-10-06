@@ -26,6 +26,8 @@ export default defineConfig({
 				mode: 'auto',
 				directives: {
 					'default-src': ['self'],
+					// WebAssembly.instantiate needs wasm-unsafe-eval; never unsafe-eval.
+					'script-src': ['self', 'wasm-unsafe-eval'],
 					'base-uri': ['self'],
 					'object-src': ['none'],
 					'frame-ancestors': ['none'],

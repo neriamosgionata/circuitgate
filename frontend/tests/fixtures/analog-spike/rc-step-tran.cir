@@ -1,0 +1,6 @@
+* CircuitGate analog spike: RC step response, tau = 1k * 100n = 100 us
+V1 1 0 PULSE(0 1 0 1n 1n 10m 20m)
+R1 1 2 1k
+C1 2 0 100n
+.tran 1u 1m
+.end

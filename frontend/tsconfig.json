@@ -4,7 +4,8 @@
 		"strict": true,
 		"types": [
 			"$app/types",
-			"node"
+			"node",
+			"vite/client"
 		],
 		"paths": {
 			"#lib": ["./src/lib"],

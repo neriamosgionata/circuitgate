@@ -1,0 +1,10 @@
+* CircuitGate analog spike: NPN common-emitter bias, active region
+* Thevenin base source: Vth = 12*100k/(470k+100k) = 2.1053 V, Rth = 82.456k
+VCC 1 0 DC 12
+R1 1 3 470k
+R2 3 0 100k
+RC 1 2 2.2k
+Q1 2 3 0 QNPN
+.model QNPN NPN (Is=1e-14 Bf=200 Vaf=100)
+.op
+.end

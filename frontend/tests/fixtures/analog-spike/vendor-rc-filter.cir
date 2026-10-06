@@ -1,0 +1,16 @@
+* CircuitGate analog spike: vendor-style parameterized .subckt with .param and braces
+* The TypeScript model front end resolves these before the engine sees the deck
+* (KTD6: numparam is excluded from the license-clean build).
+.param R_BASE = 1.5k
+.param C_BASE = 100n
+.param FCUT_SCALE = 1
+
+.subckt VENDOR_RC IN OUT PARAMS: R=1k C=100n
+R1 IN OUT {R}
+C1 OUT 0 {C}
+.ends VENDOR_RC
+
+V1 1 0 DC 0 AC 1
+X1 1 2 VENDOR_RC R={R_BASE} C={C_BASE}
+.ac dec 20 10 100k
+.end

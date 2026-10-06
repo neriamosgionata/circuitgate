@@ -1,0 +1,7 @@
+* CircuitGate analog spike: 1N4148-style silicon clamp at ~4 mA
+V1 1 0 DC 5
+R1 1 2 1k
+D1 2 0 DMOD
+.model DMOD D (Is=2.682n N=1.836 Rs=0.5666 Cjo=1.7p M=0.3336 Vj=0.5 Fc=0.5 Bv=100 Ibv=100u tt=11.54n)
+.op
+.end

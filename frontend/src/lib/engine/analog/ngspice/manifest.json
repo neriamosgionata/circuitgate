@@ -1,0 +1,138 @@
+{
+	"artifact": "license-clean ngspice WebAssembly engine for CircuitGate analog simulation",
+	"generatedBy": "frontend/src/lib/engine/analog/ngspice/build/build-ngspice-wasm.sh",
+	"source": {
+		"project": "ngspice",
+		"repository": "https://github.com/danchitnis/ngspice-sf-mirror",
+		"tag": "ngspice-47",
+		"commit": "a80f6e3e95d51534905b1f23410a951802666656",
+		"license": "BSD-3-Clause",
+		"licenseFile": "licenses/ngspice-COPYING.txt"
+	},
+	"toolchain": {
+		"dockerImage": "docker.io/emscripten/emsdk:6.0.11",
+		"dockerImageDigest": "sha256:b4584bcb016b5416c2eb606e3aeffa7461a63037c0ba4cc8e83c6df3ffb532ba",
+		"emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.11 (a0014542110d6078c3a1a7941fa1ddb3a2281f16)"
+	},
+	"configureFlags": [
+		"--host=wasm32-unknown-emscripten",
+		"--enable-static",
+		"--disable-shared",
+		"--with-readline=no",
+		"--without-x",
+		"--disable-debug",
+		"--disable-openmp",
+		"--disable-pthread",
+		"--disable-xspice",
+		"--disable-osdi",
+		"--disable-klu",
+		"--with-fftw3=no",
+		"--without-tcl"
+	],
+	"linkFlags": [
+		"-O2",
+		"-sMODULARIZE=1",
+		"-sEXPORT_ES6=1",
+		"-sEXPORT_NAME=createNgspiceModule",
+		"-sENVIRONMENT=web,worker,node",
+		"-sALLOW_MEMORY_GROWTH=1",
+		"-sINITIAL_MEMORY=33554432",
+		"-sSTACK_SIZE=5242880",
+		"-sINVOKE_RUN=0",
+		"-sNO_EXIT_RUNTIME=1",
+		"-sFORCE_FILESYSTEM=1",
+		"-sEXPORTED_RUNTIME_METHODS=FS,callMain",
+		"-sEXPORTED_FUNCTIONS=_main,_malloc,_free",
+		"-sDYNAMIC_EXECUTION=0",
+		"-sASSERTIONS=0",
+		"-sERROR_ON_UNDEFINED_SYMBOLS=0",
+		"-sSUPPORT_LONGJMP=emscripten"
+	],
+	"patches": [
+		{
+			"file": "build/patches/numparam-shim/numparam_stub.c",
+			"license": "MIT",
+			"purpose": "Replaces ngspice's LGPL-2.1 numparam module with an inert pass-through shim. Parameter and brace-expression expansion happens in the TypeScript model front end (KTD6)."
+		},
+		{
+			"file": "build/build-ngspice-wasm.sh",
+			"purpose": "Removes HICUM2 (C++, fails to link under Emscripten; upstream ngspice bug #793), fixes the upstream --disable-xspice compile bug in cktsopt.c, drops the getrusage configure probe, and fixes an empty-argument prototype in outitf.c."
+		}
+	],
+	"components": [
+		{
+			"name": "ngspice",
+			"license": "BSD-3-Clause",
+			"disposition": "included"
+		},
+		{
+			"name": "numparam",
+			"license": "LGPL-2.1",
+			"disposition": "excluded; sources replaced by the MIT pass-through shim"
+		},
+		{
+			"name": "KLU / SuiteSparse",
+			"license": "LGPL-2.1",
+			"disposition": "excluded via --disable-klu"
+		},
+		{
+			"name": "XSPICE GPL tables (src/xspice/icm/table)",
+			"license": "GPL",
+			"disposition": "excluded via --disable-xspice"
+		},
+		{
+			"name": "tclspice",
+			"license": "LGPL-2.1",
+			"disposition": "excluded (no --with-tcl)"
+		},
+		{
+			"name": "ADMS",
+			"license": "GPL",
+			"disposition": "not part of the ngspice build"
+		},
+		{
+			"name": "OSDI",
+			"license": "MPL-2.0",
+			"disposition": "excluded via --disable-osdi"
+		},
+		{
+			"name": "CIDER",
+			"license": "ngspice-modified-BSD",
+			"disposition": "excluded (not enabled)"
+		},
+		{
+			"name": "Emscripten runtime glue",
+			"license": "MIT/UIUC",
+			"disposition": "generated output"
+		}
+	],
+	"budget": {
+		"rawBytesMax": 41943040,
+		"wireBytesMax": 12582912
+	},
+	"artifacts": {
+		"ngspice.js": {
+			"path": "ngspice.js",
+			"bytes": 77132,
+			"sha256": "1454c5caade0f429315d5d63467774b4293c4de69d1273b9e81785986ffd3558"
+		},
+		"ngspice.wasm": {
+			"path": "ngspice.wasm",
+			"bytes": 4399943,
+			"sha256": "43ed1f4648d9b8ae590c9aee33f2d2d1a1ba2c8164173c11e8774ebe3d870a5b"
+		}
+	},
+	"forbiddenMarkers": [
+		"klusmp.c",
+		"Set KLU as Direct Linear Solver",
+		"KLU Memory Grow Factor",
+		"Numparam expansion errors",
+		"tclspice",
+		"ADMS",
+		"ciderlib"
+	],
+	"knownCoreReferences": [
+		"src/frontend/inpcom.c contains a diagnostic that mentions numparam; it is part of ngspice's BSD-licensed core, not the excluded LGPL-2.1 module.",
+		"src/frontend/logicexp.c contains XSPICE latency-model device names used by ngspice's core logic expressions; the XSPICE code-model library itself is excluded via --disable-xspice."
+	]
+}

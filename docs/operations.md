@@ -147,6 +147,89 @@ is delivered, so treat mail as a critical dependency.
 The document schema is additive within schema version 1; a breaking schema
 change ships with a migration before deploy.
 
+## Analog engine asset
+
+The analog simulation mode runs a vendored, license-clean ngspice compiled to
+WebAssembly. The artifact lives in
+`frontend/src/lib/engine/analog/ngspice/` (`ngspice.js`, `ngspice.wasm`,
+`manifest.json`, `licenses/`, and the reproducible build inputs under
+`build/`). Vite emits the wasm as a content-hashed asset under
+`/_app/immutable/`; the app's CSP allows `'wasm-unsafe-eval'` in `script-src`
+(never `'unsafe-eval'`).
+
+### Provenance and license posture
+
+- Source: ngspice `ngspice-47`, commit
+  `a80f6e3e95d51534905b1f23410a951802666656` (BSD-3-Clause, `licenses/ngspice-COPYING.txt`).
+- Toolchain: `docker.io/emscripten/emsdk:6.0.11`
+  (digest `sha256:b4584bcb016b5416c2eb606e3aeffa7461a63037c0ba4cc8e83c6df3ffb532ba`).
+- Copyleft modules excluded: KLU (`--disable-klu`), XSPICE and its GPL tables
+  (`--disable-xspice`), OSDI (`--disable-osdi`), tclspice (no `--with-tcl`),
+  and ADMS (not part of the build). CIDER is off by default.
+- `numparam` (LGPL-2.1) is compiled in by upstream ngspice with no configure
+  switch, so this build replaces `src/frontend/numparam/` with the MIT
+  pass-through shim in `build/patches/numparam-shim/`. Parameter and brace
+  expressions are evaluated by the TypeScript model front end before the deck
+  reaches the engine (KTD6); an unresolved `.param` deck fails with an explicit
+  "unknown subckt" diagnostic.
+- HICUM2 (C++, fails to link under Emscripten; upstream ngspice bug #793) is
+  removed, and an upstream `--disable-xspice` compile bug in
+  `cktsopt.c` is patched, by the same build script.
+- `manifest.json` records per-artifact SHA-256, byte sizes, build flags, and
+  the forbidden-marker list. `frontend/scripts/check-analog-wasm.mjs` (run in
+  CI) recomputes the hashes, enforces the payload budgets, and fails if any
+  copyleft-module marker is present.
+
+### Rebuilding
+
+```sh
+git clone --depth 1 --branch ngspice-47 \
+  https://github.com/danchitnis/ngspice-sf-mirror ngspice-src
+docker run --rm -v "$PWD:/work" -w /work emscripten/emsdk:6.0.11 \
+  bash /work/frontend/src/lib/engine/analog/ngspice/build/build-ngspice-wasm.sh \
+  /work/ngspice-src /work/out
+# copy ngspice.js/ngspice.wasm into the vendor directory, recompute manifest
+# hashes, then verify:
+node frontend/scripts/check-analog-wasm.mjs
+```
+
+The build script prepends a `// @ts-nocheck` banner to the generated glue
+(types for importers live in `ngspice.d.ts`). After any rebuild, update
+`manifest.json` hashes and run the unit suite; `node:module` is externalized
+with a warning in the browser build (dead Node-only branch in the Emscripten
+glue) and is expected.
+
+### Recorded measurements (reference machine, 2026-10-06)
+
+| Measurement | Value |
+|---|---|
+| Raw payload (js + wasm) | 4,477,075 B (4.27 MiB), budget 40 MiB |
+| Precompressed (brotli/gzip, min) | 1,016,732 B (0.97 MiB), budget 12 MiB |
+| wasm compile, cold (Node) | ~9 ms |
+| Instance create, cold/warm (Node) | ~1 ms |
+| Divider `.op` run, warm (Node) | ~3 ms |
+| Cold first run budget (e2e gate) | < 10 s; page reports fetch/instantiate/run |
+| Node RSS delta after warm run | ~7.6 MB |
+| Browser worker cold run (Playwright) | fetch 26 ms + instantiate 30 ms + run 16 ms (~72 ms), well under the 10 s budget |
+
+The spike harness (`frontend/src/lib/engine/analog/__tests__/`) loads the
+Node-compatible Emscripten build from disk because the vitest project is
+Node-only; browser conditions (CSP, worker, hashed asset URL, immutable
+caching, cancel) are proven by `frontend/tests/e2e/analog-engine-spike.spec.ts`
+against the production build.
+
+### Harness findings owned by later units
+
+- The single-threaded build exposes no cooperative progress callback; U6
+  should present progress as indeterminate.
+- Cancellation is worker terminate-and-respawn (a synchronous solve cannot be
+  cooperatively aborted). The e2e proves terminate is immediate and the next
+  run completes inside the cold-run budget; U2 owns the real worker lifecycle,
+  protocol, heap caps, and out-of-memory respawn.
+- `frontend/src/lib/engine/analog/spike/worker.ts` and the `/analog-spike`
+  route are the U1 browser proof harness; U2 replaces them with the versioned
+  analog worker and the real UI.
+
 ## Troubleshooting
 
 - **Backend unhealthy**: `logs backend`; the most common causes are database

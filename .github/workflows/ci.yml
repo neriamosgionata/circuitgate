@@ -22,6 +22,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run test
+      - run: node scripts/check-analog-wasm.mjs
       - run: bun run build
 
   backend:
