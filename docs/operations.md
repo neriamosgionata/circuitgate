@@ -230,6 +230,21 @@ against the production build.
   route are the U1 browser proof harness; U2 replaces them with the versioned
   analog worker and the real UI.
 
+## Analog document limits
+
+Analog projects extend the document schema additively at schema version 1: an
+optional top-level `circuit.domain` (`logic` when absent), `circuit.models`,
+and `circuit.analyses`. The only new bound is per-model size: each model entry
+is stored as a string and must fit the existing 10,000-character string limit
+(`circuitgate.projects.max-string-length`); larger vendor models are
+unsupported in this slice. Everything else is unchanged: 2 MB total document
+(`max-document-bytes`), depth 50 (`max-depth`), and schema version 1
+(`schema-version`). The client validates depth and model size against the same
+limits before save, and the backend remains semantics-blind, so no server
+configuration change or migration is needed. Existing logic documents are
+unaffected: absent sections mean logic, and save, export, and import preserve
+the new sections plus unknown future sections.
+
 ## Troubleshooting
 
 - **Backend unhealthy**: `logs backend`; the most common causes are database

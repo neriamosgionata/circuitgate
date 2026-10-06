@@ -1,12 +1,12 @@
 import { detectDefinitionCycles, type SubcircuitDefinition, type SubcircuitDefinitions } from '../engine/hierarchy';
-import type { CircuitDocument, Component } from '../model/circuit';
+import type { AnalogAnalysis, AnalogModel, CircuitDocument, Component } from '../model/circuit';
 import { validateDocumentShape } from '../model/schema';
 import type { ComponentLayout, LayoutMap, Point } from '../render/geometry';
 import { apiFetch } from './client';
 
 export const PROJECT_FORMAT = 'circuitgate-project';
 export const PROJECT_SCHEMA_VERSION = 1;
-export const MAX_DOCUMENT_DEPTH = 64;
+export const MAX_DOCUMENT_DEPTH = 50;
 export const MAX_COMPONENTS = 50000;
 
 export interface ProjectDocument {
@@ -158,7 +158,7 @@ export function validateProjectDocument(value: unknown): ValidationResult {
 	if (!circuit || !definitions || !layouts) {
 		return { ok: false, errors };
 	}
-	return { ok: true, document: { circuit, definitions, layouts } };
+	return { ok: true, document: { ...value, circuit, definitions, layouts } };
 }
 
 function clonePoint(point: Point): Point {
@@ -179,13 +179,11 @@ export function toProjectDocument(document: ProjectDocument): ProjectDocument {
 	const definitions: Record<string, SubcircuitDefinition> = {};
 	for (const [name, definition] of Object.entries(document.definitions)) {
 		definitions[name] = {
+			...definition,
 			name: definition.name,
 			inputs: { ...definition.inputs },
 			outputs: { ...definition.outputs },
-			document: {
-				schemaVersion: definition.document.schemaVersion,
-				components: definition.document.components.map((component) => cloneComponent(component))
-			}
+			document: cloneCircuit(definition.document)
 		};
 	}
 	const layouts: Record<string, LayoutMap> = {};
@@ -193,13 +191,39 @@ export function toProjectDocument(document: ProjectDocument): ProjectDocument {
 		layouts[scope] = cloneLayoutMap(layout);
 	}
 	return {
-		circuit: {
-			schemaVersion: document.circuit.schemaVersion,
-			components: document.circuit.components.map((component) => cloneComponent(component))
-		},
+		...document,
+		circuit: cloneCircuit(document.circuit),
 		definitions,
 		layouts
 	};
+}
+
+function cloneModels(models: readonly AnalogModel[] | undefined): AnalogModel[] | undefined {
+	return models === undefined ? undefined : models.map((model) => ({ ...model }));
+}
+
+function cloneAnalyses(
+	analyses: readonly AnalogAnalysis[] | undefined
+): AnalogAnalysis[] | undefined {
+	return analyses === undefined
+		? undefined
+		: analyses.map((analysis) =>
+				analysis.params === undefined
+					? { ...analysis }
+					: { ...analysis, params: structuredClone(analysis.params) }
+			);
+}
+
+function cloneCircuit(circuit: CircuitDocument): CircuitDocument {
+	const copy: CircuitDocument = {
+		...circuit,
+		components: circuit.components.map((component) => cloneComponent(component))
+	};
+	const models = cloneModels(circuit.models);
+	if (models !== undefined) copy.models = models;
+	const analyses = cloneAnalyses(circuit.analyses);
+	if (analyses !== undefined) copy.analyses = analyses;
+	return copy;
 }
 
 function cloneComponent(component: Component): Component {
@@ -215,7 +239,11 @@ function cloneComponent(component: Component): Component {
 }
 
 export function emptyProjectDocument(): ProjectDocument {
-	return { circuit: { schemaVersion: 1, components: [] }, definitions: {}, layouts: { '': {} } };
+	return {
+		circuit: { schemaVersion: 1, components: [], domain: 'logic', models: [], analyses: [] },
+		definitions: {},
+		layouts: { '': {} }
+	};
 }
 
 export async function listProjects(): Promise<ProjectSummary[]> {

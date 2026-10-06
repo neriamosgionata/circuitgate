@@ -1,7 +1,15 @@
 import { SUB_CIRCUIT_KIND, flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
 import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
-import type { CircuitDocument, Component, ComponentId, NetId } from '../model/circuit';
+import type {
+	AnalogAnalysis,
+	AnalogModel,
+	CircuitDocument,
+	Component,
+	ComponentId,
+	Domain,
+	NetId
+} from '../model/circuit';
 import {
 	screenToWorld,
 	snapPoint,
@@ -54,6 +62,9 @@ export interface EditorSnapshot {
 	circuit: CircuitDocument;
 	definitions: SubcircuitDefinitions;
 	layouts: Readonly<Record<string, LayoutMap>>;
+	domain: Domain;
+	models: readonly AnalogModel[];
+	analyses: readonly AnalogAnalysis[];
 	path: readonly string[];
 	document: CircuitDocument;
 	layout: LayoutMap;
@@ -70,6 +81,9 @@ export interface CircuitStoreOptions {
 	circuit?: CircuitDocument;
 	definitions?: SubcircuitDefinitions;
 	layouts?: Readonly<Record<string, LayoutMap>>;
+	domain?: Domain;
+	models?: readonly AnalogModel[];
+	analyses?: readonly AnalogAnalysis[];
 }
 
 export type StoreListener = (snapshot: EditorSnapshot) => void;
@@ -78,6 +92,14 @@ const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 function emptyDocument(): CircuitDocument {
 	return { schemaVersion: 1, components: [] };
+}
+
+function rootCircuit(options: CircuitStoreOptions): CircuitDocument {
+	const document: CircuitDocument = { ...(options.circuit ?? emptyDocument()) };
+	if (options.domain !== undefined) document.domain = options.domain;
+	if (options.models !== undefined) document.models = [...options.models];
+	if (options.analyses !== undefined) document.analyses = options.analyses.map((entry) => ({ ...entry }));
+	return document;
 }
 
 function cloneLayoutMap(layout: LayoutMap | undefined): Record<string, ComponentLayout> {
@@ -130,7 +152,7 @@ export class CircuitEditorStore {
 	private netCounter = 0;
 
 	constructor(options: CircuitStoreOptions = {}) {
-		this.circuit = options.circuit ?? emptyDocument();
+		this.circuit = rootCircuit(options);
 		this.definitions = options.definitions ?? {};
 		this.layouts = {};
 		if (options.layouts) {
@@ -148,6 +170,9 @@ export class CircuitEditorStore {
 			circuit: this.circuit,
 			definitions: this.definitions,
 			layouts: this.layouts,
+			domain: this.circuit.domain ?? 'logic',
+			models: this.circuit.models ?? [],
+			analyses: this.circuit.analyses ?? [],
 			path,
 			document: this.currentDocument(),
 			layout: this.layoutFor(path),
@@ -170,7 +195,7 @@ export class CircuitEditorStore {
 	}
 
 	loadDocument(options: CircuitStoreOptions = {}): void {
-		this.circuit = options.circuit ?? emptyDocument();
+		this.circuit = rootCircuit(options);
 		this.definitions = options.definitions ?? {};
 		this.layouts = {};
 		if (options.layouts) {
@@ -320,7 +345,7 @@ export class CircuitEditorStore {
 	private setPinNet(pin: PinRef, net: NetId | undefined): void {
 		const document = this.currentDocument();
 		const next: CircuitDocument = {
-			schemaVersion: 1,
+			...document,
 			components: document.components.map((component) => {
 				if (component.id !== pin.componentId) return component;
 				if (pin.side === 'input') {
@@ -395,7 +420,7 @@ export class CircuitEditorStore {
 		else if (kind === 'clock') component.params = { polarity: 'rising' };
 		const document = this.currentDocument();
 		this.updateCurrentDocument({
-			schemaVersion: 1,
+			...document,
 			components: [...document.components, component]
 		});
 		const layout = cloneLayoutMap(this.layoutFor(this.path));
@@ -555,7 +580,7 @@ export class CircuitEditorStore {
 			if (inputs === component.inputs && outputs === component.outputs) return component;
 			return { ...component, inputs, outputs };
 		});
-		this.updateCurrentDocument({ schemaVersion: 1, components });
+		this.updateCurrentDocument({ ...document, components });
 		return keep;
 	}
 
@@ -629,7 +654,7 @@ export class CircuitEditorStore {
 	private replaceComponent(next: Component): void {
 		const document = this.currentDocument();
 		this.updateCurrentDocument({
-			schemaVersion: 1,
+			...document,
 			components: document.components.map((component) =>
 				component.id === next.id ? next : component
 			)
@@ -796,7 +821,7 @@ export class CircuitEditorStore {
 			outputs: { ...draft.outputs }
 		};
 		this.updateCurrentDocument({
-			schemaVersion: 1,
+			...document,
 			components: [
 				...document.components.filter((component) => !selected.has(component.id)),
 				instance
@@ -845,7 +870,7 @@ export class CircuitEditorStore {
 		};
 		const document = this.currentDocument();
 		this.updateCurrentDocument({
-			schemaVersion: 1,
+			...document,
 			components: [...document.components, instance]
 		});
 		const layout = cloneLayoutMap(this.layoutFor(this.path));

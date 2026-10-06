@@ -116,7 +116,7 @@ export function movePositions(
 
 export function removeComponents(document: CircuitDocument, ids: Selection): CircuitDocument {
 	return {
-		schemaVersion: 1,
+		...document,
 		components: document.components.filter((component) => !ids.has(component.id))
 	};
 }
