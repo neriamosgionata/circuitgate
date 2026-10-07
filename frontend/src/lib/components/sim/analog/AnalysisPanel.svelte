@@ -7,7 +7,7 @@
 		validateAnalysis,
 		type NetlistResult
 	} from '../../../engine/analog/netlist';
-	import { formatSI, parseSI } from '../../../engine/analog/si';
+	import { formatSI, parseSI, stripTrailingUnit } from '../../../engine/analog/si';
 	import type {
 		AnalogAnalysis,
 		AnalogAnalysisKind,
@@ -29,6 +29,7 @@
 	import {
 		axisFor,
 		computeMeasurements,
+		measurementUnit,
 		type MeasurementDefinition,
 		type MeasurementType
 	} from '../../../sim/analog/measurements';
@@ -150,7 +151,7 @@
 	): void {
 		if (readonly) return;
 		drafts = { ...drafts, [draftKey(scope, field)]: text };
-		const parsed = parseSI(text);
+		const parsed = parseSI(stripTrailingUnit(text).core);
 		if (!parsed.ok) return;
 		persistParams(kind, { ...paramsOf(kind), [field]: parsed.value });
 	}
@@ -266,7 +267,7 @@
 		const entry = snapshot.analyses.find((candidate) => candidate.id === id);
 		if (!entry) return;
 		drafts = { ...drafts, [draftKey(id, bound)]: text };
-		const parsed = parseSI(text);
+		const parsed = parseSI(stripTrailingUnit(text).core);
 		if (!parsed.ok) return;
 		const window =
 			typeof entry.params?.['window'] === 'object' && entry.params['window'] !== null
@@ -274,6 +275,15 @@
 				: {};
 		window[bound] = parsed.value;
 		store.updateAnalysis(id, { ...(entry.params ?? {}), window });
+	}
+
+	function windowUnitLabel(): string {
+		const kinds = new Set(snapshot.analyses.map((entry) => entry.kind));
+		const hasTran = kinds.has('tran');
+		const hasAc = kinds.has('ac');
+		if (hasTran && !hasAc) return 's';
+		if (hasAc && !hasTran) return 'Hz';
+		return 's / Hz';
 	}
 
 	function windowValue(id: string, bound: 'start' | 'stop'): string {
@@ -848,7 +858,7 @@
 		<fieldset data-testid="analysis-tran-section">
 			<legend>Transient</legend>
 			<label>
-				<span>Duration</span>
+				<span>Duration (s)</span>
 				<input
 					data-testid="analysis-tran-duration"
 					value={numberField('tran', 'duration', paramsOf('tran')['duration'] ?? 0.001)}
@@ -859,7 +869,7 @@
 				/>
 			</label>
 			<label>
-				<span>Max step</span>
+				<span>Max step (s)</span>
 				<input
 					data-testid="analysis-tran-maxstep"
 					value={numberField('tran', 'maxStep', paramsOf('tran')['maxStep'] ?? 0.000001)}
@@ -877,7 +887,7 @@
 		<fieldset data-testid="analysis-ac-section">
 			<legend>AC sweep</legend>
 			<label>
-				<span>Start</span>
+				<span>Start (Hz)</span>
 				<input
 					data-testid="analysis-ac-start"
 					value={numberField('ac', 'startHz', paramsOf('ac')['startHz'] ?? 10)}
@@ -887,7 +897,7 @@
 				/>
 			</label>
 			<label>
-				<span>Stop</span>
+				<span>Stop (Hz)</span>
 				<input
 					data-testid="analysis-ac-stop"
 					value={numberField('ac', 'stopHz', paramsOf('ac')['stopHz'] ?? 1000000)}
@@ -914,6 +924,10 @@
 
 		<fieldset class="measurements" data-testid="analysis-meas-section">
 			<legend>Measurements</legend>
+			<p class="meas-hint">
+				Signals <span class="mono">v(…)</span> read volts, <span class="mono">i(…)</span> read amperes,
+				power reads watts. Window bounds use the run axis: seconds for transient, hertz for AC.
+			</p>
 			<button
 				type="button"
 				data-testid="measurement-add"
@@ -924,7 +938,16 @@
 			</button>
 			{#each measurements as entry (entry.id)}
 				{@const error = measurementError(entry)}
-				<div class="measurement" data-testid="measurement-row" data-measurement-id={entry.id}>
+				{@const resultUnit = measurementUnit(
+					String(entry.params?.['type'] ?? 'rms') as MeasurementType,
+					String(entry.params?.['signal'] ?? '')
+				)}
+				<div
+					class="measurement"
+					data-testid="measurement-row"
+					data-measurement-id={entry.id}
+					data-unit={resultUnit}
+				>
 					<input
 						data-testid="measurement-name"
 						aria-label="Measurement name"
@@ -963,7 +986,7 @@
 					<input
 						data-testid="measurement-window-start"
 						aria-label="Measurement window start"
-						placeholder="window start"
+						placeholder={`window start (${windowUnitLabel()})`}
 						value={windowValue(entry.id, 'start')}
 						disabled={readonly}
 						oninput={(event) =>
@@ -972,7 +995,7 @@
 					<input
 						data-testid="measurement-window-stop"
 						aria-label="Measurement window stop"
-						placeholder="window stop"
+						placeholder={`window stop (${windowUnitLabel()})`}
 						value={windowValue(entry.id, 'stop')}
 						disabled={readonly}
 						oninput={(event) =>
@@ -997,6 +1020,9 @@
 					{#if error}
 						<span class="error" data-testid="measurement-error">{error}</span>
 					{/if}
+					<span class="unit" data-testid="measurement-unit">
+						reports in {resultUnit === '' ? '—' : resultUnit}
+					</span>
 				</div>
 			{/each}
 		</fieldset>
@@ -1293,6 +1319,22 @@
 		border: var(--rule-faint);
 		border-radius: 2px;
 		background: var(--sheet);
+	}
+
+	.measurement .unit {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-soft);
+	}
+
+	.mono {
+		font-family: var(--font-mono);
+	}
+
+	.meas-hint {
+		margin: 2px 0 8px;
+		font-size: 12px;
+		color: var(--ink-soft);
 	}
 
 	.result {

@@ -51,6 +51,20 @@ export function axisFor(variables: readonly AnalogResultVariable[]): AnalogResul
 	);
 }
 
+/** Display unit for a measurement signal: v(...) reads volts, i(...) amperes. */
+export function signalUnitFor(signal: string): string {
+	const normalized = signal.trim().toLowerCase();
+	if (normalized.startsWith('i(')) return 'A';
+	if (normalized.startsWith('v(')) return 'V';
+	return '';
+}
+
+/** Display unit for a measurement: power reads watts, otherwise the signal unit. */
+export function measurementUnit(type: MeasurementType, signal: string): string {
+	if (type === 'power') return 'W';
+	return signalUnitFor(signal);
+}
+
 function magnitudeAt(variable: AnalogResultVariable, index: number): number {
 	const real = variable.real[index];
 	if (variable.imag) return Math.hypot(real, variable.imag[index]);

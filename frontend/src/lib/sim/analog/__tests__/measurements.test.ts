@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { AnalogResultVariable } from '../protocol';
 import {
 	computeMeasurements,
+	measurementUnit,
+	signalUnitFor,
 	type MeasurementDefinition,
 	type MeasurementSource
 } from '../measurements';
@@ -131,5 +133,23 @@ describe('computeMeasurements', () => {
 		);
 		expect(outcomes[0].status).toBe('complete');
 		expect(outcomes[0].analysisId).toBe('meas1');
+	});
+});
+
+describe('measurement units', () => {
+	it('reads volts from node signals and amperes from branch currents', () => {
+		expect(signalUnitFor('v(out)')).toBe('V');
+		expect(signalUnitFor('V(SUPPLY)')).toBe('V');
+		expect(signalUnitFor('i(v1)')).toBe('A');
+		expect(signalUnitFor('time')).toBe('');
+		expect(signalUnitFor('')).toBe('');
+	});
+
+	it('reports watts for power and the signal unit otherwise', () => {
+		expect(measurementUnit('power', 'v(out)')).toBe('W');
+		expect(measurementUnit('rms', 'v(out)')).toBe('V');
+		expect(measurementUnit('rms', 'i(v1)')).toBe('A');
+		expect(measurementUnit('minmax', 'v(out)')).toBe('V');
+		expect(measurementUnit('rms', 'time')).toBe('');
 	});
 });

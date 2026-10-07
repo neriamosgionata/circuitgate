@@ -2,7 +2,7 @@
 	import { untrack } from 'svelte';
 	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
-	import { parseSI } from '../../engine/analog/si';
+	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
 	import { kindNamesForDomain } from '../../engine/kinds';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
 	import type { Component, ComponentId } from '../../model/circuit';
@@ -67,7 +67,7 @@
 
 	function commitAnalogNumber(id: ComponentId, key: string, event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
-		const parsed = parseSI(input.value);
+		const parsed = parseSI(stripTrailingUnit(input.value).core);
 		if (!parsed.ok) {
 			paramError = { key, message: `Invalid value: ${parsed.error}` };
 			const stored = resolveSelected(store.snapshot)?.params?.[key];
@@ -76,6 +76,12 @@
 		}
 		paramError = null;
 		store.setParam(id, key, parsed.value);
+	}
+
+	function paramUnit(key: string): string {
+		if (snapshot.domain !== 'analog' || !selected) return '';
+		const unit = parameterSpecs.find((spec) => spec.name === key)?.unit;
+		return unit === undefined || unit === '' ? '' : ` (${unit})`;
 	}
 
 	function paramKind(value: unknown): 'number' | 'string' | 'boolean' | 'json' {
@@ -211,7 +217,7 @@
 			{#each Object.entries(selected.params ?? {}) as [key, value] (key)}
 				{#if !(modelBacked && key === 'model')}
 					<label>
-						<span>{key}</span>
+						<span>{key}{paramUnit(key)}</span>
 						{#if paramKind(value) === 'number'}
 							{#if snapshot.domain === 'analog'}
 								<input

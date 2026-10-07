@@ -78,3 +78,22 @@ export function formatSI(value: number): string {
 	}
 	return String(value);
 }
+
+const UNIT_SUFFIXES: readonly string[] = ['Hz', 'Ω', 'V', 'A', 'F', 'H', 's', 'W'];
+
+/**
+ * Split an optional trailing canonical unit off a value entry (`1kΩ` →
+ * core `1k`, unit `Ω`). Two-letter `Hz` is checked before single letters so
+ * `1kHz` keeps `1k`. The core is returned verbatim for `parseSI`; an empty
+ * remainder means the text was a bare unit and stays intact for the parser
+ * to reject.
+ */
+export function stripTrailingUnit(text: string): { core: string; unit: string } {
+	const trimmed = text.trim();
+	for (const suffix of UNIT_SUFFIXES) {
+		if (trimmed.length > suffix.length && trimmed.endsWith(suffix)) {
+			return { core: trimmed.slice(0, -suffix.length), unit: suffix };
+		}
+	}
+	return { core: trimmed, unit: '' };
+}

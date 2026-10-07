@@ -267,7 +267,9 @@ test.describe('analog inspection views', () => {
 		const rms = page.locator('[data-testid="measurement-result"][data-name="vout-rms"]');
 		const rmsValue = numberFrom(await rms.getAttribute('data-value'));
 		expect(rmsValue).toBeGreaterThan(0.2);
+		await expect(rms.locator('[data-testid="measurement-unit"]')).toHaveText('V');
 		const range = page.locator('[data-testid="measurement-result"][data-name="vout-range"]');
+		await expect(range.locator('[data-testid="measurement-unit"]')).toHaveText('V');
 		expect(numberFrom(await range.getAttribute('data-min'))).toBeCloseTo(-0.65, 3);
 		expect(numberFrom(await range.getAttribute('data-max'))).toBeGreaterThan(0.9);
 

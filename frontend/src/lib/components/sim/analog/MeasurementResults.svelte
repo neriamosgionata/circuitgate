@@ -1,8 +1,9 @@
 <script lang="ts">
-	import {
-		measurementValueText,
-		type MeasurementOutcome
-	} from '../../../sim/analog/measurements';
+import {
+	measurementUnit,
+	measurementValueText,
+	type MeasurementOutcome
+} from '../../../sim/analog/measurements';
 
 	interface Props {
 		outcomes: readonly MeasurementOutcome[];
@@ -33,6 +34,7 @@
 				data-status={outcome.status}
 				data-name={outcome.name}
 				data-type={outcome.type}
+				data-unit={measurementUnit(outcome.type, outcome.signal)}
 				data-value={outcome.status === 'complete' && outcome.type !== 'minmax' ? String(outcome.value) : ''}
 				data-min={outcome.min === undefined ? '' : String(outcome.min)}
 				data-max={outcome.max === undefined ? '' : String(outcome.max)}
@@ -42,6 +44,11 @@
 					<span class="name">{outcome.name}</span>
 					<span class="signal">{outcome.signal}</span>
 					<span class="value">{valueText(outcome)}</span>
+					{#if measurementUnit(outcome.type, outcome.signal) !== ''}
+						<span class="unit" data-testid="measurement-unit">
+							{measurementUnit(outcome.type, outcome.signal)}
+						</span>
+					{/if}
 				</div>
 				{#if outcome.status === 'complete' && outcome.samples !== undefined}
 					<span class="samples" data-testid="measurement-samples">
@@ -109,6 +116,12 @@
 		font-family: var(--font-mono);
 		font-size: 13px;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.unit {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--ink-soft);
 	}
 
 	.samples {

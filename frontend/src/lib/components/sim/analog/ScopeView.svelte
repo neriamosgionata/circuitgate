@@ -459,7 +459,7 @@
 					<span class="range">
 						{fullStats[trace.name] === undefined
 							? '—'
-							: `${formatSI(fullStats[trace.name].min)} … ${formatSI(fullStats[trace.name].max)}`}
+							: `${formatSI(fullStats[trace.name].min)} … ${formatSI(fullStats[trace.name].max)} ${unitFor(traces.find((entry) => entry.name === trace.name))}`}
 					</span>
 				</button>
 			{/each}
