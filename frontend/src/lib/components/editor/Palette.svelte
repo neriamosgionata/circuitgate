@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { resolveKind } from '../../engine/kinds';
+	import { SYMBOL_PATHS, symbolKeyFor } from '../../render/symbols';
 	import type { CircuitEditorStore, EditorSnapshot, PackagingDraft } from '../../state/circuitStore';
 
 	function pinNameFor(
@@ -95,6 +96,8 @@
 	}
 
 	const selectedInstance = $derived(selectedDefinitionName());
+
+	const iconFor = (kind: string): string => SYMBOL_PATHS[symbolKeyFor(kind)] ?? SYMBOL_PATHS.generic;
 </script>
 
 <aside class="palette" data-domain={domain}>
@@ -110,7 +113,10 @@
 						onclick={() => store.beginPlacement(kind)}
 						disabled={readonly}
 					>
-						{kind}
+						<svg class="kind-icon" viewBox="0 0 64 40" aria-hidden="true" focusable="false">
+							<path d={iconFor(kind)} />
+						</svg>
+						<span>{kind}</span>
 					</button>
 				{/each}
 			</div>
@@ -130,7 +136,10 @@
 					onclick={() => store.instantiateDefinition(name, { x: 80, y: 80 })}
 					disabled={readonly}
 				>
-					{name}
+					<svg class="kind-icon" viewBox="0 0 64 40" aria-hidden="true" focusable="false">
+						<path d={iconFor('subcircuit')} />
+					</svg>
+					<span>{name}</span>
 				</button>
 			{/each}
 		</div>
@@ -218,8 +227,25 @@
 	}
 
 	button {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		font-size: 11px;
 		padding: 4px 7px;
+	}
+
+	.kind-icon {
+		width: 32px;
+		height: 20px;
+		flex: none;
+	}
+
+	.kind-icon path {
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 3;
+		stroke-linecap: round;
+		stroke-linejoin: round;
 	}
 
 	button.active {
