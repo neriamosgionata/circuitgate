@@ -23,6 +23,7 @@
 	} from '../../render/scene';
 	import { cullScene } from '../../render/culling';
 	import { hitTest, type PinHit } from '../../render/hitTest';
+	import { drawKindGlyph } from '../../render/symbols';
 	import { analogAnnotations, type AnalogAnnotation } from '../../sim/analog/annotations';
 	import type { CircuitEditorStore, EditorSnapshot, PinRef } from '../../state/circuitStore';
 
@@ -368,7 +369,8 @@
 		const grid = layer.getContext('2d');
 		if (grid) {
 			grid.setTransform(dpr, 0, 0, dpr, 0, 0);
-			const step = 20;
+			// Drawn grid only; placement snaps to GRID_SIZE (10) and stays there.
+			const step = 40;
 			if (step * viewport.scale >= 8) {
 				const worldRect = viewportWorldRect(viewport, width, height);
 				const startX = Math.floor(worldRect.x / step) * step;
@@ -464,8 +466,60 @@
 		ctx.fill();
 		ctx.stroke();
 
+		// Per-kind schematic glyphs in one ink stroke over the paper body.
+		// Hit-testing and wiring still use the rect and pin dots; the glyph
+		// is presentation only.
+		ctx.save();
+		ctx.strokeStyle = '#1d1d1b';
+		ctx.lineCap = 'round';
+		ctx.lineJoin = 'round';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			if (width < 10 || height < 10) continue;
+			const pad = 4 * viewport.scale;
+			drawKindGlyph(
+				ctx,
+				component.kind,
+				topLeft.x + pad,
+				topLeft.y + pad,
+				Math.max(width - pad * 2, 4),
+				Math.max(height - pad * 2, 4)
+			);
+		}
+		ctx.restore();
+
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
+		ctx.lineJoin = 'round';
+		// Paper halo under both text lines so glyph strokes never swallow them.
+		ctx.strokeStyle = '#fbf9f4';
+		ctx.lineWidth = 3;
+		ctx.font = '12px "Public Sans", sans-serif';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			ctx.strokeText(
+				component.label,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 - 6,
+				Math.max(width - 6, 10)
+			);
+		}
+		ctx.font = '9px "Public Sans", sans-serif';
+		for (const component of visible.components) {
+			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
+			const width = component.rect.width * viewport.scale;
+			const height = component.rect.height * viewport.scale;
+			ctx.strokeText(
+				component.kind,
+				topLeft.x + width / 2,
+				topLeft.y + height / 2 + 8,
+				Math.max(width - 6, 10)
+			);
+		}
 		ctx.font = '12px "Public Sans", sans-serif';
 		ctx.fillStyle = '#1d1d1b';
 		for (const component of visible.components) {
