@@ -50,7 +50,10 @@ function loadEngineAsset(): Promise<EngineAsset> {
 			const bytes = new Uint8Array(await response.arrayBuffer());
 			const compiled = await WebAssembly.compile(bytes);
 			return { wasmUrl, compiled, createModule };
-		})();
+		})().catch((error: unknown) => {
+			assetPromise = null;
+			throw error;
+		});
 	}
 	return assetPromise;
 }

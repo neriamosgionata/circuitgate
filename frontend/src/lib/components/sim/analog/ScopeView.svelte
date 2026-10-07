@@ -12,7 +12,7 @@
 		visibleStats
 	} from '../../../sim/analog/decimate';
 	import type { AnalogResultVariable } from '../../../sim/analog/protocol';
-	import type { AnalysisOutcome } from '../../../sim/analog/results';
+	import { signalUnit, type AnalysisOutcome } from '../../../sim/analog/results';
 
 	interface Props {
 		outcome: AnalysisOutcome;
@@ -96,12 +96,7 @@
 		return capBound ? `${mode} · ${capText}` : mode;
 	});
 
-	function unitFor(variable: AnalogResultVariable | undefined): string {
-		if (!variable) return '';
-		if (variable.type === 'voltage' || variable.name.startsWith('v(')) return 'V';
-		if (variable.type === 'current' || variable.name.startsWith('i(')) return 'A';
-		return '';
-	}
+	const unitFor = (variable: AnalogResultVariable | undefined): string => signalUnit(variable);
 
 	function numberText(value: number | undefined): string {
 		return value !== undefined && Number.isFinite(value) ? String(value) : '';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatSI } from '../../../engine/analog/si';
 	import type { AnalogResultVariable } from '../../../sim/analog/protocol';
-	import type { AnalysisOutcome } from '../../../sim/analog/results';
+	import { signalUnit, type AnalysisOutcome } from '../../../sim/analog/results';
 
 	interface Props {
 		outcome: AnalysisOutcome;
@@ -13,11 +13,7 @@
 		return variable.real[0];
 	}
 
-	function unitOf(variable: AnalogResultVariable): string {
-		if (variable.type === 'voltage' || variable.name.startsWith('v(')) return 'V';
-		if (variable.type === 'current' || variable.name.startsWith('i(')) return 'A';
-		return '';
-	}
+	const unitOf = (variable: AnalogResultVariable): string => signalUnit(variable);
 
 	function categoryOf(variable: AnalogResultVariable): string {
 		if (variable.type === 'current' || variable.name.startsWith('i(')) return 'branch current';

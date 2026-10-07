@@ -40,4 +40,12 @@ export function tabForKind(kind: AnalogAnalysisKind): ResultTab | null {
 	}
 }
 
+/** Display unit for a result variable, shared by the scope and operating-point views. */
+export function signalUnit(variable: AnalogResultVariable | undefined): string {
+	if (!variable) return '';
+	if (variable.type === 'voltage' || variable.name.startsWith('v(')) return 'V';
+	if (variable.type === 'current' || variable.name.startsWith('i(')) return 'A';
+	return '';
+}
+
 export type { MeasurementOutcome };

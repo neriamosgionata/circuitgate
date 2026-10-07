@@ -13,6 +13,7 @@
 	import { retainResult } from '../../../sim/analog/decimate';
 	import {
 		analogDiagnostic,
+		analysisProblemDiagnostic,
 		floatingDiagnostic,
 		loadFailureDiagnostic,
 		modelProblemDiagnostic,
@@ -22,6 +23,7 @@
 	} from '../../../sim/analog/diagnostics';
 	import { fixtureToOutcomes, takeInjectedFixture, type AnalogResultsFixture } from '../../../sim/analog/fixture';
 	import {
+		axisFor,
 		computeMeasurements,
 		type MeasurementDefinition,
 		type MeasurementType
@@ -282,14 +284,6 @@
 		const signal = String(entry.params?.['signal'] ?? '');
 		if (signal.length === 0) return 'choose a signal target';
 		return null;
-	}
-
-	function axisFor(variables: readonly AnalogResultVariable[]): AnalogResultVariable | undefined {
-		return (
-			variables.find((variable) => variable.type === 'time') ??
-			variables.find((variable) => variable.type === 'frequency') ??
-			variables.find((variable) => variable.name === 'time' || variable.name === 'frequency')
-		);
 	}
 
 	function measurementDefinitions(entries: readonly AnalogAnalysis[]): MeasurementDefinition[] {
@@ -621,7 +615,9 @@
 				addDiagnostic(
 					entry.code === 'parameter-cap' || entry.code === 'parameter-invalid'
 						? parameterProblemDiagnostic(entry)
-						: modelProblemDiagnostic(entry)
+						: entry.code === 'analysis-invalid'
+							? analysisProblemDiagnostic(entry)
+							: modelProblemDiagnostic(entry)
 				);
 			}
 			failRun('validation', problems[0].message);

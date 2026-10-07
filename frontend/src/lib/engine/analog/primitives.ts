@@ -186,8 +186,6 @@ export const analogKinds: Readonly<Record<string, AnalogKind>> = Object.freeze({
 	ground: kind(['p1'], [], [], {})
 });
 
-export const ANALOG_KIND_NAMES: readonly string[] = Object.keys(analogKinds);
-
 export function analogKind(kindName: string): AnalogKind | null {
 	return analogKinds[kindName] ?? null;
 }

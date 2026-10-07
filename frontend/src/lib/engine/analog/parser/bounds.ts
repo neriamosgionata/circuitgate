@@ -4,11 +4,12 @@
  * same constants gate both import-time validation and the worker's per-run
  * re-validation.
  */
+import { MAX_MODEL_TEXT_LENGTH } from '../../../model/schema';
 
 export const MODEL_FORMAT_VERSION = 1;
 
 export const ModelCaps = {
-	maxTextLength: 10_000,
+	maxTextLength: MAX_MODEL_TEXT_LENGTH,
 	maxLines: 2_000,
 	maxLineLength: 2_000,
 	maxTokensPerLine: 512,

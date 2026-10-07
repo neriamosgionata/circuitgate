@@ -43,7 +43,7 @@ export interface MeasurementOutcome {
 	diagnostic?: Diagnostic;
 }
 
-function axisFor(variables: readonly AnalogResultVariable[]): AnalogResultVariable | undefined {
+export function axisFor(variables: readonly AnalogResultVariable[]): AnalogResultVariable | undefined {
 	return (
 		variables.find((variable) => variable.type === 'time') ??
 		variables.find((variable) => variable.type === 'frequency') ??

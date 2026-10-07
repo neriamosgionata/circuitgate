@@ -8,13 +8,7 @@ import {
 	kindNamesForDomain,
 	resolveKind
 } from '../../kinds';
-import {
-	ANALOG_KIND_NAMES,
-	analogKind,
-	analogKinds,
-	defaultParamsForKind,
-	isModelBackedKind
-} from '../primitives';
+import { analogKind, analogKinds, defaultParamsForKind, isModelBackedKind } from '../primitives';
 import { formatSI, parseSI } from '../si';
 import {
 	CURATED_MODEL_ASSETS,
@@ -79,7 +73,7 @@ describe('analog kind registry', () => {
 			expect(kind?.domain).toBe('analog');
 			expect(defaultParamsForKind(name), name).not.toBeNull();
 		}
-		expect(new Set(ANALOG_KIND_NAMES)).toEqual(new Set(ALL_KINDS));
+		expect(new Set(kindNamesForDomain('analog'))).toEqual(new Set(ALL_KINDS));
 	});
 
 	it('keeps two-terminal devices directional and ground input-only', () => {

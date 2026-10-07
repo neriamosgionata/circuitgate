@@ -1,4 +1,4 @@
-import type { AnalogModel } from '../../model/circuit';
+import { ANALOG_ANALYSIS_KINDS, type AnalogAnalysisKind, type AnalogModel } from '../../model/circuit';
 import type { Diagnostic } from '../diagnostics';
 
 /**
@@ -10,7 +10,7 @@ import type { Diagnostic } from '../diagnostics';
 
 export const ANALOG_PROTOCOL_VERSION = 1;
 
-export type AnalogAnalysisKind = 'op' | 'tran' | 'ac' | 'meas';
+export type { AnalogAnalysisKind };
 
 export interface AnalogAnalysisRequest {
 	/** Stable analysis id echoed on every progress and result event. */
@@ -56,7 +56,6 @@ export type AnalogCommand =
 	| AnalogCancelCommand
 	| AnalogDisposeCommand;
 
-export type AnalogCommandType = AnalogCommand['type'];
 
 export interface AnalogReadyEvent {
 	type: 'ready';
@@ -113,7 +112,6 @@ export type AnalogEvent =
 	| AnalogDiagnosticEvent
 	| AnalogRestartedEvent;
 
-export type AnalogEventType = AnalogEvent['type'];
 
 export type AnalogDiagnosticCode =
 	| 'unsupported-protocol'
@@ -139,7 +137,7 @@ const EVENT_TYPES: ReadonlySet<string> = new Set([
 
 const PROGRESS_PHASES: ReadonlySet<string> = new Set(['loading-engine', 'solving', 'parsing']);
 
-const ANALYSIS_KINDS: ReadonlySet<string> = new Set(['op', 'tran', 'ac', 'meas']);
+const ANALYSIS_KINDS: ReadonlySet<string> = new Set(ANALOG_ANALYSIS_KINDS);
 
 export function isAnalogCommand(value: unknown): value is AnalogCommand {
 	if (typeof value !== 'object' || value === null) return false;

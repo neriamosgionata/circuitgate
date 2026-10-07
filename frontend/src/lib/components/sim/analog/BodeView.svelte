@@ -2,7 +2,13 @@
 	import { onMount } from 'svelte';
 
 	import { formatSI } from '../../../engine/analog/si';
-	import { decimateMinMax, lowerBound, sampleAt, upperBound } from '../../../sim/analog/decimate';
+	import {
+		decimateMinMax,
+		isFullDetail,
+		lowerBound,
+		sampleAt,
+		upperBound
+	} from '../../../sim/analog/decimate';
 	import type { AnalogResultVariable } from '../../../sim/analog/protocol';
 	import type { AnalysisOutcome } from '../../../sim/analog/results';
 
@@ -440,8 +446,8 @@
 			Zoom out
 		</button>
 		<button type="button" data-testid="bode-fit" onclick={resetWindow}>Fit</button>
-		<span class="resolution" data-testid="bode-resolution" data-mode={visibleSamples <= plotWidth() * 2 ? 'full' : 'decimated'}>
-			{visibleSamples <= plotWidth() * 2 ? 'full detail' : 'min/max decimated'}
+		<span class="resolution" data-testid="bode-resolution" data-mode={isFullDetail(visibleSamples, plotWidth()) ? 'full' : 'decimated'}>
+			{isFullDetail(visibleSamples, plotWidth()) ? 'full detail' : 'min/max decimated'}
 		</span>
 	</div>
 

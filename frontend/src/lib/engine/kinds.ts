@@ -7,8 +7,6 @@ export interface PrimitivePinout {
 	readonly outputs: readonly string[];
 }
 
-export const DOMAINS: readonly Domain[] = ['logic', 'analog'];
-
 function registryFor(domain: Domain): Readonly<Record<string, PrimitivePinout>> {
 	return domain === 'analog' ? analogKinds : primitiveKinds;
 }

@@ -453,7 +453,7 @@ class ModelParser {
 			parenthesized = true;
 			index += 1;
 		}
-		const pairs: string[] = [];
+		const pairs: { name: string; value: number }[] = [];
 		let closed = !parenthesized;
 		while (index < tokens.length) {
 			const token = tokens[index];
@@ -472,23 +472,21 @@ class ModelParser {
 			const scope = this.currentScope ?? this.globalScope;
 			const value = parseValue(tokens, index + 2, scope);
 			this.countParameter();
-			pairs.push(`${token.text}=${formatModelNumber(value.value)}`);
+			pairs.push({ name: token.text, value: value.value });
 			index = value.next;
 		}
 		if (!closed) fail(`.model ${name}: missing closing ")"`);
 		if (index < tokens.length) fail(`.model ${name}: unexpected token "${tokens[index].text}"`);
 
-		const canonical = `.model ${name} ${type}${pairs.length > 0 ? `(${pairs.join(' ')})` : ''}`;
+		const parameters = pairs.map(
+			(pair) => `${pair.name}=${formatModelNumber(pair.value)}`
+		);
+		const canonical = `.model ${name} ${type}${parameters.length > 0 ? `(${parameters.join(' ')})` : ''}`;
 		const definition: ParsedDeviceModel = {
 			kind: 'model',
 			name,
 			type,
-			parameters: Object.fromEntries(
-				pairs.map((pair) => {
-					const [key, value] = pair.split('=');
-					return [key, Number(value)];
-				})
-			),
+			parameters: Object.fromEntries(pairs.map((pair) => [pair.name, pair.value])),
 			canonical
 		};
 		if (this.current !== null) {

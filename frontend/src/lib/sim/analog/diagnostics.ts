@@ -8,6 +8,7 @@ export type AnalogDiagnosticCode =
 	| 'no-ground'
 	| 'parameter-cap'
 	| 'parameter-invalid'
+	| 'analysis-invalid'
 	| 'unbound-measurement'
 	| 'unconnected-pin'
 	| 'load-failure';
@@ -101,6 +102,10 @@ export function parameterProblemDiagnostic(problem: NetlistProblem): Diagnostic 
 
 export function modelProblemDiagnostic(problem: NetlistProblem): Diagnostic {
 	return netlistProblemDiagnostic('model', problem);
+}
+
+export function analysisProblemDiagnostic(problem: NetlistProblem): Diagnostic {
+	return netlistProblemDiagnostic('analysis-invalid', problem);
 }
 
 export function unboundMeasurementDiagnostic(name: string, signal: string, analysisId?: string): Diagnostic {
