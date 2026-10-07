@@ -58,6 +58,7 @@ services:
     restart: unless-stopped
     environment:
       ORIGIN: ${CIRCUITGATE_APP_BASE_URL:?set CIRCUITGATE_APP_BASE_URL in .env}
+      CIRCUITGATE_API_ORIGIN: http://backend:8080
       HOST: 0.0.0.0
       PORT: "3000"
     depends_on:
