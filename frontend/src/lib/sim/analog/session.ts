@@ -233,7 +233,7 @@ export class AnalogHost {
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					this.emitDiagnostic(
-						this.issue(`analog:analysis-failed:${analysis.id}:${command.id}`, 'analysis-failed', `${analysis.id}: ${message}`)
+						this.issue(`analog:analysis-failed:${analysis.id}:${command.id}`, 'analysis-failed', `${analysis.id}: ${message}`, analysis.id)
 					);
 					continue;
 				}
@@ -286,8 +286,14 @@ export class AnalogHost {
 		this.emitEvent({ type: 'diagnostic', diagnostic });
 	}
 
-	private issue(id: string, code: AnalogDiagnosticCode, message: string): Diagnostic {
-		return { id, kind: 'protocol', code, message };
+	private issue(id: string, code: AnalogDiagnosticCode, message: string, analysisId?: string): Diagnostic {
+		return {
+			id,
+			kind: 'protocol',
+			code,
+			message,
+			...(analysisId === undefined ? {} : { analysisId })
+		};
 	}
 }
 
@@ -321,6 +327,7 @@ export class AnalogWorkerSession {
 	private restartCount = 0;
 	private watchdogRunId: number | null = null;
 	private watchdogLastProgressAt = 0;
+	private watchdogPending = 0;
 	private watchdogTimer: (() => void) | null = null;
 
 	constructor(options: AnalogWorkerSessionOptions) {
@@ -365,6 +372,7 @@ export class AnalogWorkerSession {
 				return;
 			case 'run':
 				this.worker.postMessage(command);
+				this.watchdogPending = command.analyses.length;
 				this.armWatchdog(command.id);
 				return;
 			case 'cancel':
@@ -415,8 +423,30 @@ export class AnalogWorkerSession {
 				this.progress.push(event);
 				return;
 			case 'result':
-				if (event.correlationId === this.watchdogRunId) this.cancelWatchdog();
+				if (event.correlationId === this.watchdogRunId) {
+					// One run command carries several analyses; the watchdog stays
+					// armed until the last of them settles.
+					this.watchdogPending = Math.max(0, this.watchdogPending - 1);
+					if (this.watchdogPending === 0) {
+						this.cancelWatchdog();
+					} else {
+						this.watchdogLastProgressAt = this.now();
+						this.cancelWatchdogTimer();
+						this.watchdogTimer = this.schedule(() => this.watchdogTick());
+					}
+				}
 				this.results.add(event);
+				this.options.onEvent(event);
+				return;
+			case 'diagnostic':
+				if (
+					event.diagnostic.code === 'analysis-failed' &&
+					this.watchdogRunId !== null &&
+					this.watchdogPending > 0
+				) {
+					this.watchdogPending -= 1;
+					if (this.watchdogPending === 0) this.cancelWatchdog();
+				}
 				this.options.onEvent(event);
 				return;
 			default:

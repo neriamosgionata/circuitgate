@@ -8,7 +8,11 @@
 		type NetlistResult
 	} from '../../../engine/analog/netlist';
 	import { formatSI, parseSI } from '../../../engine/analog/si';
-	import type { AnalogAnalysis, AnalogAnalysisKind } from '../../../model/circuit';
+	import type {
+		AnalogAnalysis,
+		AnalogAnalysisKind,
+		CircuitDocument
+	} from '../../../model/circuit';
 	import { clearAnnotations, publishAnnotations } from '../../../sim/analog/annotations';
 	import { retainResult } from '../../../sim/analog/decimate';
 	import {
@@ -166,12 +170,20 @@
 	const tranProblems = $derived(sectionProblems('tran'));
 	const acProblems = $derived(sectionProblems('ac'));
 
+	let previewCache: { circuit: CircuitDocument; result: NetlistResult | null } | null = null;
+
 	const netlistPreview = $derived.by(() => {
-		try {
-			return emitNetlist(snapshot.circuit, null);
-		} catch {
-			return null;
+		const circuit = snapshot.circuit;
+		if (previewCache?.circuit !== circuit) {
+			let result: NetlistResult | null = null;
+			try {
+				result = emitNetlist(circuit, null);
+			} catch {
+				result = null;
+			}
+			previewCache = { circuit, result };
 		}
+		return previewCache.result;
 	});
 
 	const signalOptions = $derived.by(() => {
@@ -335,9 +347,9 @@
 		}
 		publishAnnotations(
 			outcomes.find((outcome) => outcome.kind === 'op') ?? null,
-			snapshot.circuit
+			runDocument ?? snapshot.circuit
 		);
-		runCircuit = snapshot.circuit;
+		runCircuit = runDocument ?? snapshot.circuit;
 		const solverFailed = outcomes.filter((outcome) => outcome.status !== 'complete').length;
 		const measurementFailed = measurementOutcomes.filter(
 			(outcome) => outcome.status !== 'complete'
@@ -400,6 +412,9 @@
 	}
 
 	let stageUsedInitialConditions = false;
+	// The document the active run was started from; every deck for that run is
+	// emitted from this snapshot so a mid-run edit cannot mix circuits.
+	let runDocument: CircuitDocument | null = null;
 
 	function advanceStage(): void {
 		if (stage === 'op') {
@@ -413,7 +428,7 @@
 			pendingDecks = new Map();
 			stage = 'solve';
 			if (tranEntry) {
-				const emission = emitNetlist(snapshot.circuit, tranEntry, {
+				const emission = emitNetlist(runDocument ?? snapshot.circuit, tranEntry, {
 					useInitialConditions: !opSucceeded
 				});
 				stageUsedInitialConditions = !opSucceeded;
@@ -422,7 +437,7 @@
 			}
 			if (acEntry) {
 				if (opSucceeded) {
-					const emission = emitNetlist(snapshot.circuit, acEntry);
+					const emission = emitNetlist(runDocument ?? snapshot.circuit, acEntry);
 					pendingDecks.set(acEntry.id, { kind: 'ac', deck: emission.deck });
 					stageExpected.push(acEntry.id);
 				} else {
@@ -460,7 +475,7 @@
 			deck: entry.deck,
 			// Svelte state proxies are not structured-cloneable; send plain
 			// snapshots of the stored models so the worker can re-validate.
-			models: snapshot.models.map((model) => ({
+			models: ((runDocument ?? snapshot.circuit).models ?? []).map((model) => ({
 				name: model.name,
 				formatVersion: model.formatVersion,
 				source: model.source
@@ -519,8 +534,8 @@
 			return;
 		}
 		const settledFromHost = /^analog:analysis-failed:(?<analysis>[^:]+):/.exec(diagnostic.id);
-		if (settledFromHost?.groups?.['analysis']) {
-			const analysisId = settledFromHost.groups['analysis'];
+		const analysisId = diagnostic.analysisId ?? settledFromHost?.groups?.['analysis'];
+		if (analysisId) {
 			const message = diagnostic.message.startsWith(`${analysisId}: `)
 				? diagnostic.message.slice(analysisId.length + 2)
 				: diagnostic.message;
@@ -658,6 +673,7 @@
 			}
 		}
 
+		runDocument = snapshot.circuit;
 		stage = 'op';
 		stageExpected = [opEntry.id];
 		stageSettled = new Set();
@@ -672,7 +688,7 @@
 		progressFraction = undefined;
 		progressElapsed = 0;
 		ensureSession();
-		const emission = emitNetlist(snapshot.circuit, opEntry);
+		const emission = emitNetlist(runDocument ?? snapshot.circuit, opEntry);
 		pendingDecks.set(opEntry.id, { kind: 'op', deck: emission.deck });
 		sendStage(pendingDecks);
 	}

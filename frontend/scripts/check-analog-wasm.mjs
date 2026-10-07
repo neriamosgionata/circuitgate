@@ -10,7 +10,7 @@
  * Run from `frontend/`: `node scripts/check-analog-wasm.mjs`
  */
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
@@ -21,11 +21,31 @@ const manifest = JSON.parse(readFileSync(join(engineDir, 'manifest.json'), 'utf8
 const failures = [];
 const fail = (message) => failures.push(message);
 
+// Coverage first: the check must attest the files that actually ship, not a
+// self-declared list. An empty manifest or an unlisted artifact fails here.
+const artifacts = manifest.artifacts ?? {};
+if (Object.keys(artifacts).length === 0) fail('manifest.artifacts is missing or empty');
+if (!Array.isArray(manifest.forbiddenMarkers) || manifest.forbiddenMarkers.length === 0) {
+	fail('manifest.forbiddenMarkers is missing or empty');
+}
+const onDisk = readdirSync(engineDir, { withFileTypes: true })
+	.filter((entry) => entry.isFile() && /\.(js|wasm)$/.test(entry.name))
+	.map((entry) => entry.name)
+	.sort();
+if (onDisk.length === 0) fail('no engine artifacts found on disk');
+const listed = new Set(Object.values(artifacts).map((artifact) => artifact.path));
+for (const name of onDisk) {
+	if (!listed.has(name)) fail(`${name} exists on disk but is not listed in manifest.artifacts`);
+}
+for (const expected of ['ngspice.js', 'ngspice.wasm']) {
+	if (!listed.has(expected)) fail(`manifest.artifacts is missing ${expected}`);
+}
+
 let rawTotal = 0;
 let wireTotal = 0;
 const decoded = new Map();
 
-for (const [name, artifact] of Object.entries(manifest.artifacts)) {
+for (const [name, artifact] of Object.entries(artifacts)) {
 	const bytes = readFileSync(join(engineDir, artifact.path));
 	const sha256 = createHash('sha256').update(bytes).digest('hex');
 	if (bytes.length !== artifact.bytes) {

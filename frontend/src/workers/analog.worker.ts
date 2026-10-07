@@ -38,7 +38,9 @@ interface EngineAsset {
 
 let assetPromise: Promise<EngineAsset> | null = null;
 
-function loadEngineAsset(): Promise<EngineAsset> {
+function loadEngineAsset(
+	report: (update: AnalogProgressUpdate) => void
+): Promise<EngineAsset> {
 	if (!assetPromise) {
 		assetPromise = (async () => {
 			const [{ default: createModule }, { default: wasmUrl }] = await Promise.all([
@@ -47,7 +49,33 @@ function loadEngineAsset(): Promise<EngineAsset> {
 			]);
 			const response = await fetch(wasmUrl);
 			if (!response.ok) throw new Error(`engine asset fetch failed: ${response.status}`);
-			const bytes = new Uint8Array(await response.arrayBuffer());
+			const declared = Number(response.headers.get('content-length') ?? '0');
+			const reader = response.body?.getReader();
+			let bytes: Uint8Array<ArrayBuffer>;
+			if (reader) {
+				const chunks: Uint8Array[] = [];
+				let received = 0;
+				for (;;) {
+					const { done, value } = await reader.read();
+					if (done) break;
+					if (value) {
+						chunks.push(value);
+						received += value.length;
+						report({
+							phase: 'loading-engine',
+							...(declared > 0 ? { fraction: Math.min(1, received / declared) } : {})
+						});
+					}
+				}
+				bytes = new Uint8Array(received);
+				let offset = 0;
+				for (const chunk of chunks) {
+					bytes.set(chunk, offset);
+					offset += chunk.length;
+				}
+			} else {
+				bytes = new Uint8Array(await response.arrayBuffer());
+			}
 			const compiled = await WebAssembly.compile(bytes);
 			return { wasmUrl, compiled, createModule };
 		})().catch((error: unknown) => {
@@ -119,7 +147,7 @@ const runner = async (
 	}
 
 	report({ phase: 'loading-engine' });
-	const asset = await loadEngineAsset();
+	const asset = await loadEngineAsset((update) => report(update));
 
 	const engineDiagnostics: string[] = [];
 	const started = performance.now();

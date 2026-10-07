@@ -9,6 +9,7 @@ export type AnalogDiagnosticCode =
 	| 'parameter-cap'
 	| 'parameter-invalid'
 	| 'analysis-invalid'
+	| 'analysis-failed'
 	| 'unbound-measurement'
 	| 'unconnected-pin'
 	| 'load-failure';
