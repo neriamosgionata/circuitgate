@@ -259,7 +259,6 @@
 		}
 		drag = { kind: 'none' };
 		marquee = null;
-		overlaySignature = '';
 	}
 
 	function onWheel(event: WheelEvent) {
