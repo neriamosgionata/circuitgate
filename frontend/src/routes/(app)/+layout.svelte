@@ -87,7 +87,7 @@
 
 	nav a.active {
 		color: var(--ink);
-		background: linear-gradient(180deg, transparent 56%, var(--highlight) 56%);
+		background: linear-gradient(180deg, transparent 8%, var(--highlight) 8%);
 	}
 
 	.email {
