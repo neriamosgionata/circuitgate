@@ -11,6 +11,7 @@
 	} from '../../../sim/analog/decimate';
 	import type { AnalogResultVariable } from '../../../sim/analog/protocol';
 	import type { AnalysisOutcome } from '../../../sim/analog/results';
+	import { TRACE_COLORS } from '../../../sim/analog/results';
 
 	interface Props {
 		outcome: AnalysisOutcome;
@@ -18,7 +19,6 @@
 
 	let { outcome }: Props = $props();
 
-	const TRACE_COLORS = ['#1565c0', '#c62828', '#2e7d32', '#6a1b9a', '#ef6c00', '#00838f'];
 	const PAD_LEFT = 44;
 	const PAD_RIGHT = 12;
 	const PAD_TOP = 6;
@@ -524,99 +524,85 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		min-height: 240px;
+		font-size: 12px;
+		color: var(--ink);
 	}
 
 	.toolbar {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 6px;
-		flex-wrap: wrap;
 	}
 
-	button {
-		font-size: 11px;
+	.toolbar button {
 		padding: 3px 8px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		background: #ffffff;
-		cursor: pointer;
+		font-size: 11px;
 	}
 
 	.resolution {
+		font-family: var(--font-mono);
 		font-size: 11px;
-		color: #607d8b;
+		color: var(--ink-soft);
+		margin-left: auto;
 	}
 
 	.legend {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: 6px 10px;
+		padding: 0;
+		margin: 0;
+		list-style: none;
 	}
 
 	.trace {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 5px;
+		font-family: var(--font-mono);
 		font-size: 11px;
 	}
 
-	.trace.active {
-		border-color: #1565c0;
-		box-shadow: inset 0 0 0 1px #1565c0;
-	}
-
-	.trace.hidden {
-		opacity: 0.45;
-	}
-
 	.swatch {
-		width: 10px;
-		height: 10px;
-		border-radius: 2px;
-		display: inline-block;
+		width: 14px;
+		height: 3px;
+		flex: none;
 	}
 
 	.name {
-		font-weight: 600;
-	}
-
-	.corner {
-		color: #607d8b;
+		color: var(--ink);
 	}
 
 	.plot {
 		position: relative;
-		flex: 1;
-		min-height: 180px;
-		border: 1px solid #cfd8dc;
-		border-radius: 4px;
+		height: 260px;
+		background: var(--sheet-sunk);
+		border: var(--rule-faint);
+		border-radius: 2px;
 		overflow: hidden;
-		touch-action: none;
 	}
 
-	canvas {
+	.plot canvas {
 		display: block;
 		width: 100%;
 		height: 100%;
 	}
 
 	.readout {
-		position: absolute;
-		left: 8px;
-		bottom: 4px;
+		font-family: var(--font-mono);
 		font-size: 11px;
-		color: #37474f;
-		background: rgba(255, 255, 255, 0.88);
-		border: 1px solid #eceff1;
-		border-radius: 3px;
-		padding: 1px 5px;
-		pointer-events: none;
+		color: var(--ink);
+		background: var(--highlight-soft);
+		border: var(--rule-faint);
+		border-radius: 2px;
+		padding: 2px 6px;
+		white-space: nowrap;
 	}
 
 	.empty {
-		font-size: 12px;
-		color: #90a4ae;
-		margin: 12px 0;
+		color: var(--ink-soft);
+		font-size: 13px;
+		margin: 4px 0;
 	}
 </style>

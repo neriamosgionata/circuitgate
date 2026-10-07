@@ -52,47 +52,38 @@
 	.diagnostics {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 6px;
+		font-size: 13px;
 	}
 
 	.entry {
 		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 4px 8px;
-		font-size: 12px;
-		border: 1px solid #ffcc80;
-		border-radius: 4px;
-		background: #fff8e1;
-		color: #6d4c41;
-	}
-
-	.entry.error {
-		border-color: #ef9a9a;
-		background: #ffebee;
-		color: #b71c1c;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 8px;
+		padding: 6px 8px;
+		background: var(--sheet-raised);
+		border: 2px solid var(--stamp-red);
+		border-radius: 2px;
+		color: var(--ink);
 	}
 
 	.kind {
-		font-size: 10px;
-		text-transform: uppercase;
+		font-family: var(--font-head);
+		font-size: 11px;
 		font-weight: 700;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--stamp-red);
 	}
 
 	.message {
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		flex: 1 1 auto;
 	}
 
-	button {
+	.locate-net,
+	.dismiss {
+		padding: 2px 7px;
 		font-size: 11px;
-		padding: 2px 6px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		background: #ffffff;
-		cursor: pointer;
 	}
 </style>

@@ -81,7 +81,7 @@
 			</label>
 			{#if changeError}<p class="error" role="alert">{changeError}</p>{/if}
 			{#if changeMessage}<p class="success" role="status">{changeMessage}</p>{/if}
-			<button type="submit" data-testid="change-password" disabled={changing}>
+			<button type="submit" class="primary" data-testid="change-password" disabled={changing}>
 				{changing ? 'Saving…' : 'Change password'}
 			</button>
 		</form>
@@ -99,7 +99,7 @@
 				<button type="button" onclick={() => (confirmingLogoutAll = false)}>Cancel</button>
 			</div>
 		{:else}
-			<button type="button" data-testid="logout-all" onclick={() => (confirmingLogoutAll = true)}>
+			<button type="button" class="danger" data-testid="logout-all" onclick={() => (confirmingLogoutAll = true)}>
 				Log out all devices
 			</button>
 		{/if}
@@ -110,97 +110,103 @@
 <style>
 	.account {
 		flex: 1;
-		padding: 20px;
-		background: #eceff1;
+		width: 100%;
+		max-width: 1080px;
+		margin: 0 auto;
+		padding: 18px clamp(14px, 4vw, 36px) 30px;
 		overflow: auto;
 	}
 
 	h1 {
 		margin: 0;
-		font-size: 24px;
-		color: #263238;
-	}
-
-	h2 {
-		margin: 0 0 10px;
-		font-size: 16px;
-		color: #37474f;
+		font-size: 30px;
+		color: var(--ink);
 	}
 
 	.muted {
-		color: #607d8b;
+		color: var(--ink-soft);
 		font-size: 13px;
 	}
 
 	.card {
-		max-width: 440px;
+		max-width: 460px;
 		margin-top: 16px;
-		padding: 16px;
-		background: #ffffff;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
+		overflow: hidden;
 	}
 
-	form {
+	.card h2 {
+		margin: 0;
+		padding: 8px 16px;
+		border-bottom: var(--rule-hair);
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent);
+		font-size: 16px;
+		color: var(--ink);
+	}
+
+	.card form,
+	.card .confirm,
+	.card .muted {
+		padding: 12px 16px 16px;
+	}
+
+	.card .muted {
+		margin: 0;
+		padding-bottom: 0;
+	}
+
+	.card form {
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
 	}
 
-	label {
+	.card label {
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		font-size: 13px;
-		color: #455a64;
+		font-size: 12px;
+		color: var(--ink-soft);
+	}
+
+	.card label span {
+		font-family: var(--font-head);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	input[type='password'] {
-		padding: 8px 10px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		font-size: 14px;
-	}
-
-	button {
-		align-self: flex-start;
-		padding: 8px 12px;
-		border: none;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 14px;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
-	.confirm {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		font-size: 13px;
-		color: #455a64;
+		font-family: var(--font-mono);
 	}
 
 	.error {
 		margin: 0;
 		padding: 8px;
-		border-radius: 4px;
-		background: #ffebee;
-		color: #b71c1c;
+		border: 2px solid var(--stamp-red);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-red);
 		font-size: 13px;
 	}
 
 	.success {
 		margin: 0;
 		padding: 8px;
-		border-radius: 4px;
-		background: #e8f5e9;
-		color: #1b5e20;
+		border: 2px solid var(--stamp-green);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-green);
+		font-size: 13px;
+	}
+
+	.confirm {
+		display: flex;
+		align-items: center;
+		gap: 10px;
 		font-size: 13px;
 	}
 </style>

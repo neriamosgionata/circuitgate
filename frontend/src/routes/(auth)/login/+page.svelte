@@ -70,7 +70,7 @@
 		<span>Remember me</span>
 	</label>
 	{#if error}<p class="error" role="alert">{error}</p>{/if}
-	<button type="submit" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</button>
+	<button type="submit" class="primary" disabled={submitting}>{submitting ? 'Signing in…' : 'Sign in'}</button>
 </form>
 
 <p class="secondary">
@@ -81,9 +81,9 @@
 
 <style>
 	h1 {
-		font-size: 22px;
+		font-size: 24px;
 		margin: 0;
-		color: #263238;
+		color: var(--ink);
 	}
 
 	form {
@@ -96,16 +96,20 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		font-size: 13px;
-		color: #455a64;
+		font-size: 12px;
+		color: var(--ink-soft);
+	}
+
+	label span {
+		font-family: var(--font-head);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	input[type='email'],
 	input[type='password'] {
-		padding: 8px 10px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		font-size: 14px;
+		font-family: var(--font-mono);
 	}
 
 	.checkbox {
@@ -114,39 +118,25 @@
 		gap: 8px;
 	}
 
-	button[type='submit'] {
-		padding: 9px 12px;
-		border: none;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 14px;
-		cursor: pointer;
-	}
-
-	button[type='submit']:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
 	.error {
 		margin: 0;
 		padding: 8px;
-		border-radius: 4px;
-		background: #ffebee;
-		color: #b71c1c;
+		border: 2px solid var(--stamp-red);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-red);
 		font-size: 13px;
 	}
 
 	.field-error {
 		margin: -6px 0 0;
-		color: #c62828;
+		color: var(--stamp-red);
 		font-size: 12px;
 	}
 
 	.secondary {
 		margin: 0;
 		font-size: 13px;
-		color: #607d8b;
+		color: var(--ink-soft);
 	}
 </style>

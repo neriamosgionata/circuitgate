@@ -748,16 +748,15 @@
 		flex-direction: column;
 		flex: 1;
 		min-height: 0;
-		background: #eceff1;
 	}
 
 	.toolbar {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 8px 12px;
-		background: #ffffff;
-		border-bottom: 1px solid #cfd8dc;
+		padding: 7px 12px;
+		background: var(--sheet);
+		border-bottom: 2px solid var(--ink);
 		flex-wrap: wrap;
 	}
 
@@ -770,28 +769,31 @@
 	.crumbs button {
 		font-size: 12px;
 		padding: 3px 7px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		background: #f5f7f8;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
+		background: var(--sheet-raised);
 		cursor: pointer;
 	}
 
 	.sep {
-		color: #90a4ae;
+		color: var(--ink-faint);
 	}
 
 	.project-name input {
 		padding: 5px 8px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
+		font-family: var(--font-mono);
 		font-size: 13px;
 		font-weight: 600;
-		color: #263238;
+		color: var(--ink);
+		background: var(--sheet-raised);
 	}
 
 	.muted {
+		font-family: var(--font-mono);
 		font-size: 12px;
-		color: #78909c;
+		color: var(--ink-soft);
 	}
 
 	.spacer {
@@ -800,40 +802,41 @@
 
 	.toolbar button {
 		padding: 6px 10px;
-		border: 1px solid #90a4ae;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 13px;
-		cursor: pointer;
-	}
-
-	.toolbar button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.back {
-		font-size: 13px;
-		color: #1565c0;
+		font-family: var(--font-head);
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	.saved {
-		font-size: 12px;
-		color: #2e7d32;
+		display: inline-block;
+		font-family: var(--font-head);
+		font-weight: 700;
+		font-size: 11px;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--stamp-green);
+		border: 2px solid var(--stamp-green);
+		border-radius: 3px;
+		padding: 1px 6px;
+		transform: rotate(-2deg);
 	}
 
 	.error-inline {
 		font-size: 12px;
-		color: #c62828;
+		color: var(--stamp-red);
 	}
 
 	.conflict {
 		padding: 10px 12px;
-		background: #fff8e1;
-		border-bottom: 1px solid #ffe082;
+		background: var(--sheet);
+		border-bottom: 2px solid var(--ink);
 		font-size: 13px;
-		color: #5d4037;
+		color: var(--ink);
 	}
 
 	.conflict p {
@@ -842,17 +845,11 @@
 
 	.conflict-actions {
 		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
 		gap: 10px;
 	}
 
 	.conflict-actions button {
 		padding: 5px 9px;
-		border: 1px solid #bcaaa4;
-		border-radius: 4px;
-		background: #ffffff;
-		cursor: pointer;
 	}
 
 	.conflict form {
@@ -871,8 +868,9 @@
 
 	.conflict form input {
 		padding: 5px 8px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
+		font-size: 13px;
 	}
 
 	.editor {
@@ -890,27 +888,38 @@
 		min-height: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 8px;
 	}
 
 	.canvas-slot {
 		flex: 1 1 auto;
 		min-height: 420px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
+		overflow: hidden;
 	}
 
 	.invalid {
 		padding: 24px;
 		font-size: 14px;
-		color: #263238;
+		color: var(--ink);
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
 	}
 
 	.visually-hidden {
 		position: absolute;
 		width: 1px;
 		height: 1px;
+		padding: 0;
+		margin: -1px;
 		overflow: hidden;
-		clip: rect(0 0 0 0);
+		clip: rect(0, 0, 0, 0);
 		white-space: nowrap;
+		border: 0;
 	}
 
 	.import-modal {
@@ -922,12 +931,12 @@
 		width: min(560px, calc(100vw - 32px));
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
 		padding: 16px;
-		background: #ffffff;
-		border: 1px solid #b0bec5;
-		border-radius: 8px;
-		box-shadow: 0 12px 32px rgba(38, 50, 56, 0.25);
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 3px;
+		box-shadow: 0 12px 32px rgba(29, 29, 27, 0.28);
 	}
 
 	.import-modal h2 {
@@ -936,11 +945,11 @@
 	}
 
 	.import-modal textarea {
-		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-family: var(--font-mono);
 		font-size: 12px;
 		padding: 8px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
 		resize: vertical;
 	}
 
@@ -952,21 +961,5 @@
 
 	.import-actions button {
 		padding: 6px 12px;
-		border: 1px solid #90a4ae;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 13px;
-		cursor: pointer;
-	}
-
-	.import-actions button:last-child {
-		background: #ffffff;
-		color: #263238;
-	}
-
-	.import-actions button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 </style>

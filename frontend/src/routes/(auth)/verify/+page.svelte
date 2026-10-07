@@ -75,7 +75,7 @@
 		</label>
 		{#if resendError}<p class="field-error" role="alert">{resendError}</p>{/if}
 		{#if resendStatus}<p class="success" role="status">{resendStatus}</p>{/if}
-		<button type="submit" disabled={resending}>{resending ? 'Sending…' : 'Resend verification email'}</button>
+		<button type="submit" class="primary" disabled={resending}>{resending ? 'Sending…' : 'Resend verification email'}</button>
 	</form>
 {/if}
 
@@ -83,9 +83,14 @@
 
 <style>
 	h1 {
-		font-size: 22px;
+		font-size: 24px;
 		margin: 0;
-		color: #263238;
+		color: var(--ink);
+	}
+
+	p {
+		font-size: 14px;
+		color: var(--ink-soft);
 	}
 
 	form {
@@ -98,75 +103,58 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-		font-size: 13px;
-		color: #455a64;
+		font-size: 12px;
+		color: var(--ink-soft);
+	}
+
+	label span {
+		font-family: var(--font-head);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
 	}
 
 	input[type='email'] {
-		padding: 8px 10px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		font-size: 14px;
-	}
-
-	button {
-		padding: 9px 12px;
-		border: none;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 14px;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
+		font-family: var(--font-mono);
 	}
 
 	.error {
-		padding: 12px;
-		border-radius: 6px;
-		background: #ffebee;
-		color: #b71c1c;
-		font-size: 14px;
-	}
-
-	.error p {
-		margin: 0 0 4px;
-	}
-
-	.error .detail {
+		padding: 10px;
+		border: 2px solid var(--stamp-red);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-red);
 		font-size: 13px;
 	}
 
 	.field-error {
-		margin: 0;
-		color: #c62828;
+		margin: -6px 0 0;
+		color: var(--stamp-red);
 		font-size: 12px;
 	}
 
 	.success {
 		margin: 0;
-		color: #1b5e20;
+		padding: 10px;
+		border: 2px solid var(--stamp-green);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-green);
 		font-size: 13px;
 	}
 
 	.notice {
-		padding: 12px;
-		border-radius: 6px;
-		background: #e8f5e9;
-		color: #1b5e20;
+		padding: 10px;
+		border: 2px solid var(--stamp-green);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-green);
 		font-size: 14px;
-	}
-
-	.notice p {
-		margin: 0 0 6px;
 	}
 
 	.secondary {
 		margin: 0;
 		font-size: 13px;
-		color: #607d8b;
+		color: var(--ink-soft);
 	}
 </style>

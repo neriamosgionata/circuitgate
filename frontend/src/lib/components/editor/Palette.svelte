@@ -184,46 +184,48 @@
 
 <style>
 	.palette {
-		width: 220px;
-		min-width: 220px;
+		width: 228px;
+		min-width: 228px;
 		overflow-y: auto;
 		padding: 12px;
-		background: #ffffff;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
 	}
 
 	h2 {
 		font-size: 14px;
 		margin: 0 0 8px;
+		padding-bottom: 4px;
+		border-bottom: 2px solid var(--ink);
 	}
 
 	h3 {
-		font-size: 12px;
+		font-family: var(--font-head);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: #607d8b;
+		color: var(--ink-soft);
 		margin: 12px 0 6px;
 	}
 
 	.kinds {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: 5px;
 	}
 
 	button {
-		font-size: 12px;
-		padding: 3px 7px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		background: #f5f7f8;
-		cursor: pointer;
+		font-size: 11px;
+		padding: 4px 7px;
 	}
 
 	button.active {
-		background: #1565c0;
-		border-color: #1565c0;
-		color: #ffffff;
+		border: 2px solid var(--ink);
+		background: var(--sheet-raised);
+		box-shadow: 0 0 0 2px var(--highlight);
 	}
 
 	button.wide {
@@ -234,8 +236,8 @@
 
 	.pins {
 		display: flex;
-		flex-direction: column;
-		gap: 4px;
+		flex-wrap: wrap;
+		gap: 6px;
 		margin-bottom: 8px;
 	}
 
@@ -258,11 +260,11 @@
 
 	.muted {
 		font-size: 11px;
-		color: #78909c;
+		color: var(--ink-soft);
 	}
 
 	.error {
 		font-size: 11px;
-		color: #c62828;
+		color: var(--stamp-red);
 	}
 </style>

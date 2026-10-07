@@ -63,33 +63,35 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		flex: 1;
-		min-height: 100px;
+		font-size: 13px;
+		color: var(--ink);
 	}
 
 	.measurement {
-		border: 1px solid #cfd8dc;
-		border-radius: 4px;
+		border: var(--rule-hair);
+		border-radius: 2px;
+		background: var(--sheet-raised);
 		padding: 6px 8px;
-		font-size: 12px;
 	}
 
 	.measurement.failed {
-		background: #fff8e1;
-		border-color: #ffcc80;
+		border: 2px solid var(--stamp-red);
 	}
 
 	.head {
 		display: flex;
-		align-items: baseline;
-		gap: 8px;
 		flex-wrap: wrap;
+		align-items: baseline;
+		gap: 4px 10px;
 	}
 
 	.type {
+		font-family: var(--font-head);
+		font-size: 11px;
 		font-weight: 700;
+		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		font-size: 10px;
+		color: var(--ink-soft);
 	}
 
 	.name {
@@ -97,29 +99,34 @@
 	}
 
 	.signal {
-		color: #607d8b;
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--ink-soft);
 	}
 
 	.value {
 		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 13px;
 		font-variant-numeric: tabular-nums;
 	}
 
 	.samples {
 		display: block;
-		color: #90a4ae;
+		color: var(--ink-soft);
 		font-size: 11px;
+		font-family: var(--font-mono);
 		margin-top: 2px;
 	}
 
 	.diagnostic {
 		margin-top: 4px;
-		color: #b71c1c;
+		color: var(--stamp-red);
+		font-size: 12px;
 	}
 
 	.empty {
-		font-size: 12px;
-		color: #90a4ae;
-		margin: 12px 0;
+		font-size: 13px;
+		color: var(--ink-soft);
 	}
 </style>

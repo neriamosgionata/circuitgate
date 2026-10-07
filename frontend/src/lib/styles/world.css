@@ -1,0 +1,342 @@
+@import './world-fonts.css';
+
+/*
+ * Dept. Notice Board — the CircuitGate world layer.
+ * Board ground and paper sheets, toner text, highlighter marks, stamp states,
+ * biro wiring. Type, palette, density, and the mark/stamp signature only;
+ * layout and navigation stay product-native.
+ */
+
+:root {
+	--board: #b9a482;
+	--board-deep: #a08c6d;
+	--sheet: #e7e3d9;
+	--sheet-raised: #efece3;
+	--sheet-sunk: #dcd7ca;
+	--ink: #1d1d1b;
+	--ink-soft: #4a463f;
+	--ink-faint: #6f6a60;
+	--rule: #8a8377;
+	--rule-soft: #bbb3a3;
+	--highlight: #ffe23d;
+	--highlight-soft: #fff3a8;
+	--stamp-red: #c0271b;
+	--stamp-green: #1f6b43;
+	--biro: #1d4ed8;
+	--biro-soft: #6b8ce8;
+	--tape: rgba(214, 197, 160, 0.55);
+	--focus: #1d4ed8;
+
+	--font-head: 'Saira Condensed', 'Arial Narrow', sans-serif;
+	--font-body: 'Public Sans', system-ui, sans-serif;
+	--font-mono: 'Courier Prime', 'Courier New', monospace;
+
+	--rule-hair: 1px solid var(--rule);
+	--rule-faint: 1px solid var(--rule-soft);
+	--shadow-sheet: 0 1px 0 rgba(29, 29, 27, 0.18), 0 3px 6px rgba(29, 29, 27, 0.12);
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	color-scheme: light;
+}
+
+body {
+	margin: 0;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(29, 29, 27, 0.06)),
+		var(--board);
+	color: var(--ink);
+	font-family: var(--font-body);
+	font-size: 14px;
+	line-height: 1.45;
+}
+
+::selection {
+	background: var(--highlight);
+	color: var(--ink);
+}
+
+input,
+textarea,
+select {
+	caret-color: var(--biro);
+}
+
+h1,
+h2,
+h3,
+h4 {
+	font-family: var(--font-head);
+	font-weight: 600;
+	letter-spacing: 0.01em;
+	text-transform: uppercase;
+	margin: 0 0 0.15em;
+	color: var(--ink);
+}
+
+h1 {
+	font-size: 26px;
+}
+
+h2 {
+	font-size: 20px;
+}
+
+h3 {
+	font-size: 15px;
+	letter-spacing: 0.06em;
+}
+
+p {
+	margin: 0.35em 0 0.75em;
+}
+
+a {
+	color: var(--biro);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
+}
+
+a:hover {
+	text-decoration-thickness: 2px;
+}
+
+code,
+kbd,
+samp,
+.mono {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+/* Focus: one visible biro ring everywhere. */
+:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 1px;
+}
+
+/* Browser surfaces belong to the world too. */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--board-deep) transparent;
+}
+
+*::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+	background: var(--board-deep);
+	border: 2px solid var(--board);
+}
+
+*::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/* ---------- Buttons: stapled strips ---------- */
+
+button,
+.button {
+	font-family: var(--font-head);
+	font-weight: 600;
+	font-size: 12px;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--ink);
+	background: var(--sheet-raised);
+	border: var(--rule-hair);
+	border-bottom-width: 2px;
+	border-radius: 2px;
+	padding: 5px 10px;
+	cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+	background: var(--highlight-soft);
+}
+
+button:active:not(:disabled) {
+	transform: translateY(1px);
+}
+
+button:disabled {
+	color: var(--ink-faint);
+	background: var(--sheet-sunk);
+	cursor: not-allowed;
+}
+
+button.primary {
+	background: var(--ink);
+	color: var(--sheet);
+	border-color: var(--ink);
+}
+
+button.primary:hover:not(:disabled) {
+	background: var(--biro);
+	border-color: var(--biro);
+	color: #fff;
+}
+
+/* Destructive / void actions read as the red stamp ink. */
+button.danger {
+	color: var(--stamp-red);
+	border-color: var(--stamp-red);
+	background: var(--sheet-raised);
+}
+
+/* ---------- Inputs: ruled paper fields ---------- */
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+input[type='search'],
+select,
+textarea {
+	font-family: var(--font-mono);
+	font-size: 13px;
+	color: var(--ink);
+	background: var(--sheet-raised);
+	border: var(--rule-hair);
+	border-radius: 2px;
+	padding: 5px 8px;
+}
+
+input::placeholder,
+textarea::placeholder {
+	color: var(--ink-soft);
+	opacity: 1;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+	border-color: var(--biro);
+}
+
+input[type='checkbox'] {
+	accent-color: var(--biro);
+}
+
+label {
+	font-size: 12px;
+	color: var(--ink-soft);
+}
+
+/* ---------- Sheets ---------- */
+
+.sheet {
+	background: var(--sheet);
+	border: var(--rule-hair);
+	border-radius: 2px;
+	box-shadow: var(--shadow-sheet);
+}
+
+.sheet-head {
+	display: flex;
+	align-items: baseline;
+	gap: 10px;
+	padding: 6px 10px;
+	border-bottom: var(--rule-hair);
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent);
+}
+
+.sheet-head h2,
+.sheet-head h3 {
+	margin: 0;
+}
+
+.sheet-body {
+	padding: 10px;
+}
+
+/* Ruled section heading, as on a printed form. */
+.form-rule {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-family: var(--font-head);
+	font-size: 12px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--ink-soft);
+	margin: 10px 0 6px;
+}
+
+.form-rule::after {
+	content: '';
+	flex: 1;
+	border-top: var(--rule-faint);
+}
+
+/* ---------- Stamp states ---------- */
+
+.stamp {
+	display: inline-block;
+	font-family: var(--font-head);
+	font-weight: 700;
+	font-size: 11px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--stamp-green);
+	border: 2px solid var(--stamp-green);
+	border-radius: 3px;
+	padding: 2px 7px;
+	transform: rotate(-2deg);
+	background: transparent;
+}
+
+.stamp.is-void {
+	color: var(--stamp-red);
+	border-color: var(--stamp-red);
+}
+
+.stamp.is-muted {
+	color: var(--ink-faint);
+	border-color: var(--ink-faint);
+}
+
+/* ---------- Highlighter mark (the signature move) ---------- */
+
+.mark {
+	display: inline-block;
+	background: linear-gradient(180deg, transparent 42%, var(--highlight) 42%, var(--highlight) 94%, transparent 94%);
+	padding: 0 3px;
+}
+
+.is-marked {
+	background: linear-gradient(180deg, transparent 42%, var(--highlight) 42%, var(--highlight) 94%, transparent 94%);
+}
+
+/* ---------- Firmware: the one authored motion ---------- */
+
+@keyframes stamp-press {
+	0% {
+		transform: rotate(-2deg) scale(1.18);
+		opacity: 0;
+	}
+	55% {
+		transform: rotate(-2deg) scale(0.98);
+		opacity: 1;
+	}
+	100% {
+		transform: rotate(-2deg) scale(1);
+		opacity: 1;
+	}
+}
+
+.stamp.just-pressed {
+	animation: stamp-press 140ms steps(2, end);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.stamp.just-pressed {
+		animation: none;
+	}
+}

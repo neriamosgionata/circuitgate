@@ -270,25 +270,29 @@
 
 <style>
 	.inspector {
-		width: 250px;
-		min-width: 250px;
+		width: 252px;
+		min-width: 252px;
 		overflow-y: auto;
 		padding: 12px;
-		background: #ffffff;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
 	}
 
 	h2 {
 		font-size: 14px;
 		margin: 0 0 8px;
+		padding-bottom: 4px;
+		border-bottom: 2px solid var(--ink);
 	}
 
 	fieldset {
-		border: 1px solid #eceff1;
-		border-radius: 4px;
+		border: var(--rule-faint);
+		border-radius: 2px;
 		padding: 8px;
 		margin: 0 0 10px;
+		background: var(--sheet-raised);
 	}
 
 	.readonly-guard {
@@ -299,9 +303,12 @@
 	}
 
 	legend {
+		font-family: var(--font-head);
 		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: #607d8b;
+		color: var(--ink-soft);
 		padding: 0 4px;
 	}
 
@@ -310,19 +317,22 @@
 		flex-direction: column;
 		gap: 2px;
 		font-size: 11px;
-		color: #546e7a;
+		color: var(--ink-soft);
 		margin-bottom: 8px;
 	}
 
 	input,
 	select,
 	textarea {
+		font-family: var(--font-mono);
 		font-size: 12px;
-		padding: 3px 4px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
+		padding: 4px 5px;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
 		width: 100%;
 		box-sizing: border-box;
+		color: var(--ink);
+		background: var(--sheet);
 	}
 
 	input[type='checkbox'] {
@@ -332,12 +342,12 @@
 
 	.muted {
 		font-size: 11px;
-		color: #78909c;
+		color: var(--ink-soft);
+		margin: 0 0 6px;
 	}
 
 	.error {
 		font-size: 11px;
-		color: #c62828;
-		margin: 0 0 6px;
+		color: var(--stamp-red);
 	}
 </style>

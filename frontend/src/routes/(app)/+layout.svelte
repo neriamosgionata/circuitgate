@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { logout } from '#lib/api/auth';
 	import { apiErrorMessage } from '#lib/api/client';
 	import type { LayoutProps } from './$types';
@@ -25,9 +26,9 @@
 <header class="app-nav">
 	<a class="brand" href="/projects">CircuitGate</a>
 	<nav>
-		<a href="/projects">Projects</a>
-		<a href="/teams">Teams</a>
-		<a href="/account">Account</a>
+		<a href="/projects" class:active={page.url.pathname === '/projects'}>Projects</a>
+		<a href="/teams" class:active={page.url.pathname === '/teams'}>Teams</a>
+		<a href="/account" class:active={page.url.pathname === '/account'}>Account</a>
 		<span class="email" title={data.user.email}>{data.user.email}</span>
 		<button type="button" data-testid="logout" onclick={signOut} disabled={signingOut}>Log out</button>
 	</nav>
@@ -38,41 +39,55 @@
 </main>
 
 <style>
-	:global(body) {
-		margin: 0;
-		font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-	}
-
 	.app-nav {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 16px;
-		padding: 8px 16px;
-		background: #263238;
-		color: #eceff1;
+		flex-wrap: wrap;
+		row-gap: 4px;
+		padding: 7px 16px;
+		background: linear-gradient(180deg, var(--board-deep), #94805d);
+		border-bottom: 2px solid var(--ink);
+		color: var(--ink);
 	}
 
 	.brand {
+		font-family: var(--font-head);
 		font-weight: 700;
-		color: #ffffff;
+		font-size: 16px;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--ink);
 		text-decoration: none;
 	}
 
 	nav {
 		display: flex;
 		align-items: center;
-		gap: 14px;
-		font-size: 13px;
+		flex-wrap: wrap;
+		row-gap: 4px;
 	}
 
 	nav a {
-		color: #cfd8dc;
+		padding: 4px 8px;
+		border-bottom: 3px solid transparent;
+		font-family: var(--font-head);
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink);
 		text-decoration: none;
 	}
 
 	nav a:hover {
-		color: #ffffff;
+		color: var(--ink);
+		border-bottom-color: var(--highlight);
+	}
+
+	nav a.active {
+		color: var(--ink);
+		background: linear-gradient(180deg, transparent 56%, var(--highlight) 56%);
 	}
 
 	.email {
@@ -80,29 +95,22 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		color: #90a4ae;
+		font-family: var(--font-mono);
+		font-size: 12px;
+		color: var(--ink-soft);
 	}
 
 	button {
-		padding: 5px 10px;
-		border: 1px solid #546e7a;
-		border-radius: 4px;
-		background: transparent;
-		color: #eceff1;
-		font-size: 13px;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
+		margin-left: 4px;
+		white-space: nowrap;
 	}
 
 	.nav-error {
 		margin: 0;
 		padding: 6px 16px;
-		background: #ffebee;
-		color: #b71c1c;
+		background: var(--sheet);
+		border-bottom: 2px solid var(--stamp-red);
+		color: var(--stamp-red);
 		font-size: 13px;
 	}
 

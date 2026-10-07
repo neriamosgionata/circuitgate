@@ -373,7 +373,7 @@
 				const worldRect = viewportWorldRect(viewport, width, height);
 				const startX = Math.floor(worldRect.x / step) * step;
 				const startY = Math.floor(worldRect.y / step) * step;
-				grid.strokeStyle = '#eceff1';
+				grid.strokeStyle = '#d8d2c2';
 				grid.lineWidth = 1;
 				for (let x = startX; x <= worldRect.x + worldRect.width; x += step) {
 					const screen = worldToScreen(viewport, { x, y: 0 });
@@ -409,7 +409,7 @@
 		}
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, size.width, size.height);
-		ctx.fillStyle = '#fafafa';
+		ctx.fillStyle = '#f2efe6';
 		ctx.fillRect(0, 0, size.width, size.height);
 		ctx.drawImage(gridFor(size.width, size.height, dpr), 0, 0, size.width, size.height);
 
@@ -448,8 +448,8 @@
 
 		// Bodies as one fill/stroke pass, labels grouped by font, pins grouped
 		// by colour: per-component state changes dominate at 2,000 components.
-		ctx.fillStyle = '#ffffff';
-		ctx.strokeStyle = '#37474f';
+		ctx.fillStyle = '#fbf9f4';
+		ctx.strokeStyle = '#1d1d1b';
 		ctx.lineWidth = 1.5;
 		ctx.beginPath();
 		for (const component of visible.components) {
@@ -466,8 +466,8 @@
 
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		ctx.font = '12px sans-serif';
-		ctx.fillStyle = '#263238';
+		ctx.font = '12px "Public Sans", sans-serif';
+		ctx.fillStyle = '#1d1d1b';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -479,8 +479,8 @@
 				Math.max(width - 6, 10)
 			);
 		}
-		ctx.font = '9px sans-serif';
-		ctx.fillStyle = '#78909c';
+		ctx.font = '9px "Public Sans", sans-serif';
+		ctx.fillStyle = '#6f6a60';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -537,7 +537,7 @@
 		if (marquee) {
 			const topLeft = worldToScreen(viewport, { x: marquee.x, y: marquee.y });
 			ctx.save();
-			ctx.strokeStyle = '#1565c0';
+			ctx.strokeStyle = '#1d4ed8';
 			ctx.setLineDash([4, 3]);
 			ctx.strokeRect(topLeft.x, topLeft.y, marquee.width * viewport.scale, marquee.height * viewport.scale);
 			ctx.restore();
@@ -546,7 +546,7 @@
 			const from = worldToScreen(viewport, wirePreview.from);
 			const to = worldToScreen(viewport, wirePreview.to);
 			ctx.save();
-			ctx.strokeStyle = '#d84315';
+			ctx.strokeStyle = '#c0271b';
 			ctx.setLineDash([5, 4]);
 			ctx.beginPath();
 			ctx.moveTo(from.x, from.y);
@@ -698,9 +698,9 @@
 		height: 100%;
 		min-height: 420px;
 		overflow: hidden;
-		background: #fafafa;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet-sunk);
+		border: var(--rule-faint);
+		border-radius: 2px;
 	}
 
 	canvas {
@@ -721,27 +721,28 @@
 
 	.selection {
 		position: absolute;
-		border: 2px solid #1565c0;
+		border: 2px solid var(--biro);
 		border-radius: 2px;
 		box-sizing: border-box;
+		box-shadow: 0 0 0 2px var(--highlight);
 	}
 
 	.annotation {
 		position: absolute;
 		transform: translate(-50%, -50%);
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid #90caf9;
+		background: var(--highlight-soft);
+		border: 1px solid var(--biro);
 		border-radius: 3px;
 		padding: 1px 4px;
 		font-size: 10px;
-		font-family: monospace;
-		color: #0d47a1;
+		font-family: var(--font-mono);
+		color: var(--biro);
 		white-space: nowrap;
 	}
 
 	.annotation.component {
-		border-color: #a5d6a7;
-		color: #1b5e20;
+		border-color: var(--stamp-green);
+		color: var(--stamp-green);
 	}
 
 	.controls {
@@ -751,10 +752,11 @@
 		display: flex;
 		gap: 6px;
 		align-items: center;
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
 		padding: 6px 8px;
+		box-shadow: var(--shadow-sheet);
 	}
 
 	.controls button {
@@ -765,7 +767,7 @@
 
 	.hint {
 		font-size: 11px;
-		color: #607d8b;
+		color: var(--ink-soft);
 		max-width: 340px;
 	}
 </style>

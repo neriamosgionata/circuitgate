@@ -25,12 +25,12 @@ export interface SignalPresentation {
 }
 
 export const SIGNAL_COLORS = {
-	low: '#37474f',
-	high: '#2e7d32',
-	unknown: '#b26a00',
-	highZ: '#6a1b9a',
-	oscillating: '#d84315',
-	idle: '#90a4ae'
+	low: '#1d1d1b',
+	high: '#1f6b43',
+	unknown: '#8a5a00',
+	highZ: '#5b3f9e',
+	oscillating: '#c0271b',
+	idle: '#8a8377'
 } as const;
 
 // KTD4 presentation convention shared by the canvas, indicators, and the

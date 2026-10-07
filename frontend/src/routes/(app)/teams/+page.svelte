@@ -217,58 +217,48 @@
 <style>
 	.teams {
 		flex: 1;
-		padding: 20px;
-		background: #eceff1;
+		width: 100%;
+		max-width: 1080px;
+		margin: 0 auto;
+		padding: 18px clamp(14px, 4vw, 36px) 30px;
 		overflow: auto;
 	}
 
-	header h1 {
+	.teams > header h1 {
 		margin: 0;
-		font-size: 24px;
-		color: #263238;
+		font-size: 30px;
 	}
 
 	.muted {
-		color: #607d8b;
+		color: var(--ink-soft);
 		font-size: 13px;
 	}
 
 	.actions {
-		margin: 16px 0;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: stretch;
+		gap: 10px;
+		margin: 16px 0 14px;
+		padding: 10px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
 	}
 
 	.actions form {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
-	}
-
-	.actions input:not([type]) {
-		padding: 8px 10px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		font-size: 14px;
-	}
-
-	button {
-		padding: 8px 12px;
-		border: none;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 14px;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
 	}
 
 	.error {
 		padding: 10px;
-		border-radius: 6px;
-		background: #ffebee;
-		color: #b71c1c;
+		border: 2px solid var(--stamp-red);
+		border-radius: 2px;
+		background: var(--sheet);
+		color: var(--stamp-red);
 		font-size: 13px;
 	}
 
@@ -282,27 +272,42 @@
 	.team-panel,
 	.detail {
 		min-width: 280px;
-		padding: 14px;
-		background: #ffffff;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--sheet);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		box-shadow: var(--shadow-sheet);
+		overflow: hidden;
 	}
 
-	.detail {
-		flex: 1;
+	.team-panel {
+		flex: 0 1 340px;
 	}
 
-	h2 {
-		margin: 0 0 10px;
+	.team-panel h2,
+	.detail h2 {
+		margin: 0;
+		padding: 8px 14px;
+		border-bottom: var(--rule-hair);
+		background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent);
 		font-size: 16px;
-		color: #37474f;
+		color: var(--ink);
+	}
+
+	.team-panel .muted,
+	.detail > .muted,
+	.detail > form {
+		padding: 0 14px;
+	}
+
+	.detail > form:last-child {
+		padding-bottom: 14px;
 	}
 
 	.team-list,
 	.member-list {
 		list-style: none;
 		margin: 0;
-		padding: 0;
+		padding: 10px 14px 14px;
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
@@ -313,30 +318,62 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 8px 10px;
-		border: 1px solid #e0e0e0;
-		border-radius: 4px;
+		padding: 8px 10px 8px 14px;
+		background: var(--sheet-raised);
+		border: var(--rule-hair);
+		border-radius: 2px;
+		position: relative;
+	}
+
+	.team-list li::before,
+	.member-list li::before {
+		content: '';
+		position: absolute;
+		left: 5px;
+		top: 7px;
+		bottom: 7px;
+		width: 3px;
+		border-radius: 1px;
+		background: var(--highlight);
 	}
 
 	.team-list .name {
 		background: transparent;
-		color: #1565c0;
+		border: none;
+		color: var(--ink);
 		padding: 0;
+		font-family: var(--font-head);
+		font-size: 14px;
 		font-weight: 600;
+		letter-spacing: 0.03em;
+		text-transform: none;
+		text-align: left;
+	}
+
+	.team-list .name:hover:not(:disabled) {
+		background: transparent;
+		color: var(--biro);
 	}
 
 	.role-badge {
 		margin-left: auto;
-		padding: 2px 8px;
-		border-radius: 10px;
-		background: #e3f2fd;
-		color: #1565c0;
-		font-size: 12px;
+		padding: 2px 7px;
+		border: 1px solid var(--rule);
+		border-radius: 2px;
+		background: transparent;
+		color: var(--ink-soft);
+		font-family: var(--font-head);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
 	}
 
 	.member-email {
 		overflow: hidden;
 		text-overflow: ellipsis;
+		font-family: var(--font-mono);
+		font-size: 13px;
 	}
 
 	.add-member {
@@ -347,10 +384,6 @@
 
 	.add-member input {
 		flex: 1;
-		padding: 8px 10px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		font-size: 14px;
 	}
 
 	.visually-hidden {

@@ -292,50 +292,61 @@
 	.sim-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 6px;
-		padding: 8px;
-		background: #ffffff;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
-		min-height: 0;
+		gap: 8px;
+		padding: 10px 12px;
+		background: var(--sheet);
+		border-top: 2px solid var(--ink);
 	}
 
 	.bar {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
+		font-family: var(--font-head);
+		font-size: 12px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
 	}
 
 	.note {
-		font-size: 11px;
-		color: #78909c;
+		font-family: var(--font-body);
+		font-size: 12px;
+		text-transform: none;
+		letter-spacing: 0;
+		color: var(--ink-soft);
 	}
 
 	.io {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 6px;
+		gap: 8px;
 	}
 
 	.switch {
-		display: inline-flex;
+		display: flex;
 		align-items: center;
 		gap: 6px;
-		padding: 3px 8px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-		background: #f5f7f8;
+		padding: 4px 8px;
+	}
+
+	.switch-name {
+		font-family: var(--font-mono);
 		font-size: 12px;
-		cursor: pointer;
 	}
 
 	.switch-value {
+		font-family: var(--font-head);
 		font-weight: 700;
-		color: #1565c0;
+		font-size: 13px;
 	}
 
 	.waveform {
-		flex: 1;
-		min-height: 160px;
+		border: var(--rule-faint);
+		border-radius: 2px;
+		background: var(--sheet-sunk);
+		overflow: hidden;
 	}
 </style>

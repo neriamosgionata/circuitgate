@@ -48,4 +48,20 @@ export function signalUnit(variable: AnalogResultVariable | undefined): string {
 	return '';
 }
 
+/**
+ * Shared measurement-trace palette: biro first, then toner, stamps, ochre,
+ * violet, teal, and umber. Scope and Bode draw the same variable in the same
+ * ink.
+ */
+export const TRACE_COLORS: readonly string[] = [
+	'#1d4ed8',
+	'#1d1d1b',
+	'#1f6b43',
+	'#c0271b',
+	'#8a5a00',
+	'#5b3f9e',
+	'#00707a',
+	'#704214'
+];
+
 export type { MeasurementOutcome };

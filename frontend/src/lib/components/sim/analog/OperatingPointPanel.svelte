@@ -55,46 +55,50 @@
 
 <style>
 	.op {
-		flex: 1;
-		min-height: 120px;
+		font-size: 13px;
+		color: var(--ink);
 	}
 
-	.values {
+	.op table {
 		width: 100%;
 		border-collapse: collapse;
+		font-family: var(--font-mono);
 		font-size: 12px;
 	}
 
-	th {
+	.op th,
+	.op td {
+		padding: 3px 8px 3px 0;
 		text-align: left;
-		font-size: 10px;
-		text-transform: uppercase;
-		color: #607d8b;
-		border-bottom: 1px solid #cfd8dc;
-		padding: 4px 6px;
+		border-bottom: var(--rule-faint);
 	}
 
-	td {
-		padding: 3px 6px;
-		border-bottom: 1px solid #eceff1;
+	.op th {
+		font-family: var(--font-head);
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
 	}
 
 	.signal {
-		font-family: monospace;
+		color: var(--ink);
 	}
 
 	.value {
+		text-align: right;
 		font-variant-numeric: tabular-nums;
 	}
 
 	.kind {
-		color: #90a4ae;
+		color: var(--ink-soft);
 		font-size: 11px;
 	}
 
 	.empty {
-		font-size: 12px;
-		color: #90a4ae;
-		margin: 12px 0;
+		color: var(--ink-soft);
+		font-size: 13px;
+		margin: 4px 0;
 	}
 </style>
