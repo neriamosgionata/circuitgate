@@ -1,0 +1,18 @@
+# Local HTTP-only variant of the production reverse proxy, for smoke-testing
+# the prod stack without a public domain or TLS. Use together with
+# compose.prod.yaml:
+#   docker compose -f compose.prod.yaml -f compose.local.yaml up -d
+# Then open http://localhost:8080
+
+:80 {
+	encode zstd gzip
+
+	@backend path /api/* /ws /ws/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
