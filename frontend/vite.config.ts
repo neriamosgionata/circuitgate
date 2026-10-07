@@ -2,13 +2,15 @@ import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+const apiTarget = process.env.CIRCUITGATE_API_PROXY_TARGET ?? 'http://localhost:8080';
+
 const apiProxy = {
 	'/api': {
-		target: 'http://localhost:8080',
+		target: apiTarget,
 		changeOrigin: true
 	},
 	'/ws': {
-		target: 'ws://localhost:8080',
+		target: apiTarget.replace(/^http/, 'ws'),
 		ws: true,
 		changeOrigin: true
 	}
