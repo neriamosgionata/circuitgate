@@ -13,10 +13,11 @@ import {
 	xnorKind,
 	xorKind
 } from './gates';
-import { dFlipFlop, jkFlipFlop, srFlipFlop, srLatch } from './flipflops';
+import { dFlipFlop, jkFlipFlop, registerKind, srFlipFlop, srLatch } from './flipflops';
 import { mux2, mux4 } from './mux';
 import { decoderKind } from './decoder';
-import { fullAdder, halfAdder } from './adders';
+import { fullAdder, halfAdder, magnitudeComparatorKind, rippleCarryAdderKind } from './adders';
+import { ramKind, registerFileKind, romKind } from './memory';
 
 export * from './gates';
 export * from './flipflops';
@@ -29,6 +30,12 @@ export * from './memory';
 // (decoders above 3 bits, ripple adders, comparators, registers, ROM/RAM, and
 // register files) are created with their factories and registered by the
 // caller alongside this object.
+// Parameterized defaults per KTD5: width families default to 8, memories to
+// addressBits 4 / wordBits 8, ROM to sixteen zeros. Registered here so static
+// kind filters (palette, inspector) pass while per-component resolution in
+// engine/kinds.ts derives the configured width at use time.
+const defaultRomContents: readonly number[] = Object.freeze(new Array(16).fill(0));
+
 export const primitiveKinds: ComponentKinds = Object.freeze({
 	and: andKind,
 	or: orKind,
@@ -51,5 +58,11 @@ export const primitiveKinds: ComponentKinds = Object.freeze({
 	halfAdder,
 	fullAdder,
 	decoder2: decoderKind(2),
-	decoder3: decoderKind(3)
+	decoder3: decoderKind(3),
+	rippleCarryAdder: rippleCarryAdderKind(8),
+	magnitudeComparator: magnitudeComparatorKind(8),
+	register: registerKind(8),
+	registerFile: registerFileKind({ addressBits: 4, wordBits: 8 }),
+	ram: ramKind({ addressBits: 4, wordBits: 8 }),
+	rom: romKind({ contents: defaultRomContents, wordBits: 8 })
 });
