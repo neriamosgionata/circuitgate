@@ -298,7 +298,7 @@ describe('inspector property edits', () => {
 		expect(store.setBusWidth('ram1', 16).ok).toBe(true);
 		expect(
 			store.snapshot.document.components.find((component) => component.id === 'ram1')?.params
-		).toEqual({ wordBits: 16, width: 16 });
+		).toEqual({ wordBits: 16 });
 
 		expect(store.setParam('rom1', 'contents', [3, 2, 1, 0]).ok).toBe(true);
 		expect(
@@ -366,5 +366,164 @@ describe('inspector property edits', () => {
 		expect(store.snapshot.document.components.map((component) => component.id)).toEqual(['z1']);
 		const placed = expectOk(store.placeComponent('and', { x: 0, y: 0 }));
 		expect(placed.id).not.toBe('z1');
+	});
+});
+
+describe('parameterized nodes store adoption (U2)', () => {
+	function wireWord(
+		store: CircuitEditorStore,
+		id: string,
+		prefixIn: string,
+		prefixOut: string,
+		width: number
+	): void {
+		for (let i = 0; i < width; i++) {
+			expect(
+				store.assignPin({ componentId: id, pin: `${prefixIn}${i}`, side: 'input' }, `${prefixIn.toUpperCase()}${i}`)
+					.ok
+			).toBe(true);
+			expect(
+				store.assignPin({ componentId: id, pin: `${prefixOut}${i}`, side: 'output' }, `${prefixOut.toUpperCase()}${i}`)
+					.ok
+			).toBe(true);
+		}
+	}
+
+	it('places all six families with KTD5 defaults', () => {
+		const store = new CircuitEditorStore();
+		const expectations: Array<[string, Record<string, unknown>]> = [
+			['rippleCarryAdder', { width: 8 }],
+			['magnitudeComparator', { width: 8 }],
+			['register', { width: 8 }],
+			['registerFile', { addressBits: 4, wordBits: 8 }],
+			['ram', { addressBits: 4, wordBits: 8 }],
+			['rom', { wordBits: 8, contents: new Array(16).fill(0) }]
+		];
+		for (const [kind, defaults] of expectations) {
+			expect(store.beginPlacement(kind)).toEqual({ ok: true });
+			const placed = expectOk(store.placeComponent(kind, { x: 0, y: 0 }));
+			expect(placed.params).toEqual(defaults);
+		}
+		// magnitudeComparator resolves despite its absence from the old width list.
+		const comp = store.snapshot.document.components.find((c) => c.kind === 'magnitudeComparator');
+		expect(comp).toBeDefined();
+		expect(
+			store.assignPin({ componentId: comp!.id, pin: 'a0', side: 'input' }, 'A0').ok
+		).toBe(true);
+		expect(
+			store.assignPin({ componentId: comp!.id, pin: 'b7', side: 'input' }, 'B7').ok
+		).toBe(true);
+	});
+
+	it('grows 8-to-16-bit register keeping d0-d7/q0-q7 nets (AE2)', () => {
+		const store = new CircuitEditorStore();
+		const reg = expectOk(store.placeComponent('register', { x: 0, y: 0 }));
+		expect(reg.params).toEqual({ width: 8 });
+		expect(
+			store.assignPin({ componentId: reg.id, pin: 'clk', side: 'input' }, 'CLK').ok
+		).toBe(true);
+		wireWord(store, reg.id, 'd', 'q', 8);
+		const grown = store.setBusWidth(reg.id, 16);
+		expect(grown.ok).toBe(true);
+		if (!grown.ok) throw new Error('grow failed');
+		expect(grown.value).toBe(0);
+		const after = store.snapshot.document.components.find((c) => c.id === reg.id)!;
+		expect(after.params).toEqual({ width: 16 });
+		for (let i = 0; i < 8; i++) {
+			expect(after.inputs[`d${i}`]).toBe(`D${i}`);
+			expect(after.outputs[`q${i}`]).toBe(`Q${i}`);
+		}
+		for (let i = 8; i < 16; i++) {
+			expect(after.inputs[`d${i}`]).toBeUndefined();
+			expect(after.outputs[`q${i}`]).toBeUndefined();
+		}
+		// New bits are placeable pins.
+		expect(store.beginWire({ componentId: reg.id, pin: 'd15', side: 'input' }).ok).toBe(true);
+		store.cancelWire();
+		expect(store.beginWire({ componentId: reg.id, pin: 'q15', side: 'output' }).ok).toBe(true);
+		store.cancelWire();
+	});
+
+	it('shrinks 16-to-8 dropping vanished pins and returning the dropped-net count', () => {
+		const store = new CircuitEditorStore();
+		const reg = expectOk(store.placeComponent('register', { x: 0, y: 0 }, { width: 16 }));
+		expect(
+			store.assignPin({ componentId: reg.id, pin: 'clk', side: 'input' }, 'CLK').ok
+		).toBe(true);
+		wireWord(store, reg.id, 'd', 'q', 16);
+		const shrunk = store.setBusWidth(reg.id, 8);
+		expect(shrunk.ok).toBe(true);
+		if (!shrunk.ok) throw new Error('shrink failed');
+		expect(shrunk.value).toBe(16);
+		const after = store.snapshot.document.components.find((c) => c.id === reg.id)!;
+		for (let i = 0; i < 8; i++) {
+			expect(after.inputs[`d${i}`]).toBe(`D${i}`);
+			expect(after.outputs[`q${i}`]).toBe(`Q${i}`);
+		}
+		for (let i = 8; i < 16; i++) {
+			expect(after.inputs[`d${i}`]).toBeUndefined();
+			expect(after.outputs[`q${i}`]).toBeUndefined();
+		}
+		expect(after.inputs['clk']).toBe('CLK');
+	});
+
+	it('rejects invalid widths and keeps params unchanged', () => {
+		const store = new CircuitEditorStore();
+		const reg = expectOk(store.placeComponent('register', { x: 0, y: 0 }));
+		expect(store.setBusWidth(reg.id, 0)).toEqual({ ok: false, error: 'invalid-width' });
+		expect(store.setBusWidth(reg.id, 33)).toEqual({ ok: false, error: 'invalid-width' });
+		expect(store.setBusWidth(reg.id, 2.5)).toEqual({ ok: false, error: 'invalid-width' });
+		expect(store.setParam(reg.id, 'width', 0)).toEqual({ ok: false, error: 'invalid-width' });
+		expect(store.setParam(reg.id, 'width', 64)).toEqual({ ok: false, error: 'invalid-width' });
+		const after = store.snapshot.document.components.find((c) => c.id === reg.id)!;
+		expect(after.params).toEqual({ width: 8 });
+		// magnitudeComparator width edits work.
+		const comp = expectOk(store.placeComponent('magnitudeComparator', { x: 100, y: 0 }));
+		const resized = store.setBusWidth(comp.id, 4);
+		expect(resized.ok).toBe(true);
+		expect(store.snapshot.document.components.find((c) => c.id === comp.id)?.params).toEqual({
+			width: 4
+		});
+	});
+
+	it('keeps addressBits and wordBits independent for RAM and registerFile', () => {
+		const store = new CircuitEditorStore();
+		const ram = expectOk(store.placeComponent('ram', { x: 0, y: 0 }));
+		expect(ram.params).toEqual({ addressBits: 4, wordBits: 8 });
+		expect(store.setParam(ram.id, 'addressBits', 2).ok).toBe(true);
+		let after = store.snapshot.document.components.find((c) => c.id === ram.id)!;
+		expect(after.params).toEqual({ addressBits: 2, wordBits: 8 });
+		// setBusWidth touches wordBits only and never creates a collapsed width param.
+		const resized = store.setBusWidth(ram.id, 4);
+		expect(resized.ok).toBe(true);
+		after = store.snapshot.document.components.find((c) => c.id === ram.id)!;
+		expect(after.params).toEqual({ addressBits: 2, wordBits: 4 });
+		expect('width' in (after.params ?? {})).toBe(false);
+
+		const rf = expectOk(store.placeComponent('registerFile', { x: 200, y: 0 }));
+		const rfResized = store.setBusWidth(rf.id, 4);
+		expect(rfResized.ok).toBe(true);
+		const rfAfter = store.snapshot.document.components.find((c) => c.id === rf.id)!;
+		expect(rfAfter.params).toEqual({ addressBits: 4, wordBits: 4 });
+		expect('width' in (rfAfter.params ?? {})).toBe(false);
+	});
+
+	it('leaves static documents unchanged and round-trips parameterized params', () => {
+		const store = new CircuitEditorStore({
+			circuit: doc([
+				{ id: 'g1', kind: 'and', inputs: { a: 'A', b: 'B' }, outputs: { out: 'Y' } }
+			])
+		});
+		const reg = expectOk(store.placeComponent('register', { x: 100, y: 0 }));
+		const gate = store.snapshot.document.components.find((c) => c.id === 'g1')!;
+		expect(gate.inputs).toEqual({ a: 'A', b: 'B' });
+		expect(gate.outputs).toEqual({ out: 'Y' });
+		const json = JSON.stringify(store.snapshot.document);
+		const revived = JSON.parse(json) as CircuitDocument;
+		const reloaded = new CircuitEditorStore({ circuit: revived });
+		expect(reloaded.snapshot.document.components.find((c) => c.id === reg.id)?.params).toEqual({
+			width: 8
+		});
+		expect(reloaded.snapshot.document.components.find((c) => c.id === 'g1')).toEqual(gate);
 	});
 });

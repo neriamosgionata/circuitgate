@@ -113,7 +113,11 @@ function pinsOf(component: Component, definitions: SubcircuitDefinitions, domain
 		}
 		return { inputs: [], outputs: [] };
 	}
-	return resolveKind(component.kind, domain) ?? { inputs: [], outputs: [] };
+	try {
+		return resolveKind(component.kind, domain, component.params) ?? { inputs: [], outputs: [] };
+	} catch {
+		return { inputs: [], outputs: [] };
+	}
 }
 
 export interface Endpoint {

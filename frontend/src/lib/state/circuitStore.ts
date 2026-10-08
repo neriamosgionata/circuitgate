@@ -1,7 +1,12 @@
 import { SUB_CIRCUIT_KIND, flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
 import { defaultAnalysisParams } from '../engine/analog/netlist';
-import { defaultParamsForKind } from '../engine/analog/primitives';
-import { kindExistsInOtherDomain, resolveKind } from '../engine/kinds';
+import { defaultParamsForKind as defaultAnalogParamsForKind } from '../engine/analog/primitives';
+import {
+	MAX_WIDTH,
+	defaultParamsForKind as defaultLogicParamsForKind,
+	kindExistsInOtherDomain,
+	resolveKind
+} from '../engine/kinds';
 import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
 import type {
@@ -317,9 +322,18 @@ export class CircuitEditorStore {
 		return this.path.length === 0 ? this.circuit.domain ?? 'logic' : 'logic';
 	}
 
-	private pinsForKind(kind: string): PinSpec | null {
+	private pinsForKind(kind: string, params?: Record<string, unknown>): PinSpec | null {
 		if (kind === SUB_CIRCUIT_KIND) return null;
-		return resolveKind(kind, this.domain());
+		try {
+			return this.resolvePinsForKind(kind, params);
+		} catch {
+			return null;
+		}
+	}
+
+	private resolvePinsForKind(kind: string, params?: Record<string, unknown>): PinSpec | null {
+		if (kind === SUB_CIRCUIT_KIND) return null;
+		return resolveKind(kind, this.domain(), params);
 	}
 
 	private pinsFor(component: Component): PinSpec | null {
@@ -330,7 +344,7 @@ export class CircuitEditorStore {
 				? { inputs: Object.keys(definition.inputs), outputs: Object.keys(definition.outputs) }
 				: null;
 		}
-		return this.pinsForKind(component.kind);
+		return this.pinsForKind(component.kind, component.params);
 	}
 
 	private findComponent(id: ComponentId): Component | undefined {
@@ -417,7 +431,14 @@ export class CircuitEditorStore {
 	}
 
 	placeComponent(kind: string, position: Point, params?: Record<string, unknown>): Result<Component> {
-		const pins = this.pinsForKind(kind);
+		const effectiveParams =
+			params ?? defaultLogicParamsForKind(kind) ?? defaultAnalogParamsForKind(kind) ?? undefined;
+		let pins: PinSpec | null;
+		try {
+			pins = this.resolvePinsForKind(kind, effectiveParams);
+		} catch {
+			return { ok: false, error: 'invalid-param' };
+		}
 		if (!pins) return { ok: false, error: 'unknown-kind' };
 		const id = this.nextComponentId();
 		const component: Component = {
@@ -426,7 +447,8 @@ export class CircuitEditorStore {
 			inputs: {},
 			outputs: {}
 		};
-		const defaults = params ?? defaultParamsForKind(kind) ?? (kind === 'clock' ? { polarity: 'rising' } : undefined);
+		const defaults =
+			effectiveParams ?? (kind === 'clock' ? { polarity: 'rising' } : undefined);
 		if (defaults !== undefined) component.params = { ...defaults };
 		const document = this.currentDocument();
 		this.updateCurrentDocument({
@@ -608,20 +630,33 @@ export class CircuitEditorStore {
 		return { ok: true };
 	}
 
-	setParam(id: ComponentId, key: string, value: unknown): UnitResult {
+	setParam(id: ComponentId, key: string, value: unknown): Result<number> {
 		const component = this.findComponent(id);
 		if (!component) return { ok: false, error: 'unknown-component' };
 		if (key.length === 0) return { ok: false, error: 'empty-param' };
+		if (key === 'width' || key === 'wordBits') {
+			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > MAX_WIDTH) {
+				return { ok: false, error: 'invalid-width' };
+			}
+		}
+		if (key === 'addressBits') {
+			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 30) {
+				return { ok: false, error: 'invalid-width' };
+			}
+		}
 		const params = { ...(component.params ?? {}), [key]: value };
-		this.replaceComponent({ ...component, params });
-		this.emit();
-		return { ok: true };
+		return this.applyParams(id, params);
 	}
 
 	setComponentKind(id: ComponentId, kind: string): UnitResult {
 		const component = this.findComponent(id);
 		if (!component) return { ok: false, error: 'unknown-component' };
-		const pins = this.pinsForKind(kind);
+		let pins: PinSpec | null;
+		try {
+			pins = this.resolvePinsForKind(kind, component.params);
+		} catch {
+			return { ok: false, error: 'invalid-param' };
+		}
 		if (!pins) {
 			return {
 				ok: false,
@@ -646,15 +681,74 @@ export class CircuitEditorStore {
 		return { ok: true };
 	}
 
-	setBusWidth(id: ComponentId, width: number): UnitResult {
+	setBusWidth(id: ComponentId, width: number): Result<number> {
 		const component = this.findComponent(id);
 		if (!component) return { ok: false, error: 'unknown-component' };
-		if (!Number.isInteger(width) || width < 1) return { ok: false, error: 'invalid-width' };
-		const params: Record<string, unknown> = { ...(component.params ?? {}), width };
-		if ('wordBits' in params) params['wordBits'] = width;
-		this.replaceComponent({ ...component, params });
+		if (!Number.isInteger(width) || width < 1 || width > MAX_WIDTH) {
+			return { ok: false, error: 'invalid-width' };
+		}
+		const kind = component.kind;
+		const base: Record<string, unknown> = { ...(component.params ?? {}) };
+		let params: Record<string, unknown>;
+		if (kind === 'rippleCarryAdder' || kind === 'magnitudeComparator' || kind === 'register') {
+			params = { ...base, width };
+			delete params['wordBits'];
+			delete params['addressBits'];
+		} else if (kind === 'ram' || kind === 'registerFile') {
+			// KTD5: addressBits and wordBits stay independent — never collapse
+			// into a single width value. The width control drives wordBits only.
+			params = { ...base, wordBits: width };
+			delete params['width'];
+		} else if (kind === 'rom') {
+			// ROM depth derives from contents length and is never directly edited.
+			params = { ...base, wordBits: width };
+			delete params['width'];
+		} else {
+			params = { ...base, width };
+		}
+		return this.applyParams(id, params);
+	}
+
+	// Single mutation path for parameter edits (KTD1/KTD5): re-derive pins
+	// from kind+params, keep nets on same-named surviving pins, drop vanished
+	// pins' nets, and return the dropped-net count.
+	private applyParams(id: ComponentId, newParams: Record<string, unknown>): Result<number> {
+		const component = this.findComponent(id);
+		if (!component) return { ok: false, error: 'unknown-component' };
+		let pins: PinSpec | null;
+		try {
+			pins = this.resolvePinsForKind(component.kind, newParams);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (/width|addressBits|wordBits/i.test(message)) {
+				return { ok: false, error: 'invalid-width' };
+			}
+			return { ok: false, error: 'invalid-param' };
+		}
+		if (!pins) return { ok: false, error: 'unknown-kind' };
+		const prune = (
+			record: Record<string, NetId>,
+			names: readonly string[]
+		): { next: Record<string, NetId>; dropped: number } => {
+			const next: Record<string, NetId> = {};
+			let dropped = 0;
+			for (const [name, net] of Object.entries(record)) {
+				if ((names as readonly string[]).includes(name)) next[name] = net;
+				else dropped += 1;
+			}
+			return { next, dropped };
+		};
+		const prunedInputs = prune(component.inputs, pins.inputs);
+		const prunedOutputs = prune(component.outputs, pins.outputs);
+		const dropped = prunedInputs.dropped + prunedOutputs.dropped;
+		this.replaceComponent({
+			...component,
+			params: { ...newParams },
+			inputs: prunedInputs.next,
+			outputs: prunedOutputs.next
+		});
 		this.emit();
-		return { ok: true };
+		return { ok: true, value: dropped };
 	}
 
 	setClockPolarity(id: ComponentId, polarity: 'rising' | 'falling'): UnitResult {

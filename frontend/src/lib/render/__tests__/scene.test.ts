@@ -76,6 +76,44 @@ describe('scene building', () => {
 		expect(wire?.points).toHaveLength(2);
 	});
 
+	it('draws derived pins at configured widths with one labeled pin per bit (R6)', () => {
+		const wide: CircuitDocument = {
+			schemaVersion: 1,
+			components: [
+				{ id: 'r16', kind: 'register', inputs: {}, outputs: {}, params: { width: 16 } },
+				{
+					id: 'ram1',
+					kind: 'ram',
+					inputs: {},
+					outputs: {},
+					params: { addressBits: 2, wordBits: 4 }
+				}
+			]
+		};
+		const scene = buildScene({
+			document: wide,
+			layout: { r16: { position: { x: 0, y: 0 } }, ram1: { position: { x: 300, y: 0 } } }
+		});
+		const reg = scene.components.find((c) => c.id === 'r16')!;
+		expect(reg.pins.map((p) => `${p.side}:${p.name}`)).toContain('input:d15');
+		expect(reg.pins.map((p) => `${p.side}:${p.name}`)).toContain('output:q15');
+		expect(reg.pins.filter((p) => p.side === 'input')).toHaveLength(17);
+		expect(reg.pins.filter((p) => p.side === 'output')).toHaveLength(16);
+		// Default-width register stays at 8 for comparison.
+		const narrow: CircuitDocument = {
+			schemaVersion: 1,
+			components: [{ id: 'r8', kind: 'register', inputs: {}, outputs: {}, params: { width: 8 } }]
+		};
+		const narrowScene = buildScene({ document: narrow, layout: { r8: { position: { x: 0, y: 0 } } } });
+		expect(narrowScene.components[0].pins).toHaveLength(17);
+
+		const ram = scene.components.find((c) => c.id === 'ram1')!;
+		expect(ram.pins.map((p) => `${p.side}:${p.name}`)).toContain('input:a1');
+		expect(ram.pins.map((p) => `${p.side}:${p.name}`)).toContain('input:d3');
+		expect(ram.pins.map((p) => `${p.side}:${p.name}`)).toContain('output:q3');
+		expect(ram.pins.map((p) => `${p.side}:${p.name}`)).not.toContain('input:a2');
+	});
+
 	function buildLargeScene() {
 		const components: CircuitDocument['components'] = [];
 		const sceneLayout: Record<string, { position: { x: number; y: number } }> = {};
