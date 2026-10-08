@@ -18,12 +18,15 @@
 		buildScene,
 		presentSignal,
 		SIGNAL_COLORS,
+		type SceneComponent,
+		type ScenePin,
 		type SceneWire,
 		type SignalPresentation
 	} from '../../render/scene';
 	import { cullScene } from '../../render/culling';
 	import { hitTest, type PinHit } from '../../render/hitTest';
 	import { drawKindGlyph } from '../../render/symbols';
+	import type { LogicValue } from '../../engine/values';
 	import { analogAnnotations, type AnalogAnnotation } from '../../sim/analog/annotations';
 	import type { CircuitEditorStore, EditorSnapshot, PinRef } from '../../state/circuitStore';
 
@@ -67,6 +70,7 @@
 	let annotationOverlays = $state<AnnotationOverlay[]>([]);
 	let marquee = $state<Rect | null>(null);
 	let wirePreview = $state<{ from: Point; to: Point } | null>(null);
+	let hoveredPin = $state<PinHit | null>(null);
 	let drag: Drag = { kind: 'none' };
 	let overlaySignature = '';
 	let annotationSignature = '';
@@ -139,6 +143,70 @@
 		return { componentId: hit.componentId, pin: hit.pin, side: hit.side };
 	}
 
+	function setHoveredPin(next: PinHit | null) {
+		const same =
+			hoveredPin === next ||
+			(hoveredPin !== null &&
+				next !== null &&
+				hoveredPin.componentId === next.componentId &&
+				hoveredPin.pin === next.pin &&
+				hoveredPin.side === next.side);
+		if (!same) hoveredPin = next;
+	}
+
+	function pinColor(value: LogicValue | undefined): string {
+		if (value === undefined) return '#ffffff';
+		if (value === 0) return SIGNAL_COLORS.low;
+		if (value === 1) return SIGNAL_COLORS.high;
+		if (value === 'X') return SIGNAL_COLORS.unknown;
+		return SIGNAL_COLORS.highZ;
+	}
+
+	// Hover emphasis: a highlighter wash behind an enlarged dot plus the pin
+	// name on a mono chip, so the connectable point and its identity are both
+	// legible at a glance while wiring.
+	function drawHoveredPin(
+		ctx: CanvasRenderingContext2D,
+		point: Point,
+		pin: ScenePin,
+		component: SceneComponent
+	) {
+		const net = pin.side === 'output' ? component.outputs[pin.name] : component.inputs[pin.name];
+		ctx.save();
+		ctx.fillStyle = '#ffe23d';
+		ctx.beginPath();
+		ctx.arc(point.x, point.y, 9, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.fillStyle = pinColor(net ? snapshot.netValues[net] : undefined);
+		ctx.beginPath();
+		ctx.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.strokeStyle = '#1d1d1b';
+		ctx.lineWidth = 1.5;
+		ctx.stroke();
+
+		ctx.font = '10px "Courier Prime", "Courier New", monospace';
+		const chipWidth = Math.ceil(ctx.measureText(pin.name).width) + 10;
+		const chipHeight = 16;
+		const gap = 13;
+		const chipX = clamp(
+			pin.side === 'input' ? point.x - gap - chipWidth : point.x + gap,
+			4,
+			Math.max(4, size.width - chipWidth - 4)
+		);
+		const chipY = clamp(point.y - chipHeight / 2, 4, Math.max(4, size.height - chipHeight - 4));
+		ctx.beginPath();
+		ctx.roundRect(chipX, chipY, chipWidth, chipHeight, 3);
+		ctx.fillStyle = '#fff3a8';
+		ctx.fill();
+		ctx.strokeStyle = '#1d4ed8';
+		ctx.lineWidth = 1;
+		ctx.stroke();
+		ctx.fillStyle = '#1d4ed8';
+		ctx.fillText(pin.name, chipX + chipWidth / 2, chipY + chipHeight / 2 + 0.5);
+		ctx.restore();
+	}
+
 	function onPointerDown(event: PointerEvent) {
 		if (!canvas) return;
 		canvas.setPointerCapture(event.pointerId);
@@ -147,6 +215,7 @@
 
 		if (event.button === 1 || event.button === 2) {
 			drag = { kind: 'pan', last: screen };
+			setHoveredPin(null);
 			return;
 		}
 
@@ -167,6 +236,7 @@
 		if (snapshot.pendingKind) {
 			store.placeComponent(snapshot.pendingKind, world);
 			store.cancelPlacement();
+			setHoveredPin(null);
 			return;
 		}
 
@@ -179,6 +249,7 @@
 			} else if (store.beginWire(pin).ok) {
 				wirePreview = { from: hit.point, to: hit.point };
 			}
+			setHoveredPin(readonly ? null : hit);
 			return;
 		}
 
@@ -198,6 +269,7 @@
 				if (entry) origin.set(id, { ...entry.position });
 			}
 			drag = { kind: 'move', origin, start: world };
+			setHoveredPin(null);
 			return;
 		}
 
@@ -208,6 +280,7 @@
 		if (!event.shiftKey) store.clearSelection();
 		drag = { kind: 'marquee', start: world };
 		marquee = { x: world.x, y: world.y, width: 0, height: 0 };
+		setHoveredPin(null);
 	}
 
 	function onPointerMove(event: PointerEvent) {
@@ -237,8 +310,9 @@
 			};
 			return;
 		}
+		const hit = hitTest(scene, viewport, screen);
+		setHoveredPin(!readonly && hit?.type === 'pin' ? hit : null);
 		if (snapshot.pendingWire && wirePreview) {
-			const hit = hitTest(scene, viewport, screen);
 			wirePreview = {
 				from: wirePreview.from,
 				to: hit?.type === 'pin' ? hit.point : world
@@ -259,6 +333,10 @@
 		}
 		drag = { kind: 'none' };
 		marquee = null;
+	}
+
+	function onPointerLeave() {
+		setHoveredPin(null);
 	}
 
 	function onWheel(event: WheelEvent) {
@@ -554,36 +632,36 @@
 				pinPoints.push(point);
 				const net = pin.side === 'output' ? component.outputs[pin.name] : component.inputs[pin.name];
 				const value = net ? snapshot.netValues[net] : undefined;
-				const color =
-					value === undefined
-						? '#ffffff'
-						: value === 0
-							? SIGNAL_COLORS.low
-							: value === 1
-								? SIGNAL_COLORS.high
-								: value === 'X'
-									? SIGNAL_COLORS.unknown
-									: SIGNAL_COLORS.highZ;
+				const color = pinColor(value);
 				const bucket = pinBuckets.get(color) ?? [];
 				bucket.push(point);
 				pinBuckets.set(color, bucket);
 			}
 		}
+		// Paper punch under every pin: wires terminate at the dot edge instead
+		// of running into it, and the enlarged dots stay legible on any body.
+		ctx.fillStyle = '#fbf9f4';
+		ctx.beginPath();
+		for (const point of pinPoints) {
+			ctx.moveTo(point.x + 5, point.y);
+			ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+		}
+		ctx.fill();
 		for (const [color, points] of pinBuckets) {
 			ctx.fillStyle = color;
 			ctx.beginPath();
 			for (const point of points) {
-				ctx.moveTo(point.x + 3, point.y);
-				ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+				ctx.moveTo(point.x + 4, point.y);
+				ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
 			}
 			ctx.fill();
 		}
-		ctx.strokeStyle = '#455a64';
+		ctx.strokeStyle = '#1d1d1b';
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		for (const point of pinPoints) {
-			ctx.moveTo(point.x + 3, point.y);
-			ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+			ctx.moveTo(point.x + 4, point.y);
+			ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
 		}
 		ctx.stroke();
 
@@ -606,6 +684,16 @@
 			ctx.lineTo(to.x, to.y);
 			ctx.stroke();
 			ctx.restore();
+		}
+		if (hoveredPin) {
+			const hovered = hoveredPin;
+			const component = scene.componentById.get(hovered.componentId);
+			const pin = component?.pins.find(
+				(candidate) => candidate.name === hovered.pin && candidate.side === hovered.side
+			);
+			if (component && pin) {
+				drawHoveredPin(ctx, worldToScreen(viewport, pin.point), pin, component);
+			}
 		}
 
 		const selected = visible.components.filter((component) => snapshot.selection.has(component.id));
@@ -669,6 +757,7 @@
 		void size;
 		void marquee;
 		void wirePreview;
+		void hoveredPin;
 		scheduleDraw();
 	});
 
@@ -702,6 +791,7 @@
 		onpointermove={onPointerMove}
 		onpointerup={onPointerUp}
 		onpointercancel={onPointerUp}
+		onpointerleave={onPointerLeave}
 		onwheel={onWheel}
 		oncontextmenu={(event) => event.preventDefault()}
 	></canvas>

@@ -134,7 +134,7 @@ export function hitTest(
 ): Hit | null {
 	const point = screenToWorld(viewport, screenPoint);
 	return hitTestWorld(scene, point, {
-		pinRadius: (options.pinRadiusPx ?? 6) / viewport.scale,
+		pinRadius: (options.pinRadiusPx ?? 9) / viewport.scale,
 		wireTolerance: (options.wireTolerancePx ?? 4) / viewport.scale
 	});
 }
