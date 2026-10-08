@@ -3,7 +3,7 @@
 	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
-	import { kindNamesForDomain } from '../../engine/kinds';
+	import { kindNamesForDomain, isParameterizedFamily } from '../../engine/kinds';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
 	import type { Component, ComponentId } from '../../model/circuit';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
@@ -17,6 +17,8 @@
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let kindError = $state<string | null>(null);
 	let paramError = $state<{ key: string; message: string } | null>(null);
+	let paramNotice = $state<string | null>(null);
+	let lastSelectedId = $state<string | null>(null);
 
 	$effect(() => {
 		snapshot = store.snapshot;
@@ -32,8 +34,19 @@
 	}
 
 	const selected = $derived(resolveSelected(snapshot));
+	const selectedId = $derived(selected?.id ?? null);
+
+	$effect(() => {
+		const id = selectedId;
+		if (id !== lastSelectedId) {
+			lastSelectedId = id;
+			paramError = null;
+			paramNotice = null;
+		}
+	});
+
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
-	const widthKinds = ['rom', 'ram', 'register', 'registerFile', 'rippleCarryAdder'];
+	const widthKinds = ['rom', 'ram', 'register', 'registerFile', 'rippleCarryAdder', 'magnitudeComparator'];
 	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
 	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
 	const modelOptions = $derived(
@@ -48,6 +61,13 @@
 			: ''
 	);
 	const parameterSpecs = $derived(selected ? analogKind(selected.kind)?.parameters ?? [] : []);
+	const visibleParams = $derived(
+		selected
+			? Object.entries(selected.params ?? {}).filter(
+					([key]) => !(modelBacked && key === 'model') && !hiddenParamKeys(selected.kind).has(key)
+				)
+			: []
+	);
 
 	function enumOptions(key: string): readonly string[] | null {
 		if (snapshot.domain !== 'analog') return null;
@@ -103,6 +123,172 @@
 		const params = component.params ?? {};
 		const raw = params['width'] ?? params['wordBits'];
 		return typeof raw === 'number' && raw > 0 ? raw : 1;
+	}
+
+	function currentWordBits(component: Component): number {
+		const raw = component.params?.['wordBits'];
+		return typeof raw === 'number' && raw > 0 ? raw : 8;
+	}
+
+	function currentAddressBits(component: Component): number {
+		const raw = component.params?.['addressBits'];
+		return typeof raw === 'number' && raw > 0 ? raw : 4;
+	}
+
+	function currentRomContentsText(component: Component): string {
+		return JSON.stringify(component.params?.['contents'] ?? []);
+	}
+
+	function romDepthText(component: Component): string {
+		const contents = component.params?.['contents'];
+		if (!Array.isArray(contents)) return 'Depth: — (contents invalid)';
+		const depth = contents.length;
+		if (depth < 1 || (depth & (depth - 1)) !== 0) return `Depth: — (${depth} words is not a power of two)`;
+		const addressBits = Math.log2(depth);
+		return `Depth: ${depth} word${depth === 1 ? '' : 's'} (${addressBits} address bit${addressBits === 1 ? '' : 's'})`;
+	}
+
+	/** Parameter keys covered by the dedicated parameterized-family controls. */
+	function hiddenParamKeys(kind: string): ReadonlySet<string> {
+		if (!isParameterizedFamily(kind)) return new Set();
+		if (kind === 'ram' || kind === 'registerFile') return new Set(['wordBits', 'addressBits']);
+		if (kind === 'rom') return new Set(['wordBits', 'contents']);
+		return new Set(['width']);
+	}
+
+	function parseWidthText(text: string): { ok: true; value: number } | { ok: false; message: string } {
+		const trimmed = text.trim();
+		const value = trimmed === '' ? NaN : Number(trimmed);
+		if (!Number.isInteger(value)) {
+			return { ok: false, message: `Width must be an integer from 1 to 32, got ${trimmed === '' ? '(empty)' : trimmed}.` };
+		}
+		if (value < 1 || value > 32) {
+			return { ok: false, message: `Width must be an integer from 1 to 32, got ${value}.` };
+		}
+		return { ok: true, value };
+	}
+
+	function parseAddressText(text: string): { ok: true; value: number } | { ok: false; message: string } {
+		const trimmed = text.trim();
+		const value = trimmed === '' ? NaN : Number(trimmed);
+		if (!Number.isInteger(value)) {
+			return { ok: false, message: `Address width must be an integer from 1 to 30, got ${trimmed === '' ? '(empty)' : trimmed}.` };
+		}
+		if (value < 1 || value > 30) {
+			return { ok: false, message: `Address width must be an integer from 1 to 30, got ${value}.` };
+		}
+		return { ok: true, value };
+	}
+
+	function reportDropped(dropped: number): void {
+		paramNotice = dropped > 0 ? `${dropped} net${dropped === 1 ? '' : 's'} disconnected by this change.` : null;
+	}
+
+	/** Bus/word width commit: validates inline, retains invalid text, never clamps. */
+	function commitWidthText(id: ComponentId, key: 'width' | 'wordBits', text: string) {
+		const parsed = parseWidthText(text);
+		if (!parsed.ok) {
+			paramError = { key, message: parsed.message };
+			paramNotice = null;
+			return;
+		}
+		const result = store.setBusWidth(id, parsed.value);
+		if (!result.ok) {
+			paramError = { key, message: `Width must be an integer from 1 to 32, got ${text.trim()}.` };
+			paramNotice = null;
+			return;
+		}
+		paramError = null;
+		reportDropped(result.value);
+	}
+
+	function commitAddressText(id: ComponentId, text: string) {
+		const parsed = parseAddressText(text);
+		if (!parsed.ok) {
+			paramError = { key: 'addressBits', message: parsed.message };
+			paramNotice = null;
+			return;
+		}
+		const result = store.setParam(id, 'addressBits', parsed.value);
+		if (!result.ok) {
+			paramError = { key: 'addressBits', message: `Address width must be an integer from 1 to 30, got ${text.trim()}.` };
+			paramNotice = null;
+			return;
+		}
+		paramError = null;
+		reportDropped(result.value);
+	}
+
+	function validateRomContents(
+		text: string,
+		wordBits: number
+	): { ok: true; value: unknown } | { ok: false; message: string } {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(text);
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : String(error);
+			return { ok: false, message: `ROM contents must be valid JSON: ${detail}.` };
+		}
+		if (!Array.isArray(parsed)) {
+			return { ok: false, message: 'ROM contents must be an array of numbers.' };
+		}
+		if (parsed.length < 1 || (parsed.length & (parsed.length - 1)) !== 0) {
+			return { ok: false, message: `ROM contents length must be a power of two, got ${parsed.length}.` };
+		}
+		const capacity = 2 ** wordBits;
+		for (let index = 0; index < parsed.length; index++) {
+			const word = parsed[index];
+			if (!Number.isInteger(word) || (word as number) < 0 || (word as number) >= capacity) {
+				return { ok: false, message: `ROM word ${index} (${String(word)}) does not fit in ${wordBits} bits.` };
+			}
+		}
+		return { ok: true, value: parsed };
+	}
+
+	function commitRomContents(id: ComponentId, text: string, wordBits: number) {
+		const validated = validateRomContents(text, wordBits);
+		if (!validated.ok) {
+			paramError = { key: 'contents', message: validated.message };
+			paramNotice = null;
+			return;
+		}
+		const result = store.setParam(id, 'contents', validated.value);
+		if (!result.ok) {
+			paramError = { key: 'contents', message: `ROM contents were rejected: ${result.error}.` };
+			paramNotice = null;
+			return;
+		}
+		paramError = null;
+		reportDropped(result.value);
+	}
+
+	function commitLogicNumber(id: ComponentId, key: string, input: HTMLInputElement) {
+		const result = store.setParam(id, key, Number(input.value));
+		if (!result.ok) {
+			paramError = { key, message: `Invalid value for ${key}: ${result.error}.` };
+			paramNotice = null;
+			return;
+		}
+		paramError = null;
+		reportDropped(result.value);
+	}
+
+	function commitJsonParam(id: ComponentId, key: string, text: string) {
+		const parsed = parseJson(text);
+		if (!parsed.ok) {
+			paramError = { key, message: `${key} must be valid JSON.` };
+			paramNotice = null;
+			return;
+		}
+		const result = store.setParam(id, key, parsed.value);
+		if (!result.ok) {
+			paramError = { key, message: `Invalid value for ${key}: ${result.error}.` };
+			paramNotice = null;
+			return;
+		}
+		paramError = null;
+		reportDropped(result.value);
 	}
 </script>
 
@@ -170,18 +356,79 @@
 					</select>
 				</label>
 			{/if}
-			{#if widthKinds.includes(selected.kind) || currentWidth(selected) > 1}
+		{#if isParameterizedFamily(selected.kind)}
+			{#if selected.kind === 'rippleCarryAdder' || selected.kind === 'magnitudeComparator' || selected.kind === 'register'}
 				<label>
 					<span>Bus width</span>
 					<input
-						type="number"
-						min="1"
-						max="32"
+						type="text"
+						inputmode="numeric"
+						data-testid="width-input"
 						value={currentWidth(selected)}
-						onchange={(event) => store.setBusWidth(selected.id, Number(event.currentTarget.value))}
+						onchange={(event) => commitWidthText(selected.id, 'width', event.currentTarget.value)}
 					/>
 				</label>
+				{#if paramError?.key === 'width'}<p class="error" role="alert" data-testid="width-error">{paramError.message}</p>{/if}
+			{:else if selected.kind === 'ram' || selected.kind === 'registerFile'}
+				<label>
+					<span>Word width</span>
+					<input
+						type="text"
+						inputmode="numeric"
+						data-testid="wordbits-input"
+						value={currentWordBits(selected)}
+						onchange={(event) => commitWidthText(selected.id, 'wordBits', event.currentTarget.value)}
+					/>
+				</label>
+				{#if paramError?.key === 'wordBits'}<p class="error" role="alert" data-testid="wordbits-error">{paramError.message}</p>{/if}
+				<label>
+					<span>Address width</span>
+					<input
+						type="text"
+						inputmode="numeric"
+						data-testid="addressbits-input"
+						value={currentAddressBits(selected)}
+						onchange={(event) => commitAddressText(selected.id, event.currentTarget.value)}
+					/>
+				</label>
+				{#if paramError?.key === 'addressBits'}<p class="error" role="alert" data-testid="addressbits-error">{paramError.message}</p>{/if}
+			{:else if selected.kind === 'rom'}
+				<label>
+					<span>Word width</span>
+					<input
+						type="text"
+						inputmode="numeric"
+						data-testid="wordbits-input"
+						value={currentWordBits(selected)}
+						onchange={(event) => commitWidthText(selected.id, 'wordBits', event.currentTarget.value)}
+					/>
+				</label>
+				{#if paramError?.key === 'wordBits'}<p class="error" role="alert" data-testid="wordbits-error">{paramError.message}</p>{/if}
+				<label>
+					<span>Contents (JSON)</span>
+					<textarea
+						rows="3"
+						data-testid="contents-input"
+						value={currentRomContentsText(selected)}
+						onchange={(event) => commitRomContents(selected.id, event.currentTarget.value, currentWordBits(selected))}
+					></textarea>
+				</label>
+				{#if paramError?.key === 'contents'}<p class="error" role="alert" data-testid="contents-error">{paramError.message}</p>{/if}
+				<p class="muted" data-testid="rom-depth">{romDepthText(selected)}</p>
 			{/if}
+			{#if paramNotice}<p class="notice" role="status" data-testid="param-notice">{paramNotice}</p>{/if}
+		{:else if widthKinds.includes(selected.kind) || currentWidth(selected) > 1}
+			<label>
+				<span>Bus width</span>
+				<input
+					type="number"
+					min="1"
+					max="32"
+					value={currentWidth(selected)}
+					onchange={(event) => store.setBusWidth(selected.id, Number(event.currentTarget.value))}
+				/>
+			</label>
+		{/if}
 		</fieldset>
 
 		{#if modelBacked}
@@ -211,10 +458,10 @@
 
 		<fieldset>
 			<legend>Parameters</legend>
-			{#if Object.keys(selected.params ?? {}).length === 0}
+			{#if visibleParams.length === 0}
 				<p class="muted">No parameters.</p>
 			{/if}
-			{#each Object.entries(selected.params ?? {}) as [key, value] (key)}
+			{#each visibleParams as [key, value] (key)}
 				{#if !(modelBacked && key === 'model')}
 					<label>
 						<span>{key}{paramUnit(key)}</span>
@@ -232,8 +479,11 @@
 								<input
 									type="number"
 									value={Number(value)}
-									onchange={(event) => store.setParam(selected.id, key, Number(event.currentTarget.value))}
+									onchange={(event) => commitLogicNumber(selected.id, key, event.currentTarget)}
 								/>
+								{#if paramError?.key === key}
+									<span class="error" role="alert" data-testid="param-error">{paramError.message}</span>
+								{/if}
 							{/if}
 						{:else if enumOptions(key)}
 							<select
@@ -260,11 +510,11 @@
 							<textarea
 								rows="3"
 								value={JSON.stringify(value)}
-								onchange={(event) => {
-									const parsed = parseJson(event.currentTarget.value);
-									if (parsed.ok) store.setParam(selected.id, key, parsed.value);
-								}}
+								onchange={(event) => commitJsonParam(selected.id, key, event.currentTarget.value)}
 							></textarea>
+							{#if paramError?.key === key}
+								<span class="error" role="alert" data-testid="param-error">{paramError.message}</span>
+							{/if}
 						{/if}
 					</label>
 				{/if}
@@ -355,5 +605,11 @@
 	.error {
 		font-size: 11px;
 		color: var(--stamp-red);
+	}
+
+	.notice {
+		font-size: 11px;
+		color: var(--ink-soft);
+		margin: 0 0 6px;
 	}
 </style>
