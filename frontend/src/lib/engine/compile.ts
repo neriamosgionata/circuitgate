@@ -15,6 +15,13 @@ export interface ComponentKind {
 
 export type ComponentKinds = Readonly<Record<string, ComponentKind>>;
 
+/**
+ * Per-component kind resolution (KTD1): resolve one component from its own
+ * kind and parameters at use time. Returns null for unknown kinds; throws
+ * CompileError for known kinds with invalid parameters.
+ */
+export type KindResolver = (kind: string, params?: Record<string, unknown>) => ComponentKind | null;
+
 export class CompileError extends Error {
 	readonly code: string | undefined;
 
@@ -43,6 +50,16 @@ export interface CompiledNetlist {
 }
 
 export function compile(document: CircuitDocument, kinds: ComponentKinds): CompiledNetlist {
+	return compileWithResolver(document, (kind) => kinds[kind] ?? null);
+}
+
+/**
+ * Compile with per-component resolution: each component resolves from its own
+ * kind and parameters, so two components sharing one kind string with
+ * different params each compile against their own pinout. A per-kind table
+ * cannot express that and must not be used for parameterized documents.
+ */
+export function compileWithResolver(document: CircuitDocument, resolve: KindResolver): CompiledNetlist {
 	const netIds: string[] = [];
 	const netIndex = new Map<string, number>();
 	const componentIds = new Set<string>();
@@ -62,7 +79,7 @@ export function compile(document: CircuitDocument, kinds: ComponentKinds): Compi
 		}
 		componentIds.add(component.id);
 
-		const kind = kinds[component.kind];
+		const kind = resolve(component.kind, component.params);
 		if (!kind) {
 			throw new CompileError(`unknown component kind: ${component.kind}`);
 		}

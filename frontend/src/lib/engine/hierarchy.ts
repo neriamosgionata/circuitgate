@@ -1,5 +1,5 @@
 import type { CircuitDocument, Component } from '../model/circuit';
-import { CompileError, type ComponentKind, type ComponentKinds } from './compile';
+import { CompileError, type ComponentKind, type ComponentKinds, type KindResolver } from './compile';
 
 export const SUB_CIRCUIT_KIND = 'subcircuit';
 
@@ -72,9 +72,21 @@ export function detectDefinitionCycles(definitions: SubcircuitDefinitions): void
 	for (const name of Object.keys(definitions)) visit(name);
 }
 
-function validateLeafKinds(definition: SubcircuitDefinition, kinds: ComponentKinds): void {
+function validateLeafKinds(definition: SubcircuitDefinition, kinds: ComponentKinds | KindResolver): void {
 	for (const component of definition.document.components) {
 		if (component.kind === SUB_CIRCUIT_KIND) continue;
+		// KTD1/KTD4: resolve each component from its own kind and parameters
+		// at use time. A resolver function throws on invalid parameterized
+		// params (surfacing bad widths/contents inside definitions); a static
+		// map falls back to an existence check.
+		if (typeof kinds === 'function') {
+			const resolved = kinds(component.kind, component.params);
+			if (resolved) continue;
+			throw new CompileError(
+				`subcircuit ${definition.name} references unknown component kind: ${component.kind}`,
+				'unknown-kind'
+			);
+		}
 		if (!kinds[component.kind]) {
 			throw new CompileError(
 				`subcircuit ${definition.name} references unknown component kind: ${component.kind}`,
@@ -145,7 +157,7 @@ function expandInto(
 export function flatten(
 	document: CircuitDocument,
 	definitions: SubcircuitDefinitions,
-	kinds?: ComponentKinds
+	kinds?: ComponentKinds | KindResolver
 ): CircuitDocument {
 	detectDefinitionCycles(definitions);
 	if (kinds) {
@@ -159,7 +171,7 @@ export function flatten(
 // Boundary-only kind description for a subcircuit. It lets editors and palettes
 // treat a definition like any other kind; evaluation is only valid after
 // flatten() has replaced instances with their leaf expansion.
-export function createSubcircuitKind(definition: SubcircuitDefinition, kinds: ComponentKinds): ComponentKind {
+export function createSubcircuitKind(definition: SubcircuitDefinition, kinds: ComponentKinds | KindResolver): ComponentKind {
 	validateDefinitionShape(definition.name, definition);
 	validateLeafKinds(definition, kinds);
 	return {

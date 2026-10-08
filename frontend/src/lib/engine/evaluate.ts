@@ -1,5 +1,5 @@
 import type { CircuitDocument } from '../model/circuit';
-import { compile, type CompiledNetlist, type ComponentKinds } from './compile';
+import { compile, compileWithResolver, type CompiledNetlist, type ComponentKinds, type KindResolver } from './compile';
 import { EventQueue, type QueueEntry } from './eventQueue';
 import { resolveDrivers, type LogicValue } from './values';
 
@@ -36,10 +36,13 @@ export class Simulator {
 
 	constructor(
 		document: CircuitDocument,
-		kinds: ComponentKinds,
+		kindsOrResolver: ComponentKinds | KindResolver,
 		initialValues: Readonly<Record<string, LogicValue>> = {}
 	) {
-		this.netlist = compile(document, kinds);
+		this.netlist =
+			typeof kindsOrResolver === 'function'
+				? compileWithResolver(document, kindsOrResolver)
+				: compile(document, kindsOrResolver);
 		this.values = this.netlist.netIds.map((id) => initialValues[id] ?? 'X');
 		this.states = this.netlist.components.map((component) => component.state);
 	}
