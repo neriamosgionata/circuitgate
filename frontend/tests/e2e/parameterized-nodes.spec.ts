@@ -85,8 +85,8 @@ test.describe('U4: parameterized logic nodes in palette and Inspector', () => {
 			[180, 360],
 			[420, 360],
 			[660, 360],
-			[180, 580],
-			[420, 580]
+			[300, 140],
+			[540, 360]
 		];
 		for (let index = 0; index < FAMILIES.length; index += 1) {
 			const kind = FAMILIES[index];
