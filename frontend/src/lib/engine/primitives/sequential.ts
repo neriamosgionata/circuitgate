@@ -1,6 +1,6 @@
 import { CompileError, type ComponentKind } from '../compile';
 import { risingEdgeDetected } from './flipflops';
-import { bitPins, numberToBits, requireWordWidth, unknownBits } from './pins';
+import { bitPins, requireWordWidth, unknownBits } from './pins';
 import type { LogicValue } from '../values';
 
 interface WordState {
