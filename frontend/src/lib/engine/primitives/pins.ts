@@ -2,6 +2,13 @@ import { CompileError } from '../compile';
 import type { LogicValue } from '../values';
 
 export const MAX_WORD_BITS = 32;
+export const MAX_ADDRESS_BITS = 30;
+
+// KTD5 product defaults for parameterized families, shared by the engine
+// resolver, the static registry entries, and the Inspector controls.
+export const DEFAULT_WIDTH = 8;
+export const DEFAULT_ADDRESS_BITS = 4;
+export const DEFAULT_WORD_BITS = 8;
 
 export function bitPins(prefix: string, width: number): string[] {
 	const pins: string[] = [];

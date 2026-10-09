@@ -1,7 +1,7 @@
 import { CompileError } from '../engine/compile';
 import { Simulator } from '../engine/evaluate';
 import { flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
-import { resolveComponentKind } from '../engine/kinds';
+import { pinoutForParameterizedKind, resolveComponentKind } from '../engine/kinds';
 import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
 import type { CircuitDocument, Component } from '../model/circuit';
@@ -36,7 +36,7 @@ export interface SimulationHostOptions {
 const MAX_LISTED_PINS = 8;
 
 /**
- * KTD3 pre-check: unconnected pins block simulation with one Diagnostics entry
+ * Unconnected-pin pre-check: unconnected pins block simulation with one Diagnostics entry
  * per blocked component. Each issue names the component and its unconnected
  * pins (comma-separated, truncated with a count remainder) and carries the
  * component id for focus on demand. The engine CompileError paths remain as
@@ -46,30 +46,41 @@ const MAX_LISTED_PINS = 8;
 function findBlockedComponents(flat: CircuitDocument): CompileIssue[] {
 	const issues: CompileIssue[] = [];
 	for (const component of flat.components) {
-		let kind;
+		let pinout;
 		try {
-			kind = resolveComponentKind(component.kind, component.params);
+			// Pin names only: the full factory (evaluate closures, ROM word
+			// expansion) is wasted work on this pre-check pass.
+			pinout =
+				pinoutForParameterizedKind(component.kind, component.params) ??
+				primitiveKinds[component.kind] ??
+				null;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			const code = error instanceof CompileError && error.code ? error.code : 'compile-error';
 			issues.push({ code, message, componentIds: [component.id] });
 			continue;
 		}
-		if (!kind) continue;
-		const missingInputs = kind.inputs.filter((pin) => component.inputs[pin] === undefined);
-		const missingOutputs = kind.outputs.filter((pin) => component.outputs[pin] === undefined);
-		const missing = [...missingInputs, ...missingOutputs];
-		if (missing.length === 0) continue;
+		if (!pinout) continue;
+		let missing: Array<{ pin: string; side: 'input' | 'output' }> | null = null;
+		for (const pin of pinout.inputs) {
+			if (component.inputs[pin] === undefined) (missing ??= []).push({ pin, side: 'input' });
+		}
+		for (const pin of pinout.outputs) {
+			if (component.outputs[pin] === undefined) (missing ??= []).push({ pin, side: 'output' });
+		}
+		if (!missing) continue;
 		if (missing.length === 1) {
-			const side = missingInputs.length === 1 ? 'input' : 'output';
 			issues.push({
 				code: 'compile-error',
-				message: `component ${component.id} is missing ${side} pin ${missing[0]}`,
+				message: `component ${component.id} is missing ${missing[0].side} pin ${missing[0].pin}`,
 				componentIds: [component.id]
 			});
 			continue;
 		}
-		const listed = missing.slice(0, MAX_LISTED_PINS).join(', ');
+		const listed = missing
+			.slice(0, MAX_LISTED_PINS)
+			.map((entry) => entry.pin)
+			.join(', ');
 		const remainder = missing.length > MAX_LISTED_PINS ? ` (+${missing.length - MAX_LISTED_PINS} more)` : '';
 		issues.push({
 			code: 'compile-error',
@@ -235,7 +246,7 @@ export class SimulationHost {
 		}
 
 		try {
-			// KTD1/KTD4: the sim session init path is the single place that
+			// The sim session init path is the single place that
 			// resolves parameterized components. Each flattened component
 			// resolves from its own kind and parameters with fallback to the
 			// static registry; definitions validate through the same seam.

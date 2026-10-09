@@ -2,13 +2,13 @@ import { SUB_CIRCUIT_KIND, flatten, type SubcircuitDefinitions } from '../engine
 import { defaultAnalysisParams } from '../engine/analog/netlist';
 import { defaultParamsForKind as defaultAnalogParamsForKind } from '../engine/analog/primitives';
 import {
-	MAX_WIDTH,
 	defaultParamsForKind as defaultLogicParamsForKind,
 	isParameterizedFamily,
 	kindExistsInOtherDomain,
 	resolveComponentKind,
 	resolveKind
 } from '../engine/kinds';
+import { MAX_ADDRESS_BITS, MAX_WORD_BITS } from '../engine/primitives/pins';
 import type { LogicValue } from '../engine/values';
 import type {
 	AnalogAnalysis,
@@ -50,11 +50,28 @@ export interface PinRef {
 	side: 'input' | 'output';
 }
 
-// Assisted stepping (KTD2): the next output/input bit pair to connect after
+// Assisted stepping: the next output/input bit pair to connect after
 // a completed word wire. Ephemeral UI state like pendingWire — never saved.
 export interface AssistPair {
 	output: PinRef;
 	input: PinRef;
+}
+
+/** Keep nets on surviving pins in pin-list order; count nets on vanished pins. */
+function keepNets(
+	record: Record<string, NetId>,
+	names: readonly string[]
+): { next: Record<string, NetId>; dropped: number } {
+	const next: Record<string, NetId> = {};
+	for (const name of names) {
+		const net = record[name];
+		if (net !== undefined) next[name] = net;
+	}
+	let dropped = 0;
+	for (const name of Object.keys(record)) {
+		if (!names.includes(name)) dropped += 1;
+	}
+	return { next, dropped };
 }
 
 export type Failure = { ok: false; error: string };
@@ -617,7 +634,7 @@ export class CircuitEditorStore {
 		this.emit();
 	}
 
-	// Assisted stepping (KTD2): after a completed output-to-input wire, arm
+	// After a completed output-to-input wire, arm
 	// the next bit pair when both pins share a numeric suffix, both endpoints
 	// are parameterized families, and the next pair exists unwired. Anything
 	// else leaves the assist disarmed.
@@ -708,12 +725,12 @@ export class CircuitEditorStore {
 		if (!component) return { ok: false, error: 'unknown-component' };
 		if (key.length === 0) return { ok: false, error: 'empty-param' };
 		if (key === 'width' || key === 'wordBits') {
-			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > MAX_WIDTH) {
+			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > MAX_WORD_BITS) {
 				return { ok: false, error: 'invalid-width' };
 			}
 		}
 		if (key === 'addressBits') {
-			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 30) {
+			if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > MAX_ADDRESS_BITS) {
 				return { ok: false, error: 'invalid-width' };
 			}
 		}
@@ -736,19 +753,13 @@ export class CircuitEditorStore {
 				error: kindExistsInOtherDomain(kind, this.domain()) ? 'domain-mismatch' : 'unknown-kind'
 			};
 		}
-		const keep = (record: Record<string, NetId>, names: readonly string[]): Record<string, NetId> => {
-			const next: Record<string, NetId> = {};
-			for (const name of names) {
-				const net = record[name];
-				if (net !== undefined) next[name] = net;
-			}
-			return next;
-		};
+		const keptInputs = keepNets(component.inputs, pins.inputs);
+		const keptOutputs = keepNets(component.outputs, pins.outputs);
 		this.replaceComponent({
 			...component,
 			kind,
-			inputs: keep(component.inputs, pins.inputs),
-			outputs: keep(component.outputs, pins.outputs)
+			inputs: keptInputs.next,
+			outputs: keptOutputs.next
 		});
 		if (
 			this.pendingAssist !== null &&
@@ -763,7 +774,7 @@ export class CircuitEditorStore {
 	setBusWidth(id: ComponentId, width: number): Result<number> {
 		const component = this.findComponent(id);
 		if (!component) return { ok: false, error: 'unknown-component' };
-		if (!Number.isInteger(width) || width < 1 || width > MAX_WIDTH) {
+		if (!Number.isInteger(width) || width < 1 || width > MAX_WORD_BITS) {
 			return { ok: false, error: 'invalid-width' };
 		}
 		const kind = component.kind;
@@ -774,7 +785,7 @@ export class CircuitEditorStore {
 			delete params['wordBits'];
 			delete params['addressBits'];
 		} else if (kind === 'ram' || kind === 'registerFile') {
-			// KTD5: addressBits and wordBits stay independent — never collapse
+			// addressBits and wordBits stay independent — never collapse
 			// into a single width value. The width control drives wordBits only.
 			params = { ...base, wordBits: width };
 			delete params['width'];
@@ -788,7 +799,7 @@ export class CircuitEditorStore {
 		return this.applyParams(id, params);
 	}
 
-	// Single mutation path for parameter edits (KTD1/KTD5): re-derive pins
+	// Single mutation path for parameter edits: re-derive pins
 	// from kind+params, keep nets on same-named surviving pins, drop vanished
 	// pins' nets, and return the dropped-net count.
 	private applyParams(id: ComponentId, newParams: Record<string, unknown>): Result<number> {
@@ -805,20 +816,8 @@ export class CircuitEditorStore {
 			return { ok: false, error: 'invalid-param' };
 		}
 		if (!pins) return { ok: false, error: 'unknown-kind' };
-		const prune = (
-			record: Record<string, NetId>,
-			names: readonly string[]
-		): { next: Record<string, NetId>; dropped: number } => {
-			const next: Record<string, NetId> = {};
-			let dropped = 0;
-			for (const [name, net] of Object.entries(record)) {
-				if ((names as readonly string[]).includes(name)) next[name] = net;
-				else dropped += 1;
-			}
-			return { next, dropped };
-		};
-		const prunedInputs = prune(component.inputs, pins.inputs);
-		const prunedOutputs = prune(component.outputs, pins.outputs);
+		const prunedInputs = keepNets(component.inputs, pins.inputs);
+		const prunedOutputs = keepNets(component.outputs, pins.outputs);
 		const dropped = prunedInputs.dropped + prunedOutputs.dropped;
 		this.replaceComponent({
 			...component,

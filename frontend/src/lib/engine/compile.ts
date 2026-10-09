@@ -16,7 +16,7 @@ export interface ComponentKind {
 export type ComponentKinds = Readonly<Record<string, ComponentKind>>;
 
 /**
- * Per-component kind resolution (KTD1): resolve one component from its own
+ * Per-component kind resolution: resolve one component from its own
  * kind and parameters at use time. Returns null for unknown kinds; throws
  * CompileError for known kinds with invalid parameters.
  */

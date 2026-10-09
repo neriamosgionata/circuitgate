@@ -147,6 +147,14 @@
 		return a.componentId === b.componentId && a.pin === b.pin && a.side === b.side;
 	}
 
+	function findScenePin(ref: PinRef): { component: SceneComponent; pin: ScenePin } | null {
+		const component = scene.componentById.get(ref.componentId);
+		const pin = component?.pins.find(
+			(candidate) => candidate.name === ref.pin && candidate.side === ref.side
+		);
+		return component && pin ? { component, pin } : null;
+	}
+
 	function setHoveredPin(next: PinHit | null) {
 		const same =
 			hoveredPin === next ||
@@ -697,28 +705,25 @@
 			ctx.restore();
 		}
 		if (hoveredPin) {
-			const hovered = hoveredPin;
-			const component = scene.componentById.get(hovered.componentId);
-			const pin = component?.pins.find(
-				(candidate) => candidate.name === hovered.pin && candidate.side === hovered.side
-			);
-			if (component && pin) {
-				drawHoveredPin(ctx, worldToScreen(viewport, pin.point), pin, component);
+			const found = findScenePin(hoveredPin);
+			if (found) {
+				drawHoveredPin(ctx, worldToScreen(viewport, found.pin.point), found.pin, found.component);
 			}
 		}
-		// Assisted stepping (KTD2): the armed next pair keeps the hover-chip
+		// Assisted stepping: the armed next pair keeps the hover-chip
 		// rendering persistently so the targets stay discoverable with no
 		// pointer over them.
 		const assist = snapshot.pendingAssist;
 		if (assist) {
 			for (const ref of [assist.output, assist.input]) {
-				const component = scene.componentById.get(ref.componentId);
-				const pin = component?.pins.find(
-					(candidate) => candidate.name === ref.pin && candidate.side === ref.side
-				);
-				if (component && pin) {
-					drawHoveredPin(ctx, worldToScreen(viewport, pin.point), pin, component);
+				if (hoveredPin !== null && samePin(ref, hoveredPin)) continue;
+				const found = findScenePin(ref);
+				if (!found) continue;
+				const screen = worldToScreen(viewport, found.pin.point);
+				if (screen.x < -12 || screen.y < -12 || screen.x > size.width + 12 || screen.y > size.height + 12) {
+					continue;
 				}
+				drawHoveredPin(ctx, screen, found.pin, found.component);
 			}
 		}
 

@@ -75,19 +75,15 @@ export function detectDefinitionCycles(definitions: SubcircuitDefinitions): void
 function validateLeafKinds(definition: SubcircuitDefinition, kinds: ComponentKinds | KindResolver): void {
 	for (const component of definition.document.components) {
 		if (component.kind === SUB_CIRCUIT_KIND) continue;
-		// KTD1/KTD4: resolve each component from its own kind and parameters
+		// Resolve each component from its own kind and parameters
 		// at use time. A resolver function throws on invalid parameterized
 		// params (surfacing bad widths/contents inside definitions); a static
 		// map falls back to an existence check.
-		if (typeof kinds === 'function') {
-			const resolved = kinds(component.kind, component.params);
-			if (resolved) continue;
-			throw new CompileError(
-				`subcircuit ${definition.name} references unknown component kind: ${component.kind}`,
-				'unknown-kind'
-			);
-		}
-		if (!kinds[component.kind]) {
+		const resolved =
+			typeof kinds === 'function'
+				? kinds(component.kind, component.params)
+				: (kinds[component.kind] ?? null);
+		if (!resolved) {
 			throw new CompileError(
 				`subcircuit ${definition.name} references unknown component kind: ${component.kind}`,
 				'unknown-kind'

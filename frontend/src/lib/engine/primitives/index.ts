@@ -17,7 +17,8 @@ import { dFlipFlop, jkFlipFlop, registerKind, srFlipFlop, srLatch } from './flip
 import { mux2, mux4 } from './mux';
 import { decoderKind } from './decoder';
 import { fullAdder, halfAdder, magnitudeComparatorKind, rippleCarryAdderKind } from './adders';
-import { ramKind, registerFileKind, romKind } from './memory';
+import { ramKind, registerFileKind, romKind, ROM_DEFAULT_CONTENTS } from './memory';
+import { DEFAULT_ADDRESS_BITS, DEFAULT_WORD_BITS, DEFAULT_WIDTH } from './pins';
 
 export * from './gates';
 export * from './flipflops';
@@ -30,12 +31,10 @@ export * from './memory';
 // (decoders above 3 bits, ripple adders, comparators, registers, ROM/RAM, and
 // register files) are created with their factories and registered by the
 // caller alongside this object.
-// Parameterized defaults per KTD5: width families default to 8, memories to
-// addressBits 4 / wordBits 8, ROM to sixteen zeros. Registered here so static
-// kind filters (palette, inspector) pass while per-component resolution in
-// engine/kinds.ts derives the configured width at use time.
-const defaultRomContents: readonly number[] = Object.freeze(new Array(16).fill(0));
-
+// Parameterized defaults live in pins.ts and memory.ts; the static
+// entries below only let static kind filters (palette, inspector) pass while
+// per-component resolution in engine/kinds.ts derives the configured width
+// at use time.
 export const primitiveKinds: ComponentKinds = Object.freeze({
 	and: andKind,
 	or: orKind,
@@ -59,10 +58,10 @@ export const primitiveKinds: ComponentKinds = Object.freeze({
 	fullAdder,
 	decoder2: decoderKind(2),
 	decoder3: decoderKind(3),
-	rippleCarryAdder: rippleCarryAdderKind(8),
-	magnitudeComparator: magnitudeComparatorKind(8),
-	register: registerKind(8),
-	registerFile: registerFileKind({ addressBits: 4, wordBits: 8 }),
-	ram: ramKind({ addressBits: 4, wordBits: 8 }),
-	rom: romKind({ contents: defaultRomContents, wordBits: 8 })
+	rippleCarryAdder: rippleCarryAdderKind(DEFAULT_WIDTH),
+	magnitudeComparator: magnitudeComparatorKind(DEFAULT_WIDTH),
+	register: registerKind(DEFAULT_WIDTH),
+	registerFile: registerFileKind({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
+	ram: ramKind({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
+	rom: romKind({ contents: ROM_DEFAULT_CONTENTS, wordBits: DEFAULT_WORD_BITS })
 });

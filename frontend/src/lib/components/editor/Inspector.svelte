@@ -4,6 +4,13 @@
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
 	import { kindNamesForDomain, isParameterizedFamily } from '../../engine/kinds';
+	import {
+		DEFAULT_ADDRESS_BITS,
+		DEFAULT_WORD_BITS,
+		DEFAULT_WIDTH,
+		MAX_ADDRESS_BITS,
+		MAX_WORD_BITS
+	} from '../../engine/primitives/pins';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
 	import type { Component, ComponentId } from '../../model/circuit';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
@@ -18,7 +25,6 @@
 	let kindError = $state<string | null>(null);
 	let paramError = $state<{ key: string; message: string } | null>(null);
 	let paramNotice = $state<string | null>(null);
-	let lastSelectedId = $state<string | null>(null);
 
 	$effect(() => {
 		snapshot = store.snapshot;
@@ -37,12 +43,9 @@
 	const selectedId = $derived(selected?.id ?? null);
 
 	$effect(() => {
-		const id = selectedId;
-		if (id !== lastSelectedId) {
-			lastSelectedId = id;
-			paramError = null;
-			paramNotice = null;
-		}
+		void selectedId;
+		paramError = null;
+		paramNotice = null;
 	});
 
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
@@ -119,20 +122,21 @@
 		}
 	}
 
+	function readPositiveInt(raw: unknown, fallback: number): number {
+		return typeof raw === 'number' && raw > 0 ? raw : fallback;
+	}
+
 	function currentWidth(component: Component): number {
 		const params = component.params ?? {};
-		const raw = params['width'] ?? params['wordBits'];
-		return typeof raw === 'number' && raw > 0 ? raw : 1;
+		return readPositiveInt(params['width'] ?? params['wordBits'], 1);
 	}
 
 	function currentWordBits(component: Component): number {
-		const raw = component.params?.['wordBits'];
-		return typeof raw === 'number' && raw > 0 ? raw : 8;
+		return readPositiveInt(component.params?.['wordBits'], DEFAULT_WORD_BITS);
 	}
 
 	function currentAddressBits(component: Component): number {
-		const raw = component.params?.['addressBits'];
-		return typeof raw === 'number' && raw > 0 ? raw : 4;
+		return readPositiveInt(component.params?.['addressBits'], DEFAULT_ADDRESS_BITS);
 	}
 
 	function currentRomContentsText(component: Component): string {
@@ -156,67 +160,70 @@
 		return new Set(['width']);
 	}
 
-	function parseWidthText(text: string): { ok: true; value: number } | { ok: false; message: string } {
+	function parseIntInRange(
+		text: string,
+		min: number,
+		max: number,
+		noun: string
+	): { ok: true; value: number } | { ok: false; message: string } {
 		const trimmed = text.trim();
 		const value = trimmed === '' ? NaN : Number(trimmed);
-		if (!Number.isInteger(value)) {
-			return { ok: false, message: `Width must be an integer from 1 to 32, got ${trimmed === '' ? '(empty)' : trimmed}.` };
-		}
-		if (value < 1 || value > 32) {
-			return { ok: false, message: `Width must be an integer from 1 to 32, got ${value}.` };
+		if (!Number.isInteger(value) || value < min || value > max) {
+			return {
+				ok: false,
+				message: `${noun} must be an integer from ${min} to ${max}, got ${trimmed === '' ? '(empty)' : trimmed}.`
+			};
 		}
 		return { ok: true, value };
 	}
 
+	function parseWidthText(text: string): { ok: true; value: number } | { ok: false; message: string } {
+		return parseIntInRange(text, 1, MAX_WORD_BITS, 'Width');
+	}
+
 	function parseAddressText(text: string): { ok: true; value: number } | { ok: false; message: string } {
-		const trimmed = text.trim();
-		const value = trimmed === '' ? NaN : Number(trimmed);
-		if (!Number.isInteger(value)) {
-			return { ok: false, message: `Address width must be an integer from 1 to 30, got ${trimmed === '' ? '(empty)' : trimmed}.` };
-		}
-		if (value < 1 || value > 30) {
-			return { ok: false, message: `Address width must be an integer from 1 to 30, got ${value}.` };
-		}
-		return { ok: true, value };
+		return parseIntInRange(text, 1, MAX_ADDRESS_BITS, 'Address width');
 	}
 
 	function reportDropped(dropped: number): void {
 		paramNotice = dropped > 0 ? `${dropped} net${dropped === 1 ? '' : 's'} disconnected by this change.` : null;
 	}
 
-	/** Bus/word width commit: validates inline, retains invalid text, never clamps. */
-	function commitWidthText(id: ComponentId, key: 'width' | 'wordBits', text: string) {
-		const parsed = parseWidthText(text);
-		if (!parsed.ok) {
-			paramError = { key, message: parsed.message };
-			paramNotice = null;
-			return;
-		}
-		const result = store.setBusWidth(id, parsed.value);
+	function failParam(key: string, message: string): void {
+		paramError = { key, message };
+		paramNotice = null;
+	}
+
+	function reportResult(
+		key: string,
+		result: { ok: true; value: number } | { ok: false; error: string },
+		invalidMessage: (error: string) => string
+	): void {
 		if (!result.ok) {
-			paramError = { key, message: `Width must be an integer from 1 to 32, got ${text.trim()}.` };
-			paramNotice = null;
+			failParam(key, invalidMessage(result.error));
 			return;
 		}
 		paramError = null;
 		reportDropped(result.value);
 	}
 
+	/** Bus/word width commit: validates inline, retains invalid text, never clamps. */
+	function commitWidthText(id: ComponentId, key: 'width' | 'wordBits', text: string) {
+		const parsed = parseWidthText(text);
+		if (!parsed.ok) {
+			failParam(key, parsed.message);
+			return;
+		}
+		reportResult(key, store.setBusWidth(id, parsed.value), () => `Width must be an integer from 1 to ${MAX_WORD_BITS}, got ${text.trim()}.`);
+	}
+
 	function commitAddressText(id: ComponentId, text: string) {
 		const parsed = parseAddressText(text);
 		if (!parsed.ok) {
-			paramError = { key: 'addressBits', message: parsed.message };
-			paramNotice = null;
+			failParam('addressBits', parsed.message);
 			return;
 		}
-		const result = store.setParam(id, 'addressBits', parsed.value);
-		if (!result.ok) {
-			paramError = { key: 'addressBits', message: `Address width must be an integer from 1 to 30, got ${text.trim()}.` };
-			paramNotice = null;
-			return;
-		}
-		paramError = null;
-		reportDropped(result.value);
+		reportResult('addressBits', store.setParam(id, 'addressBits', parsed.value), () => `Address width must be an integer from 1 to ${MAX_ADDRESS_BITS}, got ${text.trim()}.`);
 	}
 
 	function validateRomContents(
@@ -249,14 +256,12 @@
 	function commitRomContents(id: ComponentId, text: string, wordBits: number) {
 		const validated = validateRomContents(text, wordBits);
 		if (!validated.ok) {
-			paramError = { key: 'contents', message: validated.message };
-			paramNotice = null;
+			failParam('contents', validated.message);
 			return;
 		}
 		const result = store.setParam(id, 'contents', validated.value);
 		if (!result.ok) {
-			paramError = { key: 'contents', message: `ROM contents were rejected: ${result.error}.` };
-			paramNotice = null;
+			failParam('contents', `ROM contents were rejected: ${result.error}.`);
 			return;
 		}
 		paramError = null;
@@ -264,27 +269,18 @@
 	}
 
 	function commitLogicNumber(id: ComponentId, key: string, input: HTMLInputElement) {
-		const result = store.setParam(id, key, Number(input.value));
-		if (!result.ok) {
-			paramError = { key, message: `Invalid value for ${key}: ${result.error}.` };
-			paramNotice = null;
-			return;
-		}
-		paramError = null;
-		reportDropped(result.value);
+		reportResult(key, store.setParam(id, key, Number(input.value)), (error) => `Invalid value for ${key}: ${error}.`);
 	}
 
 	function commitJsonParam(id: ComponentId, key: string, text: string) {
 		const parsed = parseJson(text);
 		if (!parsed.ok) {
-			paramError = { key, message: `${key} must be valid JSON.` };
-			paramNotice = null;
+			failParam(key, `${key} must be valid JSON.`);
 			return;
 		}
 		const result = store.setParam(id, key, parsed.value);
 		if (!result.ok) {
-			paramError = { key, message: `Invalid value for ${key}: ${result.error}.` };
-			paramNotice = null;
+			failParam(key, `Invalid value for ${key}: ${result.error}.`);
 			return;
 		}
 		paramError = null;

@@ -7,11 +7,36 @@ import { bitPins, bitsToIndex, numberToBits, requirePositiveInteger, requireWord
 // no multi-net bus values, so callers map each bit pin to its own net and read
 // a word as a group of pins. Word widths are capped at 32 bits (see pins.ts).
 
-function requireMemoryAddressBits(addressBits: number, label: string): void {
+export function requireMemoryAddressBits(addressBits: number, label: string): void {
 	requirePositiveInteger(addressBits, label);
 	if (addressBits > 30) {
 		throw new CompileError(`${label} must be at most 30, got ${addressBits}`, 'invalid-primitive-parameter');
 	}
+}
+
+// Canonical default ROM contents (sixteen zero words); shared frozen so the
+// resolver, the registry default, and the UI never drift apart.
+export const ROM_DEFAULT_CONTENTS: readonly number[] = Object.freeze(new Array(16).fill(0));
+
+/** Validate ROM contents and word width; returns the derived address bits. */
+export function validatedRomAddressBits(contents: readonly number[], wordBits: number): number {
+	requireWordWidth(wordBits);
+	if (contents.length < 1 || (contents.length & (contents.length - 1)) !== 0) {
+		throw new CompileError(
+			`ROM contents length must be a power of two, got ${contents.length}`,
+			'invalid-rom-contents'
+		);
+	}
+	const capacity = 2 ** wordBits;
+	contents.forEach((word, index) => {
+		if (!Number.isInteger(word) || word < 0 || word >= capacity) {
+			throw new CompileError(
+				`ROM word ${index} (${word}) does not fit in ${wordBits} bits`,
+				'invalid-rom-contents'
+			);
+		}
+	});
+	return Math.log2(contents.length);
 }
 
 function memoryRead(address: number | undefined, words: readonly LogicValue[][], wordBits: number): LogicValue[] {
@@ -26,20 +51,7 @@ export interface RomOptions {
 
 export function romKind(options: RomOptions): ComponentKind {
 	const { contents, wordBits } = options;
-	requireWordWidth(wordBits);
-	if (contents.length < 1 || (contents.length & (contents.length - 1)) !== 0) {
-		throw new CompileError(`ROM contents length must be a power of two, got ${contents.length}`, 'invalid-rom-contents');
-	}
-	const capacity = 2 ** wordBits;
-	contents.forEach((word, index) => {
-		if (!Number.isInteger(word) || word < 0 || word >= capacity) {
-			throw new CompileError(
-				`ROM word ${index} (${word}) does not fit in ${wordBits} bits`,
-				'invalid-rom-contents'
-			);
-		}
-	});
-	const addressBits = Math.log2(contents.length);
+	const addressBits = validatedRomAddressBits(contents, wordBits);
 	const words = contents.map((word) => numberToBits(word, wordBits));
 	return {
 		inputs: bitPins('a', addressBits),

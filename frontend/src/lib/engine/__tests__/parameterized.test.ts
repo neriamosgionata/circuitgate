@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { CircuitDocument } from '../../model/circuit';
-import { compile, CompileError } from '../compile';
+import { compile, compileWithResolver, CompileError } from '../compile';
 import { Simulator } from '../evaluate';
 import {
 	PARAMETERIZED_FAMILY_KINDS,
 	defaultParamsForKind,
-	kindsForDocument,
+	pinoutForParameterizedKind,
 	resolveComponentKind,
-	resolveKind
+	resolveKind,
+	resolveParameterizedKind
 } from '../kinds';
 import { primitiveKinds } from '../primitives';
 import type { LogicValue } from '../values';
@@ -212,8 +213,7 @@ describe('parameterized kind resolution', () => {
 			};
 		});
 		const doc = document(components);
-		const kinds = kindsForDocument(doc);
-		const netlist = compile(doc, kinds);
+		const netlist = compileWithResolver(doc, resolveComponentKind);
 		expect(netlist.components.length).toBe(6);
 	});
 
@@ -223,13 +223,13 @@ describe('parameterized kind resolution', () => {
 			return { id: `d${index}`, kind, inputs: inputsFor(resolved), outputs: outputsFor(resolved) };
 		});
 		const doc = document(components);
-		expect(() => compile(doc, kindsForDocument(doc))).not.toThrow();
+		expect(() => compileWithResolver(doc, resolveComponentKind)).not.toThrow();
 	});
 
 	it('round-trips documents without parameterized kinds unchanged', () => {
 		const andKind = primitiveKinds.and;
 		const doc = document([{ id: 'g', kind: 'and', inputs: inputsFor(andKind), outputs: outputsFor(andKind) }]);
-		const viaResolver = compile(doc, kindsForDocument(doc));
+		const viaResolver = compileWithResolver(doc, resolveComponentKind);
 		const viaStatic = compile(doc, primitiveKinds);
 		expect(viaResolver.components.length).toBe(viaStatic.components.length);
 		expect(viaResolver.netIds).toEqual(viaStatic.netIds);
@@ -240,7 +240,7 @@ describe('parameterized kind resolution', () => {
 		const adderDoc = document([
 			{ id: 'adder', kind: 'rippleCarryAdder', params: { width: 8 }, inputs: inputsFor(adderKind), outputs: outputsFor(adderKind) }
 		]);
-		const adderSim = new Simulator(adderDoc, kindsForDocument(adderDoc));
+		const adderSim = new Simulator(adderDoc, resolveComponentKind);
 		[...bitsOf(15, 8)].forEach((bit, i) => adderSim.setNet(`a${i}`, bit));
 		[...bitsOf(27, 8)].forEach((bit, i) => adderSim.setNet(`b${i}`, bit));
 		adderSim.setNet('cin', 1);
@@ -252,7 +252,7 @@ describe('parameterized kind resolution', () => {
 		const cmpDoc = document([
 			{ id: 'cmp', kind: 'magnitudeComparator', params: { width: 4 }, inputs: inputsFor(cmpKind), outputs: outputsFor(cmpKind) }
 		]);
-		const cmpSim = new Simulator(cmpDoc, kindsForDocument(cmpDoc));
+		const cmpSim = new Simulator(cmpDoc, resolveComponentKind);
 		[...bitsOf(9, 4)].forEach((bit, i) => cmpSim.setNet(`a${i}`, bit));
 		[...bitsOf(6, 4)].forEach((bit, i) => cmpSim.setNet(`b${i}`, bit));
 		cmpSim.settle();
@@ -262,7 +262,7 @@ describe('parameterized kind resolution', () => {
 		const romDoc = document([
 			{ id: 'rom', kind: 'rom', params: { contents: [9, 6, 0, 0], wordBits: 4 }, inputs: inputsFor(romKind), outputs: outputsFor(romKind) }
 		]);
-		const romSim = new Simulator(romDoc, kindsForDocument(romDoc));
+		const romSim = new Simulator(romDoc, resolveComponentKind);
 		romSim.setNet('a0', 0);
 		romSim.setNet('a1', 0);
 		romSim.settle();
@@ -272,7 +272,7 @@ describe('parameterized kind resolution', () => {
 		const ramDoc = document([
 			{ id: 'ram', kind: 'ram', params: { addressBits: 2, wordBits: 4 }, inputs: inputsFor(ramKind), outputs: outputsFor(ramKind) }
 		]);
-		const ramSim = new Simulator(ramDoc, kindsForDocument(ramDoc));
+		const ramSim = new Simulator(ramDoc, resolveComponentKind);
 		ramSim.setNet('clk', 0);
 		ramSim.setNet('we', 0);
 		ramSim.settle();
@@ -286,5 +286,68 @@ describe('parameterized kind resolution', () => {
 		ramSim.setNet('we', 0);
 		ramSim.settle();
 		expect(readBits(ramSim, 'q', 4)).toEqual(bitsOf(0b1010, 4));
+	});
+});
+
+describe('pinout equivalence', () => {
+	function attempt(kind: string, params: Record<string, unknown> | undefined) {
+		try {
+			return { pinout: pinoutForParameterizedKind(kind, params) };
+		} catch (error) {
+			const code = error instanceof CompileError ? error.code : undefined;
+			const message = error instanceof Error ? error.message : String(error);
+			return { code, message };
+		}
+	}
+
+	function attemptFactory(kind: string, params: Record<string, unknown> | undefined) {
+		try {
+			return { pinout: resolveParameterizedKind(kind, params) };
+		} catch (error) {
+			const code = error instanceof CompileError ? error.code : undefined;
+			const message = error instanceof Error ? error.message : String(error);
+			return { code, message };
+		}
+	}
+
+	it('matches factory pin lists and error codes across widths and params', () => {
+		const cases: Array<[string, Record<string, unknown> | undefined]> = [
+			['rippleCarryAdder', undefined],
+			['rippleCarryAdder', { width: 1 }],
+			['rippleCarryAdder', { width: 16 }],
+			['rippleCarryAdder', { width: 32 }],
+			['rippleCarryAdder', { width: 64 }],
+			['rippleCarryAdder', { width: 0 }],
+			['rippleCarryAdder', { width: 'x' }],
+			['magnitudeComparator', { width: 4 }],
+			['register', { width: 8 }],
+			['register', {}],
+			['ram', { addressBits: 2, wordBits: 4 }],
+			['ram', { addressBits: 0, wordBits: 4 }],
+			['ram', { addressBits: 31, wordBits: 4 }],
+			['ram', { addressBits: 2, wordBits: 64 }],
+			['registerFile', { addressBits: 2, wordBits: 4 }],
+			['registerFile', { addressBits: 2, wordBits: 4, registers: 0 }],
+			['registerFile', { addressBits: 2, wordBits: 4, registers: 99 }],
+			['rom', { contents: [9, 6, 0, 0], wordBits: 4 }],
+			['rom', { contents: [0, 1, 2], wordBits: 4 }],
+			['rom', { contents: [0, 300], wordBits: 4 }],
+			['rom', { contents: 'nope', wordBits: 4 }],
+			['rom', undefined]
+		];
+		for (const [kind, params] of cases) {
+			const pinout = attempt(kind, params);
+			const factory = attemptFactory(kind, params);
+			if ('pinout' in pinout && 'pinout' in factory) {
+				expect(pinout.pinout, kind).toEqual(
+					factory.pinout && {
+						inputs: [...factory.pinout.inputs],
+						outputs: [...factory.pinout.outputs]
+					}
+				);
+			} else {
+				expect(pinout, kind).toEqual(factory);
+			}
+		}
 	});
 });
