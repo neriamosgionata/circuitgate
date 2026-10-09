@@ -527,3 +527,114 @@ describe('parameterized nodes store adoption (U2)', () => {
 		expect(reloaded.snapshot.document.components.find((c) => c.id === 'g1')).toEqual(gate);
 	});
 });
+
+describe('assisted stepping (U5)', () => {
+	function outPin(id: string, pin: string) {
+		return { componentId: id, pin, side: 'output' as const };
+	}
+
+	function inPin(id: string, pin: string) {
+		return { componentId: id, pin, side: 'input' as const };
+	}
+
+	function twoRegisters(widthA = 8, widthB = 8) {
+		const store = new CircuitEditorStore();
+		const a = expectOk(store.placeComponent('register', { x: 0, y: 0 }, { width: widthA }));
+		const b = expectOk(store.placeComponent('register', { x: 300, y: 0 }, { width: widthB }));
+		return { store, a, b };
+	}
+
+	function wire(
+		store: CircuitEditorStore,
+		from: { componentId: string; pin: string; side: 'input' | 'output' },
+		to: { componentId: string; pin: string; side: 'input' | 'output' }
+	) {
+		expect(store.beginWire(from).ok).toBe(true);
+		return expectOk(store.completeWire(to));
+	}
+
+	it('arms the next bit pair after an index-matched output-to-input wire', () => {
+		const { store, a, b } = twoRegisters();
+		wire(store, outPin(a.id, 'q0'), inPin(b.id, 'd0'));
+		expect(store.snapshot.pendingAssist).toEqual({
+			output: outPin(a.id, 'q1'),
+			input: inPin(b.id, 'd1')
+		});
+	});
+
+	it('arms regardless of drag direction', () => {
+		const { store, a, b } = twoRegisters();
+		wire(store, inPin(b.id, 'd0'), outPin(a.id, 'q0'));
+		expect(store.snapshot.pendingAssist).toEqual({
+			output: outPin(a.id, 'q1'),
+			input: inPin(b.id, 'd1')
+		});
+	});
+
+	it('does not arm on mismatched indices', () => {
+		const { store, a, b } = twoRegisters();
+		wire(store, outPin(a.id, 'q0'), inPin(b.id, 'd3'));
+		expect(store.snapshot.pendingAssist).toBeNull();
+	});
+
+	it('does not arm when the target was already wired', () => {
+		const { store, a, b } = twoRegisters();
+		const sw = expectOk(store.placeComponent('switch', { x: 600, y: 0 }));
+		wire(store, outPin(sw.id, 'out'), inPin(b.id, 'd1'));
+		wire(store, outPin(a.id, 'q0'), inPin(b.id, 'd0'));
+		expect(store.snapshot.pendingAssist).toBeNull();
+	});
+
+	it('does not arm within one component, for control pins, or past the last bit', () => {
+		const { store, a, b } = twoRegisters(1, 8);
+		wire(store, outPin(a.id, 'q0'), inPin(a.id, 'd0'));
+		expect(store.snapshot.pendingAssist).toBeNull();
+		const sw = expectOk(store.placeComponent('switch', { x: 600, y: 0 }));
+		wire(store, outPin(sw.id, 'out'), inPin(b.id, 'clk'));
+		expect(store.snapshot.pendingAssist).toBeNull();
+		wire(store, outPin(a.id, 'q0'), inPin(b.id, 'd0'));
+		expect(store.snapshot.pendingAssist).toBeNull();
+	});
+
+	it('cancels the assist on wire cancel, endpoint param edits, placement, and deletion', () => {
+		const { store, a, b } = twoRegisters();
+		const armPair = (index: number) =>
+			wire(
+				store,
+				outPin(a.id, `q${index}`),
+				inPin(b.id, `d${index}`)
+			);
+		armPair(0);
+		expect(store.snapshot.pendingAssist).not.toBeNull();
+		store.cancelWire();
+		expect(store.snapshot.pendingAssist).toBeNull();
+
+		armPair(1);
+		expect(store.snapshot.pendingAssist).not.toBeNull();
+		store.cancelAssist();
+		expect(store.snapshot.pendingAssist).toBeNull();
+
+		armPair(2);
+		const c = expectOk(store.placeComponent('register', { x: 600, y: 0 }));
+		expectOk(store.setBusWidth(c.id, 4));
+		expect(store.snapshot.pendingAssist).not.toBeNull();
+		expectOk(store.setBusWidth(b.id, 4));
+		expect(store.snapshot.pendingAssist).toBeNull();
+
+		armPair(3);
+		expect(store.beginPlacement('and').ok).toBe(true);
+		expect(store.snapshot.pendingAssist).toBeNull();
+		store.cancelPlacement();
+
+		const removed = twoRegisters();
+		wire(
+			removed.store,
+			outPin(removed.a.id, 'q0'),
+			inPin(removed.b.id, 'd0')
+		);
+		expect(removed.store.snapshot.pendingAssist).not.toBeNull();
+		removed.store.setSelection([removed.a.id]);
+		expect(removed.store.deleteSelection()).toBe(1);
+		expect(removed.store.snapshot.pendingAssist).toBeNull();
+	});
+});

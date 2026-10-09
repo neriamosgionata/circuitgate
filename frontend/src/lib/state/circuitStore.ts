@@ -4,6 +4,7 @@ import { defaultParamsForKind as defaultAnalogParamsForKind } from '../engine/an
 import {
 	MAX_WIDTH,
 	defaultParamsForKind as defaultLogicParamsForKind,
+	isParameterizedFamily,
 	kindExistsInOtherDomain,
 	resolveKind
 } from '../engine/kinds';
@@ -49,6 +50,13 @@ export interface PinRef {
 	side: 'input' | 'output';
 }
 
+// Assisted stepping (KTD2): the next output/input bit pair to connect after
+// a completed word wire. Ephemeral UI state like pendingWire — never saved.
+export interface AssistPair {
+	output: PinRef;
+	input: PinRef;
+}
+
 export type Failure = { ok: false; error: string };
 export type Result<T> = { ok: true; value: T } | Failure;
 export type UnitResult = { ok: true } | Failure;
@@ -81,6 +89,7 @@ export interface EditorSnapshot {
 	selection: Selection;
 	pendingKind: string | null;
 	pendingWire: PinRef | null;
+	pendingAssist: AssistPair | null;
 	packaging: PackagingDraft | null;
 	netValues: Readonly<Record<NetId, LogicValue>>;
 	oscillatingNets: ReadonlySet<NetId>;
@@ -151,6 +160,7 @@ export class CircuitEditorStore {
 	private selection: Selection = emptySelection();
 	private pendingKind: string | null = null;
 	private pendingWire: PinRef | null = null;
+	private pendingAssist: AssistPair | null = null;
 	private packaging: PackagingDraft | null = null;
 	private netValues: Record<NetId, LogicValue> = {};
 	private oscillatingNets: Set<NetId> = new Set();
@@ -189,6 +199,7 @@ export class CircuitEditorStore {
 			selection: this.selection,
 			pendingKind: this.pendingKind,
 			pendingWire: this.pendingWire,
+			pendingAssist: this.pendingAssist,
 			packaging: this.packaging,
 			netValues: this.netValues,
 			oscillatingNets: this.oscillatingNets,
@@ -218,6 +229,7 @@ export class CircuitEditorStore {
 		this.selection = emptySelection();
 		this.pendingKind = null;
 		this.pendingWire = null;
+		this.pendingAssist = null;
 		this.packaging = null;
 		this.netValues = {};
 		this.oscillatingNets = new Set();
@@ -420,6 +432,7 @@ export class CircuitEditorStore {
 	beginPlacement(kind: string): UnitResult {
 		if (!this.pinsForKind(kind)) return { ok: false, error: 'unknown-kind' };
 		this.pendingKind = kind;
+		this.pendingAssist = null;
 		this.emit();
 		return { ok: true };
 	}
@@ -508,6 +521,13 @@ export class CircuitEditorStore {
 		if (count === 0) return 0;
 		this.updateCurrentDocument(removeComponents(document, this.selection));
 		this.updateCurrentLayout(removeLayoutEntries(this.layoutFor(this.path), this.selection));
+		if (
+			this.pendingAssist !== null &&
+			(this.selection.has(this.pendingAssist.output.componentId) ||
+				this.selection.has(this.pendingAssist.input.componentId))
+		) {
+			this.pendingAssist = null;
+		}
 		this.selection = emptySelection();
 		this.emit();
 		return count;
@@ -563,6 +583,13 @@ export class CircuitEditorStore {
 			this.setPinNet(target, net);
 		}
 		this.pendingWire = null;
+		const output = pending.side === 'output' ? pending : target;
+		const input = pending.side === 'output' ? target : pending;
+		this.updateAssistAfterWire(
+			output,
+			input,
+			pending.side === 'output' ? targetNet : pendingNet
+		);
 		this.emit();
 		return { ok: true, value: net };
 	}
@@ -578,9 +605,55 @@ export class CircuitEditorStore {
 	}
 
 	cancelWire(): void {
-		if (this.pendingWire === null) return;
+		if (this.pendingWire === null && this.pendingAssist === null) return;
 		this.pendingWire = null;
+		this.pendingAssist = null;
 		this.emit();
+	}
+
+	cancelAssist(): void {
+		if (this.pendingAssist === null) return;
+		this.pendingAssist = null;
+		this.emit();
+	}
+
+	// Assisted stepping (KTD2): after a completed output-to-input wire, arm
+	// the next bit pair when both pins share a numeric suffix, both endpoints
+	// are parameterized families, and the next pair exists unwired. Anything
+	// else leaves the assist disarmed.
+	private updateAssistAfterWire(
+		output: PinRef,
+		input: PinRef,
+		inputNetBefore: NetId | undefined
+	): void {
+		this.pendingAssist = null;
+		if (output.componentId === input.componentId) return;
+		const outMatch = /^([a-z]+)(\d+)$/.exec(output.pin);
+		const inMatch = /^([a-z]+)(\d+)$/.exec(input.pin);
+		if (!outMatch || !inMatch || outMatch[2] !== inMatch[2]) return;
+		if (inputNetBefore !== undefined) return;
+		const outComponent = this.findComponent(output.componentId);
+		const inComponent = this.findComponent(input.componentId);
+		if (!outComponent || !inComponent) return;
+		if (!isParameterizedFamily(outComponent.kind) || !isParameterizedFamily(inComponent.kind)) {
+			return;
+		}
+		const next = Number(outMatch[2]) + 1;
+		const nextOutput: PinRef = {
+			componentId: output.componentId,
+			pin: `${outMatch[1]}${next}`,
+			side: 'output'
+		};
+		const nextInput: PinRef = {
+			componentId: input.componentId,
+			pin: `${inMatch[1]}${next}`,
+			side: 'input'
+		};
+		if (!this.pinExists(nextOutput) || !this.pinExists(nextInput)) return;
+		if (this.netForPin(nextOutput) !== undefined || this.netForPin(nextInput) !== undefined) {
+			return;
+		}
+		this.pendingAssist = { output: nextOutput, input: nextInput };
 	}
 
 	// Direct pin-to-net assignment, used when completing partially wired
@@ -677,6 +750,12 @@ export class CircuitEditorStore {
 			inputs: keep(component.inputs, pins.inputs),
 			outputs: keep(component.outputs, pins.outputs)
 		});
+		if (
+			this.pendingAssist !== null &&
+			(id === this.pendingAssist.output.componentId || id === this.pendingAssist.input.componentId)
+		) {
+			this.pendingAssist = null;
+		}
 		this.emit();
 		return { ok: true };
 	}
@@ -747,6 +826,12 @@ export class CircuitEditorStore {
 			inputs: prunedInputs.next,
 			outputs: prunedOutputs.next
 		});
+		if (
+			this.pendingAssist !== null &&
+			(id === this.pendingAssist.output.componentId || id === this.pendingAssist.input.componentId)
+		) {
+			this.pendingAssist = null;
+		}
 		this.emit();
 		return { ok: true, value: dropped };
 	}
@@ -1094,6 +1179,7 @@ export class CircuitEditorStore {
 		this.selection = emptySelection();
 		this.pendingKind = null;
 		this.pendingWire = null;
+		this.pendingAssist = null;
 		this.packaging = null;
 		this.emit();
 		return { ok: true };
@@ -1107,6 +1193,7 @@ export class CircuitEditorStore {
 		this.selection = emptySelection();
 		this.pendingKind = null;
 		this.pendingWire = null;
+		this.pendingAssist = null;
 		this.packaging = null;
 		this.emit();
 		return { ok: true };

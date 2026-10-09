@@ -143,6 +143,10 @@
 		return { componentId: hit.componentId, pin: hit.pin, side: hit.side };
 	}
 
+	function samePin(a: PinRef, b: PinRef): boolean {
+		return a.componentId === b.componentId && a.pin === b.pin && a.side === b.side;
+	}
+
 	function setHoveredPin(next: PinHit | null) {
 		const same =
 			hoveredPin === next ||
@@ -236,6 +240,7 @@
 		if (snapshot.pendingKind) {
 			store.placeComponent(snapshot.pendingKind, world);
 			store.cancelPlacement();
+			store.cancelAssist();
 			setHoveredPin(null);
 			return;
 		}
@@ -243,6 +248,10 @@
 		const hit = hitTest(scene, viewport, screen);
 		if (hit?.type === 'pin') {
 			const pin = asPinRef(hit);
+			const assist = store.snapshot.pendingAssist;
+			if (assist !== null && !samePin(pin, assist.output) && !samePin(pin, assist.input)) {
+				store.cancelAssist();
+			}
 			if (snapshot.pendingWire) {
 				store.completeWire(pin);
 				wirePreview = null;
@@ -258,6 +267,7 @@
 				store.cancelWire();
 				wirePreview = null;
 			}
+			store.cancelAssist();
 			if (event.shiftKey) {
 				store.toggleSelection(hit.id);
 			} else if (!snapshot.selection.has(hit.id)) {
@@ -280,6 +290,7 @@
 		if (!event.shiftKey) store.clearSelection();
 		drag = { kind: 'marquee', start: world };
 		marquee = { x: world.x, y: world.y, width: 0, height: 0 };
+		store.cancelAssist();
 		setHoveredPin(null);
 	}
 
@@ -695,6 +706,21 @@
 				drawHoveredPin(ctx, worldToScreen(viewport, pin.point), pin, component);
 			}
 		}
+		// Assisted stepping (KTD2): the armed next pair keeps the hover-chip
+		// rendering persistently so the targets stay discoverable with no
+		// pointer over them.
+		const assist = snapshot.pendingAssist;
+		if (assist) {
+			for (const ref of [assist.output, assist.input]) {
+				const component = scene.componentById.get(ref.componentId);
+				const pin = component?.pins.find(
+					(candidate) => candidate.name === ref.pin && candidate.side === ref.side
+				);
+				if (component && pin) {
+					drawHoveredPin(ctx, worldToScreen(viewport, pin.point), pin, component);
+				}
+			}
+		}
 
 		const selected = visible.components.filter((component) => snapshot.selection.has(component.id));
 		const nextOverlay = selected.map((component) => {
@@ -827,9 +853,11 @@
 		<span class="hint">
 			{snapshot.pendingKind
 				? `Click to place ${snapshot.pendingKind}`
-				: snapshot.pendingWire
-					? 'Click a pin to finish the wire (Esc cancels)'
-					: 'Drag pins to wire, shift-click to multi-select, middle-drag to pan'}
+				: snapshot.pendingAssist
+					? `Next ${snapshot.pendingAssist.output.pin} → ${snapshot.pendingAssist.input.pin} (Esc cancels)`
+					: snapshot.pendingWire
+						? 'Click a pin to finish the wire (Esc cancels)'
+						: 'Drag pins to wire, shift-click to multi-select, middle-drag to pan'}
 		</span>
 	</div>
 </div>
