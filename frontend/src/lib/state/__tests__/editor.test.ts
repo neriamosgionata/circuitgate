@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Simulator } from '../../engine/evaluate';
+import { resolveComponentKind } from '../../engine/kinds';
 import { primitiveKinds } from '../../engine/primitives';
 import { flatten } from '../../engine/hierarchy';
 import type { CircuitDocument, Component } from '../../model/circuit';
@@ -245,6 +246,143 @@ describe('editor subcircuit authoring', () => {
 		expect(sim.settle().status).toBe('stable');
 		expect(sim.getNet('SUM2')).toBe(1);
 		expect(sim.getNet('CARRY2')).toBe(0);
+	});
+});
+
+describe('subcircuit packaging with wide nodes (U6)', () => {
+	const WIDTH = 16;
+
+	function wideRegisterComponents(): Component[] {
+		const inputs: Record<string, string> = { clk: 'CLK' };
+		const outputs: Record<string, string> = {};
+		for (let i = 0; i < WIDTH; i++) {
+			inputs[`d${i}`] = `D${i}`;
+			outputs[`q${i}`] = `Q${i}`;
+		}
+		const components: Component[] = [
+			{ id: 'clksw', kind: 'switch', inputs: {}, outputs: { out: 'CLK' } },
+			{ id: 'reg16', kind: 'register', params: { width: WIDTH }, inputs, outputs }
+		];
+		for (let i = 0; i < WIDTH; i++) {
+			components.push({ id: `dsw${i}`, kind: 'switch', inputs: {}, outputs: { out: `D${i}` } });
+			components.push({ id: `pq${i}`, kind: 'probe', inputs: { in: `Q${i}` }, outputs: {} });
+		}
+		return components;
+	}
+
+	function packageWideRegister(): { store: CircuitEditorStore; instanceId: string } {
+		const store = new CircuitEditorStore({ circuit: doc(wideRegisterComponents()) });
+		store.setSelection(['reg16']);
+		expect(store.beginPackaging().ok).toBe(true);
+		const instanceId = expectOk(store.confirmPackage('reg16def'));
+		return { store, instanceId };
+	}
+
+	function clockPattern(sim: Simulator, pattern: number): void {
+		sim.setState('clksw', { value: 0 });
+		for (let i = 0; i < WIDTH; i++) sim.setState(`dsw${i}`, { value: (pattern >> i) & 1 });
+		expect(sim.settle().status).toBe('stable');
+		sim.setState('clksw', { value: 1 });
+		expect(sim.settle().status).toBe('stable');
+	}
+
+	it('packages a 16-bit register with its derived boundary pins', () => {
+		const store = new CircuitEditorStore({ circuit: doc(wideRegisterComponents()) });
+		store.setSelection(['reg16']);
+		const draft = expectOk(store.beginPackaging());
+		const byNet = new Map(draft.candidates.map((candidate) => [candidate.netId, candidate.direction]));
+		expect(byNet.get('CLK')).toBe('input');
+		for (let i = 0; i < WIDTH; i++) {
+			expect(byNet.get(`D${i}`)).toBe('input');
+			expect(byNet.get(`Q${i}`)).toBe('output');
+		}
+		// Pins past the default width-8 pinout only exist through the resolver.
+		expect(draft.inputs['D15']).toBe('D15');
+		expect(draft.outputs['Q15']).toBe('Q15');
+
+		expectOk(store.confirmPackage('reg16def'));
+		const definition = store.snapshot.definitions['reg16def'];
+		expect(definition.document.components.find((c) => c.id === 'reg16')?.params).toEqual({
+			width: WIDTH
+		});
+		expect(definition.inputs['D15']).toBe('D15');
+		expect(definition.outputs['Q15']).toBe('Q15');
+	});
+
+	it('simulates an instance of a definition holding a 16-bit register', () => {
+		const { store } = packageWideRegister();
+		const flat = store.flattenCurrent();
+		expect(flat.components.find((c) => c.id === 'pkg1/reg16')?.kind).toBe('register');
+		const sim = new Simulator(flat, resolveComponentKind);
+		const pattern = 0b1010010111000011;
+		clockPattern(sim, pattern);
+		for (let i = 0; i < WIDTH; i++) expect(sim.getNet(`Q${i}`)).toBe((pattern >> i) & 1);
+	});
+
+	it('round-trips a definition holding a wide node through save and load', () => {
+		const { store } = packageWideRegister();
+		const snapshot = store.snapshot;
+		const revived = JSON.parse(
+			JSON.stringify({
+				circuit: snapshot.circuit,
+				definitions: snapshot.definitions,
+				layouts: snapshot.layouts
+			})
+		);
+		const reloaded = new CircuitEditorStore({
+			circuit: revived.circuit,
+			definitions: revived.definitions,
+			layouts: revived.layouts
+		});
+		const inner = reloaded.snapshot.definitions['reg16def'].document.components.find(
+			(c) => c.id === 'reg16'
+		);
+		expect(inner?.params).toEqual({ width: WIDTH });
+		expect(inner?.inputs['d15']).toBe('D15');
+		expect(inner?.outputs['q15']).toBe('Q15');
+
+		expect(reloaded.enterDefinition('reg16def').ok).toBe(true);
+		expect(reloaded.beginWire({ componentId: 'reg16', pin: 'd15', side: 'input' }).ok).toBe(true);
+		reloaded.cancelWire();
+		expect(reloaded.beginWire({ componentId: 'reg16', pin: 'q15', side: 'output' }).ok).toBe(true);
+		reloaded.cancelWire();
+		expect(reloaded.navigateTo(0).ok).toBe(true);
+
+		const sim = new Simulator(reloaded.flattenCurrent(), resolveComponentKind);
+		clockPattern(sim, 1 << 15);
+		expect(sim.getNet('Q15')).toBe(1);
+		expect(sim.getNet('Q0')).toBe(0);
+	});
+
+	it('rejects invalid parameterized params inside a definition on flatten', () => {
+		const store = new CircuitEditorStore({
+			circuit: doc([
+				{
+					id: 'inst',
+					kind: 'subcircuit',
+					params: { definition: 'bad' },
+					inputs: { a: 'A' },
+					outputs: { d: 'D' }
+				}
+			]),
+			definitions: {
+				bad: {
+					name: 'bad',
+					inputs: { a: 'A' },
+					outputs: { d: 'D' },
+					document: doc([
+						{
+							id: 'rom',
+							kind: 'rom',
+							params: { contents: [0, 1, 2], wordBits: 4 },
+							inputs: { a0: 'A' },
+							outputs: { d0: 'D', d1: 'D', d2: 'D', d3: 'D' }
+						}
+					])
+				}
+			}
+		});
+		expect(() => store.flattenCurrent()).toThrow();
 	});
 });
 

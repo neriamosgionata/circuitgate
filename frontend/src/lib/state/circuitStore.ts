@@ -6,9 +6,9 @@ import {
 	defaultParamsForKind as defaultLogicParamsForKind,
 	isParameterizedFamily,
 	kindExistsInOtherDomain,
+	resolveComponentKind,
 	resolveKind
 } from '../engine/kinds';
-import { primitiveKinds } from '../engine/primitives';
 import type { LogicValue } from '../engine/values';
 import type {
 	AnalogAnalysis,
@@ -1204,6 +1204,6 @@ export class CircuitEditorStore {
 	}
 
 	flattenCurrent(): CircuitDocument {
-		return flatten(this.circuit, this.definitions, primitiveKinds);
+		return flatten(this.circuit, this.definitions, resolveComponentKind);
 	}
 }
