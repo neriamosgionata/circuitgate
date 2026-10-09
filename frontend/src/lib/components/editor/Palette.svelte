@@ -34,6 +34,7 @@
 			title: 'Arithmetic and routing',
 			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3']
 		},
+		{ title: 'Display', kinds: ['sevenSegDecoder', 'sevenSegDisplay'] },
 		{
 			title: 'Wide logic',
 			kinds: ['rippleCarryAdder', 'magnitudeComparator', 'register', 'registerFile', 'ram', 'rom']

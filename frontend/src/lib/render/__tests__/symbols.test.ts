@@ -22,6 +22,8 @@ const LOGIC_KINDS = [
 	'shiftRegister',
 	'mux2',
 	'mux4',
+	'sevenSegDecoder',
+	'sevenSegDisplay',
 	'halfAdder',
 	'fullAdder',
 	'decoder2',
