@@ -33,7 +33,14 @@ function toScreen(box: { x: number; y: number }, world: { x: number; y: number }
 	return { x: box.x + world.x + 48, y: box.y + world.y + 48 };
 }
 
-async function dragWire(page: Page, box: { x: number; y: number }, from: { x: number; y: number }, to: { x: number; y: number }) {
+async function canvasBox(page: Page) {
+	return (await page.locator('.canvas-slot canvas').boundingBox())!;
+}
+
+async function dragWire(page: Page, from: { x: number; y: number }, to: { x: number; y: number }) {
+	// Re-query the canvas box per drag: webfont loads can shift layout after
+	// page load, and stale coordinates miss the 9px pin targets.
+	const box = await canvasBox(page);
 	const a = toScreen(box, from);
 	const b = toScreen(box, to);
 	await page.mouse.move(a.x, a.y);
@@ -45,7 +52,9 @@ async function dragWire(page: Page, box: { x: number; y: number }, from: { x: nu
 
 async function clickUntilSelected(page: Page, x: number, y: number) {
 	for (let attempt = 0; attempt < 6; attempt++) {
-		await page.mouse.click(x, y);
+		const box = await canvasBox(page);
+		const at = toScreen(box, { x, y });
+		await page.mouse.click(at.x, at.y);
 		await page.waitForTimeout(300);
 		if ((await page.locator('.selection').count()) === 1) return;
 	}
@@ -61,11 +70,9 @@ test.describe('U5: assisted stepping', () => {
 		await page.goto(`/projects/${projectId}`);
 		await expect(page.getByTestId('component-count')).toHaveText('2 components');
 
-		const box = (await page.locator('.canvas-slot canvas').boundingBox())!;
 		// Wait until canvas hit-testing is live: click r1's body until selected.
-		const body = toScreen(box, { x: 120 + 32, y: 200 + 141 });
-		await clickUntilSelected(page, body.x, body.y);
-		await dragWire(page, box, Q0, D0);
+		await clickUntilSelected(page, 120 + 32, 200 + 141);
+		await dragWire(page, Q0, D0);
 
 		// q0 and d0 share a net; the assist arms q1 to d1.
 		await page.getByTestId('save-project').click();
@@ -85,7 +92,7 @@ test.describe('U5: assisted stepping', () => {
 		// A mismatched connection arms nothing: wire q2 to d5 instead.
 		const q2 = { x: 120 + 64, y: 200 + (282 * 3) / 17 };
 		const d5 = { x: 500, y: 200 + (282 * 7) / 18 };
-		await dragWire(page, box, q2, d5);
+		await dragWire(page, q2, d5);
 		await expect(page.locator('.hint')).toContainText('Drag pins to wire');
 
 		await page.keyboard.press('Escape');
