@@ -18,6 +18,8 @@ const LOGIC_KINDS = [
 	'jkFlipFlop',
 	'srFlipFlop',
 	'srLatch',
+	'counter',
+	'shiftRegister',
 	'mux2',
 	'mux4',
 	'halfAdder',

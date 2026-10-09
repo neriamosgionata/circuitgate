@@ -29,7 +29,7 @@
 	const logicGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Gates', kinds: ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buffer'] },
 		{ title: 'I/O and clock', kinds: ['switch', 'probe', 'led', 'clock'] },
-		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'] },
+		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch', 'counter', 'shiftRegister'] },
 		{
 			title: 'Arithmetic and routing',
 			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3']

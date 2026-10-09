@@ -37,6 +37,8 @@ export const SYMBOL_PATHS: Readonly<Record<string, string>> = Object.freeze({
 	jkFlipFlop: 'M10 6 H54 V34 H10 Z M10 24 L17 27.5 L10 31 M14 12 H26',
 	srFlipFlop: 'M10 6 H54 V34 H10 Z M10 24 L17 27.5 L10 31 M10 19 H54',
 	srLatch: 'M10 6 H54 V34 H10 Z M10 19 H54',
+	counter: 'M10 6 H54 V34 H10 Z M10 24 L17 27.5 L10 31 M22 13 L30 13 L26 9 L26 17',
+	shiftRegister: 'M10 6 H54 V34 H10 Z M10 24 L17 27.5 L10 31 M22 20 H34 L30 16 L30 24',
 	// ---- arithmetic and routing ----
 	halfAdder: 'M10 6 H54 V34 H10 Z M40 12 H28 L34 20 L28 28 H40',
 	fullAdder: 'M10 6 H54 V34 H10 Z M40 12 H28 L34 20 L28 28 H40 M15 26 V32 M12 29 H18',

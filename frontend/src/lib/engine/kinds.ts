@@ -3,6 +3,7 @@ import { primitiveKinds } from './primitives';
 import { analogKinds } from './analog/primitives';
 import { magnitudeComparatorKind, rippleCarryAdderKind } from './primitives/adders';
 import { registerKind } from './primitives/flipflops';
+import { counterKind, shiftRegisterKind } from './primitives/sequential';
 import { ROM_DEFAULT_CONTENTS, ramKind, registerFileKind, requireMemoryAddressBits, romKind, validatedRomAddressBits } from './primitives/memory';
 import {
 	DEFAULT_ADDRESS_BITS,
@@ -32,6 +33,8 @@ export const PARAMETERIZED_FAMILY_KINDS: readonly string[] = Object.freeze([
 	'rippleCarryAdder',
 	'magnitudeComparator',
 	'register',
+	'counter',
+	'shiftRegister',
 	'registerFile',
 	'ram',
 	'rom'
@@ -84,6 +87,8 @@ export function defaultParamsForKind(kind: string): ComponentParams | null {
 		case 'rippleCarryAdder':
 		case 'magnitudeComparator':
 		case 'register':
+		case 'counter':
+		case 'shiftRegister':
 			return { width: DEFAULT_WIDTH };
 		case 'registerFile':
 		case 'ram':
@@ -124,6 +129,20 @@ export function pinoutForParameterizedKind(
 		case 'register': {
 			const width = readWidth(params);
 			return { inputs: ['clk', ...bitPins('d', width)], outputs: bitPins('q', width) };
+		}
+		case 'counter': {
+			const width = readWidth(params);
+			return {
+				inputs: ['clk', 'reset', 'enable', 'load', ...bitPins('d', width)],
+				outputs: bitPins('q', width)
+			};
+		}
+		case 'shiftRegister': {
+			const width = readWidth(params);
+			return {
+				inputs: ['clk', 'reset', 'load', 'sin', ...bitPins('d', width)],
+				outputs: bitPins('q', width)
+			};
 		}
 		case 'ram': {
 			const addressBits = readAddressBits(params);
@@ -185,6 +204,10 @@ export function resolveParameterizedKind(
 			return magnitudeComparatorKind(readWidth(params));
 		case 'register':
 			return registerKind(readWidth(params));
+		case 'counter':
+			return counterKind(readWidth(params));
+		case 'shiftRegister':
+			return shiftRegisterKind(readWidth(params));
 		case 'ram':
 			return ramKind({ addressBits: readAddressBits(params), wordBits: readWordBits(params) });
 		case 'registerFile': {

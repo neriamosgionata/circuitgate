@@ -50,7 +50,7 @@ function readBits(sim: Simulator, prefix: string, width: number): V[] {
 describe('parameterized kind resolution', () => {
 	it('covers all six families', () => {
 		expect([...PARAMETERIZED_FAMILY_KINDS].sort()).toEqual(
-			['magnitudeComparator', 'ram', 'register', 'registerFile', 'rippleCarryAdder', 'rom'].sort()
+			['counter', 'magnitudeComparator', 'ram', 'register', 'registerFile', 'rippleCarryAdder', 'rom', 'shiftRegister'].sort()
 		);
 		for (const family of PARAMETERIZED_FAMILY_KINDS) {
 			expect(resolveComponentKind(family), family).not.toBeNull();
@@ -322,6 +322,10 @@ describe('pinout equivalence', () => {
 			['magnitudeComparator', { width: 4 }],
 			['register', { width: 8 }],
 			['register', {}],
+			['counter', undefined],
+			['counter', { width: 8 }],
+			['shiftRegister', undefined],
+			['shiftRegister', { width: 8 }],
 			['ram', { addressBits: 2, wordBits: 4 }],
 			['ram', { addressBits: 0, wordBits: 4 }],
 			['ram', { addressBits: 31, wordBits: 4 }],
