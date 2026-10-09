@@ -26,6 +26,20 @@ export const xnorKind = binaryGate((a, b) => not(xor(a, b)));
 export const notKind = unaryGate(not);
 export const bufferKind = unaryGate((a) => a);
 
+// Tri-state buffer. Enabled output follows the input (unknown passes through);
+// disabled output floats high-impedance so wired multi-driver resolution
+// ignores it. A non-binary enable drives unknown. Contention between enabled
+// drivers is resolved by the engine, not here.
+export const triStateBuffer: ComponentKind = {
+	inputs: ['in', 'enable'],
+	outputs: ['out'],
+	evaluate: ([data, enable]) => {
+		if (enable === 1) return { outputs: [data] };
+		if (enable === 0) return { outputs: ['Z' as LogicValue] };
+		return { outputs: ['X' as LogicValue] };
+	}
+};
+
 export interface SwitchState {
 	value: LogicValue;
 }

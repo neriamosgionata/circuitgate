@@ -26,6 +26,7 @@ export const SYMBOL_PATHS: Readonly<Record<string, string>> = Object.freeze({
 	xnor: 'M2 6 Q10 20 2 34 M8 6 Q16 20 8 34 Q26 32 44 20 Q26 8 8 6 M44 20 H46 M52 20 m-3 0 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0',
 	not: 'M10 8 L36 20 L10 32 Z M36 20 H43 M46 20 m-3 0 a3 3 0 1 0 6 0 a3 3 0 1 0 -6 0',
 	buffer: 'M10 8 L40 20 L10 32 Z',
+	triStateBuffer: 'M10 8 L40 20 L10 32 Z M40 20 H48 M22 14 V20 M22 20 V26',
 	// ---- logic I/O ----
 	switch:
 		'M8 20 H24 M24 20 L42 10 M44 14 V26 M44 20 H56 M24 20 m-2 0 a2 2 0 1 0 4 0 a2 2 0 1 0 -4 0',

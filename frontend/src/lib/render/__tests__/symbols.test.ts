@@ -10,6 +10,7 @@ const LOGIC_KINDS = [
 	'xor',
 	'xnor',
 	'buffer',
+	'triStateBuffer',
 	'switch',
 	'probe',
 	'led',

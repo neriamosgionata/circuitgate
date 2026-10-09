@@ -10,6 +10,7 @@ import {
 	orKind,
 	probeKind,
 	switchKind,
+	triStateBuffer,
 	xnorKind,
 	xorKind
 } from './gates';
@@ -48,6 +49,7 @@ export const primitiveKinds: ComponentKinds = Object.freeze({
 	xor: xorKind,
 	xnor: xnorKind,
 	buffer: bufferKind,
+	triStateBuffer,
 	switch: switchKind,
 	probe: probeKind,
 	led: ledKind,

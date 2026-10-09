@@ -32,7 +32,7 @@
 		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch', 'counter', 'shiftRegister'] },
 		{
 			title: 'Arithmetic and routing',
-			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3']
+			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3', 'triStateBuffer']
 		},
 		{ title: 'Display', kinds: ['sevenSegDecoder', 'sevenSegDisplay'] },
 		{

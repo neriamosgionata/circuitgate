@@ -5,6 +5,7 @@ import { Simulator } from '../evaluate';
 import { primitiveKinds } from '../primitives';
 import { magnitudeComparatorKind, rippleCarryAdderKind } from '../primitives/adders';
 import { registerKind } from '../primitives/flipflops';
+import { triStateBuffer } from '../primitives/gates';
 import type { LogicValue } from '../values';
 
 type V = LogicValue;
@@ -361,6 +362,51 @@ describe('multiplexers and decoders', () => {
 			expect(outputs, `decoder2 address=${address}`).toEqual([0, 1, 2, 3].map((index) => (index === address ? 1 : 0)));
 		}
 		expect(evaluateKind(primitiveKinds, 'decoder2', ['X', 0])).toEqual(['X', 'X', 'X', 'X']);
+	});
+});
+
+describe('tri-state buffer', () => {
+	it('passes input through when enabled and floats when disabled', () => {
+		expect(triStateBuffer.inputs).toEqual(['in', 'enable']);
+		expect(triStateBuffer.outputs).toEqual(['out']);
+		expect(evaluateKind(primitiveKinds, 'triStateBuffer', [0, 1])).toEqual([0]);
+		expect(evaluateKind(primitiveKinds, 'triStateBuffer', [1, 1])).toEqual([1]);
+		expect(evaluateKind(primitiveKinds, 'triStateBuffer', [1, 0])).toEqual(['Z']);
+		expect(evaluateKind(primitiveKinds, 'triStateBuffer', ['X', 1])).toEqual(['X']);
+		expect(evaluateKind(primitiveKinds, 'triStateBuffer', [1, 'X'])).toEqual(['X']);
+	});
+
+	it('leaves a driven net undisturbed while disabled and contends only when enabled', () => {
+		const sim = new Simulator(
+			document([
+				{
+					id: 'a',
+					kind: 'triStateBuffer',
+					inputs: { in: 'A', enable: 'ENA' },
+					outputs: { out: 'BUS' }
+				},
+				{
+					id: 'b',
+					kind: 'triStateBuffer',
+					inputs: { in: 'B', enable: 'ENB' },
+					outputs: { out: 'BUS' }
+				}
+			]),
+			{ triStateBuffer }
+		);
+		sim.setNet('A', 1);
+		sim.setNet('B', 0);
+		sim.setNet('ENA', 1);
+		sim.setNet('ENB', 0);
+		expect(sim.settle().status).toBe('stable');
+		expect(sim.getNet('BUS')).toBe(1);
+		sim.setNet('ENB', 1);
+		sim.settle();
+		expect(sim.getNet('BUS')).toBe('X');
+		sim.setNet('ENA', 0);
+		sim.setNet('ENB', 0);
+		sim.settle();
+		expect(sim.getNet('BUS')).toBe('Z');
 	});
 });
 
