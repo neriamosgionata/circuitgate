@@ -1,0 +1,5 @@
+* CircuitGate in-house 3-terminal low-dropout regulator macromodel (functional 3.3 V, 1.1 V dropout; not device-accurate).
+* Authored for CircuitGate; redistribution permitted with the application.
+.subckt ld1117v33 vin vout gnd
+breg vin vout i = (min(v(vin, gnd) - 1.1, 3.3) - v(vout, gnd)) * 2
+.ends ld1117v33

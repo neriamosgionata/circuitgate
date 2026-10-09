@@ -72,6 +72,8 @@ export const SYMBOL_PATHS: Readonly<Record<string, string>> = Object.freeze({
 	diode: 'M8 20 H22 M22 12 V28 L36 20 Z M36 12 V28 M36 20 H56',
 	zener: 'M8 20 H22 M22 12 V28 L36 20 Z M32 12 H36 V28 H40 M36 20 H56',
 	bjt: 'M8 20 H28 M8 10 L28 16 M28 8 V32 M28 24 L48 31 M42 26 L48 31 L41 30',
+	pnp: 'M8 20 H28 M8 10 L28 16 M28 8 V32 M48 24 L28 31 M42 26 L36 31 L43 30',
+	bridge: 'M32 6 L50 20 L32 34 L14 20 Z M32 6 V34 M14 20 H50',
 	mosfet:
 		'M8 20 H26 M26 12 V28 M30 8 V32 M8 10 H30 M30 24 L48 31 M42 26 L48 31 L41 30',
 	idealOpamp: 'M14 6 L50 20 L14 34 Z M22 15 H30 M22 25 H30 M26 21 V29',
@@ -111,6 +113,7 @@ const SHAPE_FAMILY: ReadonlySet<string> = new Set([
 	'diode',
 	'zener',
 	'bjt',
+	'pnp',
 	'mosfet',
 	'idealOpamp',
 	'opamp',

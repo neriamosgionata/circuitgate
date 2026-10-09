@@ -44,7 +44,7 @@
 	const analogGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Sources', kinds: ['vsource', 'isource'] },
 		{ title: 'Passives', kinds: ['resistor', 'capacitor', 'inductor', 'potentiometer'] },
-		{ title: 'Diodes and transistors', kinds: ['diode', 'led', 'zener', 'bjt', 'mosfet'] },
+		{ title: 'Diodes and transistors', kinds: ['diode', 'led', 'zener', 'bjt', 'pnp', 'mosfet', 'bridge'] },
 		{ title: 'Switching', kinds: ['switch'] },
 		{ title: 'Amplifiers and ICs', kinds: ['idealOpamp', 'opamp', 'comparator', 'timer555', 'regulator'] },
 		{ title: 'Reference', kinds: ['ground'] }

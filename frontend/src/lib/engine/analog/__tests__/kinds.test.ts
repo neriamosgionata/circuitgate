@@ -33,6 +33,8 @@ const ALL_KINDS = [
 	'led',
 	'zener',
 	'bjt',
+	'pnp',
+	'bridge',
 	'mosfet',
 	'idealOpamp',
 	'opamp',
@@ -87,7 +89,7 @@ describe('analog kind registry', () => {
 	});
 
 	it('marks model-backed kinds and leaves the ideal op-amp model-free', () => {
-		for (const name of ['diode', 'led', 'zener', 'bjt', 'mosfet', 'opamp', 'comparator', 'timer555', 'regulator']) {
+		for (const name of ['diode', 'led', 'zener', 'bjt', 'pnp', 'mosfet', 'bridge', 'opamp', 'comparator', 'timer555', 'regulator']) {
 			expect(isModelBackedKind(name), name).toBe(true);
 		}
 		expect(isModelBackedKind('idealOpamp')).toBe(false);

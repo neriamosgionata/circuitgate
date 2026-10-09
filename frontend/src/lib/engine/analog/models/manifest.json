@@ -100,6 +100,36 @@
 			"redistribution": "permitted",
 			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
 			"sha256": "236518bc536f77b88bbe30e20ea222bb0088f9b52f95a7018c3680adc2c39c42"
+		},
+		{
+			"name": "d1n5819",
+			"modelClass": "diode",
+			"file": "assets/d1n5819.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "b35969023d84f70418adb118216c2d6165e3ff2c7f1564332045e9b83c966d90"
+		},
+		{
+			"name": "q2n3906",
+			"modelClass": "pnp",
+			"file": "assets/q2n3906.cir",
+			"source": "CircuitGate in-house model card (typical published values)",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "d8d22a49b26c8d9fd75816b2bb0ae7b64293ee53d6fb1a1b5015236c8b765e85"
+		},
+		{
+			"name": "ld1117v33",
+			"modelClass": "regulator",
+			"file": "assets/ld1117v33.cir",
+			"source": "CircuitGate in-house 3.3 V regulator macromodel",
+			"license": "In-house (CircuitGate project)",
+			"redistribution": "permitted",
+			"redistributionTerms": "Authored for CircuitGate; licensed for redistribution and bundling with the CircuitGate application.",
+			"sha256": "1f7559d6a31d7c07aca49778ce4d2d21c14803ec914cfa71e0da5bfe4e3b5399"
 		}
 	]
 }

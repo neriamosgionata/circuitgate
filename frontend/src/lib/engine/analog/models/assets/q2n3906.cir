@@ -1,0 +1,3 @@
+* CircuitGate in-house small-signal PNP model card (typical published values, not vendor data).
+* Authored for CircuitGate; redistribution permitted with the application.
+.model q2n3906 pnp(is=1e-14 bf=180 vaf=70 br=4 rb=10 rc=0.5 re=0.5 cjc=10e-12 cje=25e-12 tf=0.5e-9 tr=50e-9)
