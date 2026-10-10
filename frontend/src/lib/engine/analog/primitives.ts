@@ -13,6 +13,7 @@ export type AnalogModelClass =
 	| 'regulator'
 	| 'diode'
 	| 'bjt'
+	| 'pnp'
 	| 'mosfet';
 
 export interface AnalogParameterSpec {
@@ -143,6 +144,22 @@ export const analogKinds: Readonly<Record<string, AnalogKind>> = Object.freeze({
 		[{ name: 'model', kind: 'string', defaultValue: 'q2n2222' }],
 		{ model: 'q2n2222' },
 		'bjt'
+	),
+	pnp: kind(
+		['base', 'collector'],
+		['emitter'],
+		[{ name: 'model', kind: 'string', defaultValue: 'q2n3906' }],
+		{ model: 'q2n3906' },
+		'pnp'
+	),
+	// Bridge rectifier: four diodes of the selected diode-class model, wired
+	// AC-to-plus and minus-to-AC by the netlist emitter below.
+	bridge: kind(
+		['ac1', 'ac2'],
+		['plus', 'minus'],
+		[{ name: 'model', kind: 'string', defaultValue: 'd1n4148' }],
+		{ model: 'd1n4148' },
+		'diode'
 	),
 	mosfet: kind(
 		['gate', 'drain'],

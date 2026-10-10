@@ -3,12 +3,15 @@ import { analogKinds, type AnalogModelClass } from '../primitives';
 import manifest from './manifest.json';
 import d1n4148 from './assets/d1n4148.cir?raw';
 import d1n4733 from './assets/d1n4733.cir?raw';
+import d1n5819 from './assets/d1n5819.cir?raw';
 import ledred from './assets/ledred.cir?raw';
+import ld1117v33 from './assets/ld1117v33.cir?raw';
 import lm393 from './assets/lm393.cir?raw';
 import lm7805 from './assets/lm7805.cir?raw';
 import m2n7000 from './assets/m2n7000.cir?raw';
 import opamp741 from './assets/opamp741.cir?raw';
 import q2n2222 from './assets/q2n2222.cir?raw';
+import q2n3906 from './assets/q2n3906.cir?raw';
 import timer555 from './assets/timer555.cir?raw';
 import tl072 from './assets/tl072.cir?raw';
 
@@ -44,12 +47,15 @@ export const CURATED_MODEL_MANIFEST = manifest as CuratedModelManifest;
 export const CURATED_MODEL_ASSETS: Readonly<Record<string, string>> = {
 	'assets/d1n4148.cir': d1n4148,
 	'assets/d1n4733.cir': d1n4733,
+	'assets/d1n5819.cir': d1n5819,
 	'assets/ledred.cir': ledred,
+	'assets/ld1117v33.cir': ld1117v33,
 	'assets/lm393.cir': lm393,
 	'assets/lm7805.cir': lm7805,
 	'assets/m2n7000.cir': m2n7000,
 	'assets/opamp741.cir': opamp741,
 	'assets/q2n2222.cir': q2n2222,
+	'assets/q2n3906.cir': q2n3906,
 	'assets/timer555.cir': timer555,
 	'assets/tl072.cir': tl072
 };

@@ -780,7 +780,7 @@ export class CircuitEditorStore {
 		const kind = component.kind;
 		const base: Record<string, unknown> = { ...(component.params ?? {}) };
 		let params: Record<string, unknown>;
-		if (kind === 'rippleCarryAdder' || kind === 'magnitudeComparator' || kind === 'register') {
+		if (kind === 'rippleCarryAdder' || kind === 'magnitudeComparator' || kind === 'register' || kind === 'counter' || kind === 'shiftRegister') {
 			params = { ...base, width };
 			delete params['wordBits'];
 			delete params['addressBits'];

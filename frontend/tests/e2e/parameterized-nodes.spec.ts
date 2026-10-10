@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { apiCreateProject, apiGetProject, createVerifiedAccount, uniqueEmail } from './helpers';
 
-// U4: palette, Inspector, and symbols for the six parameterized families.
+// U4: palette, Inspector, and symbols for the parameterized families.
 // Placement goes through the palette buttons (registered-kind filter), edits
 // go through the Inspector width/contents controls with inline validation.
 
@@ -10,6 +10,8 @@ const FAMILIES = [
 	'rippleCarryAdder',
 	'magnitudeComparator',
 	'register',
+	'counter',
+	'shiftRegister',
 	'registerFile',
 	'ram',
 	'rom'
@@ -19,6 +21,8 @@ const DEFAULT_PARAMS: Record<string, Record<string, unknown>> = {
 	rippleCarryAdder: { width: 8 },
 	magnitudeComparator: { width: 8 },
 	register: { width: 8 },
+	counter: { width: 8 },
+	shiftRegister: { width: 8 },
 	registerFile: { addressBits: 4, wordBits: 8 },
 	ram: { addressBits: 4, wordBits: 8 },
 	rom: { wordBits: 8, contents: new Array(16).fill(0) }
@@ -69,7 +73,7 @@ async function fillAndCommit(page: Page, testId: string, text: string): Promise<
 }
 
 test.describe('U4: parameterized logic nodes in palette and Inspector', () => {
-	test('all six palette entries place nodes with KTD5 defaults', async ({ page }) => {
+	test('all palette entries place nodes with KTD5 defaults', async ({ page }) => {
 		const projectId = await openEmptyProject(page, 'palette');
 		const palette = page.locator('.palette');
 		await expect(palette).toHaveAttribute('data-domain', 'logic');
@@ -80,7 +84,9 @@ test.describe('U4: parameterized logic nodes in palette and Inspector', () => {
 			[660, 140],
 			[180, 360],
 			[420, 360],
-			[660, 360]
+			[660, 360],
+			[300, 140],
+			[540, 360]
 		];
 		for (let index = 0; index < FAMILIES.length; index += 1) {
 			const kind = FAMILIES[index];
@@ -97,7 +103,7 @@ test.describe('U4: parameterized logic nodes in palette and Inspector', () => {
 		const components = (
 			saved['document'] as { circuit: { components: Array<{ kind: string; params?: unknown }> } }
 		).circuit.components;
-		expect(components).toHaveLength(6);
+		expect(components).toHaveLength(FAMILIES.length);
 		for (const kind of FAMILIES) {
 			const match = components.find((component) => component.kind === kind);
 			expect(match, `placed ${kind}`).toBeDefined();

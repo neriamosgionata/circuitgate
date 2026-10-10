@@ -49,7 +49,7 @@
 	});
 
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
-	const widthKinds = ['rom', 'ram', 'register', 'registerFile', 'rippleCarryAdder', 'magnitudeComparator'];
+	const widthKinds = ['rom', 'ram', 'register', 'counter', 'shiftRegister', 'registerFile', 'rippleCarryAdder', 'magnitudeComparator'];
 	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
 	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
 	const modelOptions = $derived(

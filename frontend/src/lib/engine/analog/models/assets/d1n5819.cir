@@ -1,0 +1,3 @@
+* CircuitGate in-house Schottky-barrier diode model card (typical published values, not vendor data).
+* Authored for CircuitGate; redistribution permitted with the application.
+.model d1n5819 d(is=3e-7 rs=0.055 n=1.04 cjo=1.1e-10 bv=40 ibv=1e-3)

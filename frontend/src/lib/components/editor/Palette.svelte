@@ -29,11 +29,12 @@
 	const logicGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Gates', kinds: ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buffer'] },
 		{ title: 'I/O and clock', kinds: ['switch', 'probe', 'led', 'clock'] },
-		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'] },
+		{ title: 'Sequential', kinds: ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch', 'counter', 'shiftRegister'] },
 		{
 			title: 'Arithmetic and routing',
-			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3']
+			kinds: ['halfAdder', 'fullAdder', 'mux2', 'mux4', 'decoder2', 'decoder3', 'triStateBuffer']
 		},
+		{ title: 'Display', kinds: ['sevenSegDecoder', 'sevenSegDisplay'] },
 		{
 			title: 'Wide logic',
 			kinds: ['rippleCarryAdder', 'magnitudeComparator', 'register', 'registerFile', 'ram', 'rom']
@@ -43,7 +44,7 @@
 	const analogGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Sources', kinds: ['vsource', 'isource'] },
 		{ title: 'Passives', kinds: ['resistor', 'capacitor', 'inductor', 'potentiometer'] },
-		{ title: 'Diodes and transistors', kinds: ['diode', 'led', 'zener', 'bjt', 'mosfet'] },
+		{ title: 'Diodes and transistors', kinds: ['diode', 'led', 'zener', 'bjt', 'pnp', 'mosfet', 'bridge'] },
 		{ title: 'Switching', kinds: ['switch'] },
 		{ title: 'Amplifiers and ICs', kinds: ['idealOpamp', 'opamp', 'comparator', 'timer555', 'regulator'] },
 		{ title: 'Reference', kinds: ['ground'] }

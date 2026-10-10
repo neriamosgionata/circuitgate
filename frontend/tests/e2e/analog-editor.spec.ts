@@ -15,6 +15,8 @@ test.describe('analog editor', () => {
 		await expect(palette.getByRole('button', { name: 'resistor', exact: true })).toBeVisible();
 		await expect(palette.getByRole('button', { name: 'ground', exact: true })).toBeVisible();
 		await expect(palette.getByRole('button', { name: 'timer555', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'pnp', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'bridge', exact: true })).toBeVisible();
 		await expect(palette.getByRole('button', { name: 'and', exact: true })).toHaveCount(0);
 		await expect(palette.getByRole('button', { name: 'probe', exact: true })).toHaveCount(0);
 		await expect(page.getByText('Passives')).toBeVisible();
@@ -33,8 +35,28 @@ test.describe('analog editor', () => {
 		const palette = page.locator('.palette');
 		await expect(palette).toHaveAttribute('data-domain', 'logic');
 		await expect(palette.getByRole('button', { name: 'clock', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'counter', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'shiftRegister', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'sevenSegDecoder', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'sevenSegDisplay', exact: true })).toBeVisible();
+		await expect(palette.getByRole('button', { name: 'triStateBuffer', exact: true })).toBeVisible();
 		await expect(palette.getByRole('button', { name: 'resistor', exact: true })).toHaveCount(0);
 		await expect(palette.getByRole('button', { name: 'ground', exact: true })).toHaveCount(0);
+		await expect(palette.getByRole('button', { name: 'pnp', exact: true })).toHaveCount(0);
+
+		const count = page.getByTestId('component-count');
+		const before = Number(((await count.textContent()) ?? '').replace(/[^0-9]/g, ''));
+		const canvas = page.locator('.canvas-slot canvas');
+		const box = await canvas.boundingBox();
+		expect(box).not.toBeNull();
+		for (const [kind, dx, dy] of [
+			['sevenSegDecoder', 120, 120],
+			['sevenSegDisplay', 480, 120]
+		] as const) {
+			await palette.getByRole('button', { name: kind, exact: true }).click();
+			await page.mouse.click(box!.x + dx, box!.y + dy);
+		}
+		await expect(count).toHaveText(new RegExp(`${before + 2} components`));
 	});
 
 	test('rejects ambiguous analog values inline and saves valid SI values', async ({ page }) => {

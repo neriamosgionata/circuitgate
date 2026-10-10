@@ -10,20 +10,25 @@ import {
 	orKind,
 	probeKind,
 	switchKind,
+	triStateBuffer,
 	xnorKind,
 	xorKind
 } from './gates';
 import { dFlipFlop, jkFlipFlop, registerKind, srFlipFlop, srLatch } from './flipflops';
+import { counterKind, shiftRegisterKind } from './sequential';
 import { mux2, mux4 } from './mux';
 import { decoderKind } from './decoder';
+import { sevenSegDecoderKind, sevenSegDisplay } from './display';
 import { fullAdder, halfAdder, magnitudeComparatorKind, rippleCarryAdderKind } from './adders';
 import { ramKind, registerFileKind, romKind, ROM_DEFAULT_CONTENTS } from './memory';
 import { DEFAULT_ADDRESS_BITS, DEFAULT_WORD_BITS, DEFAULT_WIDTH } from './pins';
 
 export * from './gates';
 export * from './flipflops';
+export * from './sequential';
 export * from './mux';
 export * from './decoder';
+export * from './display';
 export * from './adders';
 export * from './memory';
 
@@ -44,6 +49,7 @@ export const primitiveKinds: ComponentKinds = Object.freeze({
 	xor: xorKind,
 	xnor: xnorKind,
 	buffer: bufferKind,
+	triStateBuffer,
 	switch: switchKind,
 	probe: probeKind,
 	led: ledKind,
@@ -58,9 +64,13 @@ export const primitiveKinds: ComponentKinds = Object.freeze({
 	fullAdder,
 	decoder2: decoderKind(2),
 	decoder3: decoderKind(3),
+	sevenSegDecoder: sevenSegDecoderKind,
+	sevenSegDisplay,
 	rippleCarryAdder: rippleCarryAdderKind(DEFAULT_WIDTH),
 	magnitudeComparator: magnitudeComparatorKind(DEFAULT_WIDTH),
 	register: registerKind(DEFAULT_WIDTH),
+	counter: counterKind(DEFAULT_WIDTH),
+	shiftRegister: shiftRegisterKind(DEFAULT_WIDTH),
 	registerFile: registerFileKind({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
 	ram: ramKind({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
 	rom: romKind({ contents: ROM_DEFAULT_CONTENTS, wordBits: DEFAULT_WORD_BITS })

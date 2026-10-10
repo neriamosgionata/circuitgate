@@ -624,7 +624,8 @@ export function emitNetlist(
 				elements.push({ componentId: component.id, kind: component.kind, element });
 				continue;
 			}
-			case 'bjt': {
+			case 'bjt':
+			case 'pnp': {
 				const model = modelFor(component, componentParams(component)['model']);
 				if (!model) continue;
 				const element = nextElement('Q');
@@ -632,6 +633,24 @@ export function emitNetlist(
 					`${element} ${pinNode(component, element, 'collector')} ${pinNode(component, element, 'base')} ${pinNode(component, element, 'emitter')} ${model.name}`
 				);
 				elements.push({ componentId: component.id, kind: component.kind, element });
+				continue;
+			}
+			case 'bridge': {
+				const model = modelFor(component, componentParams(component)['model']);
+				if (!model) continue;
+				const legs: Array<[string, string]> = [
+					['ac1', 'plus'],
+					['ac2', 'plus'],
+					['minus', 'ac1'],
+					['minus', 'ac2']
+				];
+				for (const [anode, cathode] of legs) {
+					const element = nextElement('D');
+					cards.push(
+						`${element} ${pinNode(component, element, anode)} ${pinNode(component, element, cathode)} ${model.name}`
+					);
+					elements.push({ componentId: component.id, kind: component.kind, element });
+				}
 				continue;
 			}
 			case 'mosfet': {
