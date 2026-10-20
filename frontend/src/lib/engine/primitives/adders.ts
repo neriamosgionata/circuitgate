@@ -1,6 +1,6 @@
 import type { ComponentKind } from '../compile';
 import { and, or, xor, type LogicValue } from '../values';
-import { bitPins, requirePositiveInteger } from './pins';
+import { bitPins, requirePositiveInteger, type Pinout } from './pins';
 
 export function halfAdderCompute(a: LogicValue, b: LogicValue): [LogicValue, LogicValue] {
 	return [xor(a, b), and(a, b)];
@@ -25,16 +25,21 @@ export const fullAdder: ComponentKind = {
 	evaluate: ([a, b, cin]) => ({ outputs: fullAdderCompute(a, b, cin) })
 };
 
+export function rippleCarryAdderPins(width: number): Pinout {
+	requirePositiveInteger(width, 'adder width');
+	return {
+		inputs: [...bitPins('a', width), ...bitPins('b', width), 'cin'],
+		outputs: [...bitPins('s', width), 'cout']
+	};
+}
+
 // Ripple-carry adder assembled from full adders: bit 0 is the least
 // significant, and the carry propagates from bit i to bit i+1.
 export function rippleCarryAdderKind(width: number): ComponentKind {
-	requirePositiveInteger(width, 'adder width');
-	const aPins = bitPins('a', width);
-	const bPins = bitPins('b', width);
-	const sumPins = bitPins('s', width);
+	const { inputs, outputs } = rippleCarryAdderPins(width);
 	return {
-		inputs: [...aPins, ...bPins, 'cin'],
-		outputs: [...sumPins, 'cout'],
+		inputs,
+		outputs,
 		evaluate: (values) => {
 			const a = values.slice(0, width);
 			const b = values.slice(width, width * 2);
@@ -50,13 +55,21 @@ export function rippleCarryAdderKind(width: number): ComponentKind {
 	};
 }
 
-// Magnitude comparator. Bits are compared from the most significant down; an
-// unknown bit makes every output X unless a higher bit already decided.
-export function magnitudeComparatorKind(width: number): ComponentKind {
+export function magnitudeComparatorPins(width: number): Pinout {
 	requirePositiveInteger(width, 'comparator width');
 	return {
 		inputs: [...bitPins('a', width), ...bitPins('b', width)],
-		outputs: ['eq', 'gt', 'lt'],
+		outputs: ['eq', 'gt', 'lt']
+	};
+}
+
+// Magnitude comparator. Bits are compared from the most significant down; an
+// unknown bit makes every output X unless a higher bit already decided.
+export function magnitudeComparatorKind(width: number): ComponentKind {
+	const { inputs, outputs } = magnitudeComparatorPins(width);
+	return {
+		inputs,
+		outputs,
 		evaluate: (values) => {
 			const a = values.slice(0, width);
 			const b = values.slice(width, width * 2);

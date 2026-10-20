@@ -1,21 +1,7 @@
-import { CompileError, type ComponentKind } from '../compile';
+import type { ComponentKind } from '../compile';
 import { not, type LogicValue } from '../values';
-import { bitPins, requirePositiveInteger, unknownBits } from './pins';
-
-// Clock-edge convention (delta-cycle mode).
-//
-// The engine has no global time in settle(): a component sees a stream of
-// delta-cycle evaluations. Sequential kinds therefore keep the previous clock
-// level in their own state and treat a transition from a known 0 to a known 1
-// as a rising edge, detected on the first delta cycle that observes it. The
-// sampled data is the value present in that delta cycle; later delta cycles in
-// the same settle pass see the committed clock level and do not re-sample.
-// An undefined or X previous level is never an edge, so power-up with the clock
-// already high does not latch. This makes sequential behavior deterministic and
-// identical in settle() and runTimed().
-export function risingEdgeDetected(lastClk: LogicValue | undefined, clk: LogicValue): boolean {
-	return lastClk === 0 && clk === 1;
-}
+import { bitPins, requirePositiveInteger, type Pinout } from './pins';
+import { commitWord, previousWord, risingEdgeDetected, type WordState } from './state';
 
 interface OutputState {
 	q: LogicValue;
@@ -111,23 +97,24 @@ export const srFlipFlop: ComponentKind = {
 // Word registers use one pin per bit (d0..dN-1, q0..qN-1); the bit at index 0
 // is the least significant. The engine has no bus values, so a word is a net
 // group chosen by the caller.
-export function registerKind(width: number): ComponentKind {
+export function registerPins(width: number): Pinout {
 	requirePositiveInteger(width, 'register width');
-	const dataPins = bitPins('d', width);
+	return { inputs: ['clk', ...bitPins('d', width)], outputs: bitPins('q', width) };
+}
+
+export function registerKind(width: number): ComponentKind {
+	const { inputs, outputs } = registerPins(width);
 	return {
-		inputs: ['clk', ...dataPins],
-		outputs: bitPins('q', width),
-		evaluate: (inputs, state) => {
-			const previous = state as { bits?: LogicValue[]; lastClk?: LogicValue } | undefined;
-			const previousBits = previous?.bits;
-			if (previousBits !== undefined && previousBits.length !== width) {
-				throw new CompileError(`register state width does not match kind width ${width}`, 'invalid-register-state');
-			}
-			const clk = inputs[0];
+		inputs,
+		outputs,
+		evaluate: (values, state) => {
+			const previous = state as WordState | undefined;
+			const held = previousWord(state, width, 'invalid-register-state', 'register state');
+			const clk = values[0];
 			const bits = risingEdgeDetected(previous?.lastClk, clk)
-				? inputs.slice(1, 1 + width)
-				: (previousBits ?? unknownBits(width));
-			return { outputs: [...bits], state: { bits: [...bits], lastClk: clk } };
+				? values.slice(1, 1 + width)
+				: held;
+			return { outputs: [...bits], state: commitWord(bits, clk) };
 		}
 	};
 }

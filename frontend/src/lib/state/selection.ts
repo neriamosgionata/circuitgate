@@ -21,10 +21,6 @@ export function emptySelection(): Selection {
 	return new Set<ComponentId>();
 }
 
-export function isSelected(selection: Selection, id: ComponentId): boolean {
-	return selection.has(id);
-}
-
 export function withSelection(selection: Selection, ids: Iterable<ComponentId>): Selection {
 	return new Set(ids);
 }

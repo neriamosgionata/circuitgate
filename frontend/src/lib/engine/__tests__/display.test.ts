@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { CircuitDocument } from '../../model/circuit';
 import { Simulator } from '../evaluate';
 import { sevenSegDecoderKind, sevenSegDisplay } from '../primitives/display';
-import type { LogicValue } from '../values';
-
-type V = LogicValue;
-
-function document(components: CircuitDocument['components']): CircuitDocument {
-	return { schemaVersion: 1, components };
-}
+import { bitsOf, document, inputsFor, outputsFor, type V } from './helpers';
 
 const SEGMENTS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
 
@@ -26,12 +19,22 @@ const DIGITS: Record<number, V[]> = {
 	9: [1, 1, 1, 1, 0, 1, 1]
 };
 
-function decoderOutputs(): Record<string, string> {
-	return { sa: 'sa', sb: 'sb', sc: 'sc', sd: 'sd', se: 'se', sf: 'sf', sg: 'sg' };
+function decoderSim(): Simulator {
+	return new Simulator(
+		document([
+			{
+				id: 'dec',
+				kind: 'sevenSegDecoder',
+				inputs: inputsFor(sevenSegDecoderKind),
+				outputs: outputsFor(sevenSegDecoderKind)
+			}
+		]),
+		{ sevenSegDecoder: sevenSegDecoderKind }
+	);
 }
 
 function driveDigit(sim: Simulator, digit: number): void {
-	for (let bit = 0; bit < 4; bit++) sim.setNet(`d${bit}`, ((digit >> bit) & 1) as V);
+	bitsOf(digit, 4).forEach((bit, index) => sim.setNet(`d${index}`, bit));
 	sim.settle();
 }
 
@@ -47,66 +50,22 @@ describe('seven-segment decoder', () => {
 	});
 
 	it('maps every BCD digit to its segment set', () => {
-		const kind = sevenSegDecoderKind;
-		const sim = new Simulator(
-			document([
-				{
-					id: 'dec',
-					kind: 'sevenSegDecoder',
-					inputs: { d0: 'd0', d1: 'd1', d2: 'd2', d3: 'd3' },
-					outputs: {
-						sa: 'sa',
-						sb: 'sb',
-						sc: 'sc',
-						sd: 'sd',
-						se: 'se',
-						sf: 'sf',
-						sg: 'sg'
-					}
-				}
-			]),
-			{ sevenSegDecoder: kind }
-		);
+		const sim = decoderSim();
 		for (let digit = 0; digit <= 9; digit++) {
 			driveDigit(sim, digit);
 			expect(sim.settle().status).toBe('stable');
-			expect(
-				SEGMENTS.map((segment) => sim.getNet(`s${segment}`)),
-				`digit ${digit}`
-			).toEqual(DIGITS[digit]);
+			expect(readSegments(sim), `digit ${digit}`).toEqual(DIGITS[digit]);
 		}
 	});
 
 	it('blanks the display for out-of-range input', () => {
-		const kind = sevenSegDecoderKind;
-		const sim = new Simulator(
-			document([
-				{
-					id: 'dec',
-					kind: 'sevenSegDecoder',
-					inputs: { d0: 'd0', d1: 'd1', d2: 'd2', d3: 'd3' },
-					outputs: decoderOutputs()
-				}
-			]),
-			{ sevenSegDecoder: kind }
-		);
+		const sim = decoderSim();
 		driveDigit(sim, 0b1110);
 		expect(readSegments(sim)).toEqual([0, 0, 0, 0, 0, 0, 0]);
 	});
 
 	it('drives unknown on unknown inputs', () => {
-		const kind = sevenSegDecoderKind;
-		const sim = new Simulator(
-			document([
-				{
-					id: 'dec',
-					kind: 'sevenSegDecoder',
-					inputs: { d0: 'd0', d1: 'd1', d2: 'd2', d3: 'd3' },
-					outputs: decoderOutputs()
-				}
-			]),
-			{ sevenSegDecoder: kind }
-		);
+		const sim = decoderSim();
 		sim.setNet('d0', 'X');
 		sim.settle();
 		expect(readSegments(sim)).toEqual(['X', 'X', 'X', 'X', 'X', 'X', 'X']);

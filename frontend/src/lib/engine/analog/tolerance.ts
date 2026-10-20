@@ -18,8 +18,6 @@ export const ANALOG_TOLERANCES = {
 	acMagnitudeDb: 0.5
 } as const;
 
-export type AnalogToleranceTarget = keyof typeof ANALOG_TOLERANCES;
-
 /** Fractional error of `actual` against `expected`, using the expected magnitude. */
 export function relativeError(actual: number, expected: number): number {
 	const magnitude = Math.abs(expected);

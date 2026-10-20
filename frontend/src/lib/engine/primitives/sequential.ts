@@ -1,30 +1,7 @@
-import { CompileError, type ComponentKind } from '../compile';
-import { risingEdgeDetected } from './flipflops';
-import { bitPins, requireWordWidth, unknownBits } from './pins';
+import type { ComponentKind } from '../compile';
+import { bitPins, requireWordWidth, unknownBits, zeroBits, type Pinout } from './pins';
+import { commitWord, isBinary, previousWord, risingEdgeDetected, type WordState } from './state';
 import type { LogicValue } from '../values';
-
-interface WordState {
-	bits: LogicValue[];
-	lastClk: LogicValue;
-}
-
-function previousBits(state: unknown, width: number): LogicValue[] {
-	const stored = (state as WordState | undefined)?.bits;
-	if (stored !== undefined) {
-		if (stored.length !== width) {
-			throw new CompileError(
-				`sequential state width does not match kind width ${width}`,
-				'invalid-sequential-state'
-			);
-		}
-		return [...stored];
-	}
-	return unknownBits(width);
-}
-
-function isBinary(value: LogicValue): value is 0 | 1 {
-	return value === 0 || value === 1;
-}
 
 function incrementBits(bits: readonly LogicValue[]): LogicValue[] {
 	let carry: LogicValue = 1;
@@ -41,24 +18,31 @@ function incrementBits(bits: readonly LogicValue[]): LogicValue[] {
 	return next;
 }
 
+export function counterPins(width: number): Pinout {
+	requireWordWidth(width, 'counter width');
+	return {
+		inputs: ['clk', 'reset', 'enable', 'load', ...bitPins('d', width)],
+		outputs: bitPins('q', width)
+	};
+}
+
 // Up counter with synchronous reset, enable, and parallel load. Bit 0 is the
 // least significant. A non-binary control level drives every output X; data
 // bits pass through as-is on load.
 export function counterKind(width: number): ComponentKind {
-	requireWordWidth(width, 'counter width');
-	const dataPins = bitPins('d', width);
+	const { inputs, outputs } = counterPins(width);
 	return {
-		inputs: ['clk', 'reset', 'enable', 'load', ...dataPins],
-		outputs: bitPins('q', width),
-		evaluate: (inputs, state) => {
+		inputs,
+		outputs,
+		evaluate: (values, state) => {
 			const previous = state as WordState | undefined;
-			const held = previousBits(state, width);
-			const [clk, reset, enable, load] = inputs;
-			const data = inputs.slice(4, 4 + width);
+			const held = previousWord(state, width, 'invalid-sequential-state');
+			const [clk, reset, enable, load] = values;
+			const data = values.slice(4, 4 + width);
 			let bits = held;
 			if (risingEdgeDetected(previous?.lastClk, clk)) {
 				if (reset === 1) {
-					bits = new Array<LogicValue>(width).fill(0);
+					bits = zeroBits(width);
 				} else if (!isBinary(reset) || !isBinary(enable) || !isBinary(load)) {
 					bits = unknownBits(width);
 				} else if (load === 1) {
@@ -67,8 +51,16 @@ export function counterKind(width: number): ComponentKind {
 					bits = incrementBits(held);
 				}
 			}
-			return { outputs: [...bits], state: { bits: [...bits], lastClk: clk } };
+			return { outputs: [...bits], state: commitWord(bits, clk) };
 		}
+	};
+}
+
+export function shiftRegisterPins(width: number): Pinout {
+	requireWordWidth(width, 'shift register width');
+	return {
+		inputs: ['clk', 'reset', 'load', 'sin', ...bitPins('d', width)],
+		outputs: bitPins('q', width)
 	};
 }
 
@@ -77,20 +69,19 @@ export function counterKind(width: number): ComponentKind {
 // the serial input and every other bit takes its lower neighbor. A non-binary
 // control level drives every output X.
 export function shiftRegisterKind(width: number): ComponentKind {
-	requireWordWidth(width, 'shift register width');
-	const dataPins = bitPins('d', width);
+	const { inputs, outputs } = shiftRegisterPins(width);
 	return {
-		inputs: ['clk', 'reset', 'load', 'sin', ...dataPins],
-		outputs: bitPins('q', width),
-		evaluate: (inputs, state) => {
+		inputs,
+		outputs,
+		evaluate: (values, state) => {
 			const previous = state as WordState | undefined;
-			const held = previousBits(state, width);
-			const [clk, reset, load, sin] = inputs;
-			const data = inputs.slice(4, 4 + width);
+			const held = previousWord(state, width, 'invalid-sequential-state');
+			const [clk, reset, load, sin] = values;
+			const data = values.slice(4, 4 + width);
 			let bits = held;
 			if (risingEdgeDetected(previous?.lastClk, clk)) {
 				if (reset === 1) {
-					bits = new Array<LogicValue>(width).fill(0);
+					bits = zeroBits(width);
 				} else if (!isBinary(reset) || !isBinary(load)) {
 					bits = unknownBits(width);
 				} else if (load === 1) {
@@ -99,7 +90,7 @@ export function shiftRegisterKind(width: number): ComponentKind {
 					bits = held.map((_, index) => (index === 0 ? sin : held[index - 1]));
 				}
 			}
-			return { outputs: [...bits], state: { bits: [...bits], lastClk: clk } };
+			return { outputs: [...bits], state: commitWord(bits, clk) };
 		}
 	};
 }

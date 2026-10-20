@@ -53,17 +53,16 @@ export const switchKind: ComponentKind = {
 	}
 };
 
-export const probeKind: ComponentKind = {
-	inputs: ['in'],
-	outputs: [],
-	evaluate: () => ({ outputs: [] })
-};
+export function sinkKind(inputs: readonly string[]): ComponentKind {
+	return {
+		inputs: [...inputs],
+		outputs: [],
+		evaluate: () => ({ outputs: [] })
+	};
+}
 
-export const ledKind: ComponentKind = {
-	inputs: ['in'],
-	outputs: [],
-	evaluate: () => ({ outputs: [] })
-};
+export const probeKind = sinkKind(['in']);
+export const ledKind = sinkKind(['in']);
 
 // A free-running half-period clock. It is meaningful in timed mode, where the
 // engine re-queues self-scheduling kinds every unit delay. Calling settle() on a

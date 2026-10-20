@@ -5,6 +5,7 @@ import {
 	defaultParamsForKind as defaultLogicParamsForKind,
 	isParameterizedFamily,
 	kindExistsInOtherDomain,
+	parameterShapeFor,
 	resolveComponentKind,
 	resolveKind
 } from '../engine/kinds';
@@ -777,20 +778,16 @@ export class CircuitEditorStore {
 		if (!Number.isInteger(width) || width < 1 || width > MAX_WORD_BITS) {
 			return { ok: false, error: 'invalid-width' };
 		}
-		const kind = component.kind;
 		const base: Record<string, unknown> = { ...(component.params ?? {}) };
+		const shape = parameterShapeFor(component.kind);
 		let params: Record<string, unknown>;
-		if (kind === 'rippleCarryAdder' || kind === 'magnitudeComparator' || kind === 'register' || kind === 'counter' || kind === 'shiftRegister') {
+		if (shape === 'width') {
 			params = { ...base, width };
 			delete params['wordBits'];
 			delete params['addressBits'];
-		} else if (kind === 'ram' || kind === 'registerFile') {
+		} else if (shape === 'memory' || shape === 'rom') {
 			// addressBits and wordBits stay independent — never collapse
 			// into a single width value. The width control drives wordBits only.
-			params = { ...base, wordBits: width };
-			delete params['width'];
-		} else if (kind === 'rom') {
-			// ROM depth derives from contents length and is never directly edited.
 			params = { ...base, wordBits: width };
 			delete params['width'];
 		} else {

@@ -1,7 +1,16 @@
 import { CompileError, type ComponentKind } from '../compile';
 import type { LogicValue } from '../values';
-import { risingEdgeDetected } from './flipflops';
-import { bitPins, bitsToIndex, numberToBits, requirePositiveInteger, requireWordWidth, unknownBits } from './pins';
+import {
+	MAX_ADDRESS_BITS,
+	bitPins,
+	bitsToIndex,
+	numberToBits,
+	requirePositiveInteger,
+	requireWordWidth,
+	unknownBits,
+	type Pinout
+} from './pins';
+import { risingEdgeDetected } from './state';
 
 // Memories use one pin per bit and one state word per address: the engine has
 // no multi-net bus values, so callers map each bit pin to its own net and read
@@ -9,8 +18,11 @@ import { bitPins, bitsToIndex, numberToBits, requirePositiveInteger, requireWord
 
 export function requireMemoryAddressBits(addressBits: number, label: string): void {
 	requirePositiveInteger(addressBits, label);
-	if (addressBits > 30) {
-		throw new CompileError(`${label} must be at most 30, got ${addressBits}`, 'invalid-primitive-parameter');
+	if (addressBits > MAX_ADDRESS_BITS) {
+		throw new CompileError(
+			`${label} must be at most ${MAX_ADDRESS_BITS}, got ${addressBits}`,
+			'invalid-primitive-parameter'
+		);
 	}
 }
 
@@ -49,13 +61,18 @@ export interface RomOptions {
 	wordBits: number;
 }
 
+export function romPins(contents: readonly number[], wordBits: number): Pinout {
+	const addressBits = validatedRomAddressBits(contents, wordBits);
+	return { inputs: bitPins('a', addressBits), outputs: bitPins('d', wordBits) };
+}
+
 export function romKind(options: RomOptions): ComponentKind {
 	const { contents, wordBits } = options;
-	const addressBits = validatedRomAddressBits(contents, wordBits);
+	const { inputs, outputs } = romPins(contents, wordBits);
 	const words = contents.map((word) => numberToBits(word, wordBits));
 	return {
-		inputs: bitPins('a', addressBits),
-		outputs: bitPins('d', wordBits),
+		inputs,
+		outputs,
 		evaluate: (values) => {
 			const address = bitsToIndex(values);
 			return { outputs: memoryRead(address, words, wordBits) };
@@ -68,21 +85,29 @@ export interface RamOptions {
 	wordBits: number;
 }
 
-interface RamState {
+interface MemoryState {
 	words: LogicValue[][];
 	lastClk?: LogicValue;
 }
 
-export function ramKind(options: RamOptions): ComponentKind {
-	const { addressBits, wordBits } = options;
+export function ramPins(addressBits: number, wordBits: number): Pinout {
 	requireMemoryAddressBits(addressBits, 'RAM address bits');
 	requireWordWidth(wordBits);
-	const size = 1 << addressBits;
 	return {
 		inputs: [...bitPins('a', addressBits), ...bitPins('d', wordBits), 'we', 'clk'],
-		outputs: bitPins('q', wordBits),
+		outputs: bitPins('q', wordBits)
+	};
+}
+
+export function ramKind(options: RamOptions): ComponentKind {
+	const { addressBits, wordBits } = options;
+	const { inputs, outputs } = ramPins(addressBits, wordBits);
+	const size = 1 << addressBits;
+	return {
+		inputs,
+		outputs,
 		evaluate: (values, state) => {
-			const previous = state as RamState | undefined;
+			const previous = state as MemoryState | undefined;
 			const words = previous?.words ?? Array.from({ length: size }, () => unknownBits(wordBits));
 			const address = bitsToIndex(values.slice(0, addressBits));
 			const data = values.slice(addressBits, addressBits + wordBits);
@@ -106,40 +131,53 @@ export interface RegisterFileOptions {
 	registers?: number;
 }
 
-interface RegisterFileState {
-	words: LogicValue[][];
-	lastClk?: LogicValue;
+/** Number of addressable registers, defaulting to the full address space. */
+export function registerFileRegisterCount(addressBits: number, registers?: number): number {
+	requireMemoryAddressBits(addressBits, 'register file address bits');
+	const size = 1 << addressBits;
+	const count = registers ?? size;
+	if (!Number.isInteger(count) || count < 1 || count > size) {
+		throw new CompileError(
+			`register file registers must be between 1 and ${size}, got ${count}`,
+			'invalid-register-file-size'
+		);
+	}
+	return count;
+}
+
+export function registerFilePins(
+	addressBits: number,
+	wordBits: number,
+	registers?: number
+): Pinout {
+	requireWordWidth(wordBits);
+	registerFileRegisterCount(addressBits, registers);
+	return {
+		inputs: [
+			...bitPins('ra', addressBits),
+			...bitPins('rb', addressBits),
+			...bitPins('wa', addressBits),
+			...bitPins('wd', wordBits),
+			'we',
+			'clk'
+		],
+		outputs: [...bitPins('qa', wordBits), ...bitPins('qb', wordBits)]
+	};
 }
 
 // Two combinational read ports (ra -> qa, rb -> qb) and one synchronous write
 // port (wa, wd, we) sampled on the rising clock edge per evaluation pass.
 export function registerFileKind(options: RegisterFileOptions): ComponentKind {
 	const { addressBits, wordBits } = options;
-	requireMemoryAddressBits(addressBits, 'register file address bits');
-	requireWordWidth(wordBits);
-	const size = 1 << addressBits;
-	const registers = options.registers ?? size;
-	if (!Number.isInteger(registers) || registers < 1 || registers > size) {
-		throw new CompileError(
-			`register file registers must be between 1 and ${size}, got ${registers}`,
-			'invalid-register-file-size'
-		);
-	}
-	const dataPins = bitPins('wd', wordBits);
+	const { inputs, outputs } = registerFilePins(addressBits, wordBits, options.registers);
+	const registers = registerFileRegisterCount(addressBits, options.registers);
 	const writeEnableIndex = addressBits * 3 + wordBits;
 	const clockIndex = writeEnableIndex + 1;
 	return {
-		inputs: [
-			...bitPins('ra', addressBits),
-			...bitPins('rb', addressBits),
-			...bitPins('wa', addressBits),
-			...dataPins,
-			'we',
-			'clk'
-		],
-		outputs: [...bitPins('qa', wordBits), ...bitPins('qb', wordBits)],
+		inputs,
+		outputs,
 		evaluate: (values, state) => {
-			const previous = state as RegisterFileState | undefined;
+			const previous = state as MemoryState | undefined;
 			const words = previous?.words ?? Array.from({ length: registers }, () => unknownBits(wordBits));
 			const readAddressA = bitsToIndex(values.slice(0, addressBits));
 			const readAddressB = bitsToIndex(values.slice(addressBits, addressBits * 2));

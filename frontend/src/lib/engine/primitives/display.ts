@@ -1,6 +1,6 @@
 import type { ComponentKind } from '../compile';
-import type { LogicValue } from '../values';
-import { bitPins, bitsToIndex } from './pins';
+import { bitPins, bitsToIndex, unknownBits } from './pins';
+import { sinkKind } from './gates';
 
 // BCD to seven-segment decoder, common-cathode active-high. Output pins carry
 // the `s` prefix so segment nets read as sa..sg. A non-binary input drives
@@ -24,7 +24,7 @@ export const sevenSegDecoderKind: ComponentKind = {
 	evaluate: (values) => {
 		const digit = bitsToIndex(values);
 		if (digit === undefined) {
-			return { outputs: new Array<LogicValue>(7).fill('X') };
+			return { outputs: unknownBits(7) };
 		}
 		const segments = SEGMENT_MAP[digit] ?? [0, 0, 0, 0, 0, 0, 0];
 		return { outputs: [...segments] };
@@ -33,8 +33,4 @@ export const sevenSegDecoderKind: ComponentKind = {
 
 // Seven-segment display sink. Presentation lives in the canvas glyph; the
 // engine only terminates the seven segment nets, like probe and LED.
-export const sevenSegDisplay: ComponentKind = {
-	inputs: ['a', 'b', 'c', 'd', 'e', 'f', 'g'],
-	outputs: [],
-	evaluate: () => ({ outputs: [] })
-};
+export const sevenSegDisplay: ComponentKind = sinkKind(['a', 'b', 'c', 'd', 'e', 'f', 'g']);

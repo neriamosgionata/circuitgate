@@ -10,6 +10,11 @@ export const DEFAULT_WIDTH = 8;
 export const DEFAULT_ADDRESS_BITS = 4;
 export const DEFAULT_WORD_BITS = 8;
 
+export interface Pinout {
+	readonly inputs: readonly string[];
+	readonly outputs: readonly string[];
+}
+
 export function bitPins(prefix: string, width: number): string[] {
 	const pins: string[] = [];
 	for (let index = 0; index < width; index++) pins.push(`${prefix}${index}`);
@@ -29,7 +34,10 @@ export function requirePositiveInteger(
 export function requireWordWidth(wordBits: number, label = 'wordBits'): void {
 	requirePositiveInteger(wordBits, label);
 	if (wordBits > MAX_WORD_BITS) {
-		throw new CompileError(`${label} must be at most ${MAX_WORD_BITS}, got ${wordBits}`, 'invalid-primitive-parameter');
+		throw new CompileError(
+			`${label} must be at most ${MAX_WORD_BITS}, got ${wordBits}`,
+			'invalid-primitive-parameter'
+		);
 	}
 }
 
@@ -51,4 +59,8 @@ export function numberToBits(value: number, width: number): LogicValue[] {
 
 export function unknownBits(width: number): LogicValue[] {
 	return new Array<LogicValue>(width).fill('X');
+}
+
+export function zeroBits(width: number): LogicValue[] {
+	return new Array<LogicValue>(width).fill(0);
 }

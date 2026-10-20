@@ -1,43 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { CircuitDocument } from '../../model/circuit';
 import { CompileError } from '../compile';
 import { Simulator } from '../evaluate';
 import { ramKind, registerFileKind, romKind } from '../primitives/memory';
-import type { LogicValue } from '../values';
-
-type V = LogicValue;
-
-function document(components: CircuitDocument['components']): CircuitDocument {
-	return { schemaVersion: 1, components };
-}
-
-function inputsFor(kind: { inputs: readonly string[] }): Record<string, string> {
-	const inputs: Record<string, string> = {};
-	kind.inputs.forEach((pin) => {
-		inputs[pin] = pin;
-	});
-	return inputs;
-}
-
-function outputsFor(kind: { outputs: readonly string[] }): Record<string, string> {
-	const outputs: Record<string, string> = {};
-	kind.outputs.forEach((pin) => {
-		outputs[pin] = pin;
-	});
-	return outputs;
-}
-
-function bitsOf(value: number, width: number): V[] {
-	const bits: V[] = [];
-	for (let index = 0; index < width; index++) bits.push(((value >> index) & 1) as V);
-	return bits;
-}
-
-function readBits(sim: Simulator, prefix: string, width: number): V[] {
-	const bits: V[] = [];
-	for (let index = 0; index < width; index++) bits.push(sim.getNet(`${prefix}${index}`) as V);
-	return bits;
-}
+import { bitsOf, document, inputsFor, outputsFor, readBits, type V } from './helpers';
 
 function expectBits(actual: V[], expected: V[], label: string): void {
 	expect(actual, label).toEqual(expected);
@@ -222,12 +187,15 @@ describe('register files', () => {
 		expectBits(read(sim, 'qa', 0), [1, 1, 0, 0], 'register 0 after disabled write');
 	});
 
-	it('drives X for addresses without a register', () => {
+	it('ignores writes and drives X for addresses without a register', () => {
 		const sim = registerFileSim(3);
 		sim.setNet('clk', 0);
 		sim.setNet('we', 0);
 		sim.settle();
 		expectBits(read(sim, 'qa', 3), ['X', 'X', 'X', 'X'], 'address without register');
+
+		writeRegister(sim, 3, 0b1111);
+		expectBits(read(sim, 'qa', 3), ['X', 'X', 'X', 'X'], 'write to missing register');
 	});
 
 	it('rejects malformed register-file configurations', () => {

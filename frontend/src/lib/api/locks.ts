@@ -53,17 +53,3 @@ export async function releaseLock(
 		keepalive: options.keepalive ?? false
 	});
 }
-
-export function lockErrorMessage(error: unknown): string {
-	if (isLockBusy(error)) {
-		return 'Another editor holds the lock. You are read-only until they release it.';
-	}
-	if (isLockConflict(error)) {
-		const reason = error.body['reason'];
-		if (reason === 'lock_expired') {
-			return 'Your edit lock expired, so the save was refused. Your draft is kept.';
-		}
-		return 'Your edit lock is no longer valid. Your draft is kept.';
-	}
-	return 'The lock request failed. Try again.';
-}

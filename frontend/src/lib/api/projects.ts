@@ -318,14 +318,6 @@ export async function saveProject(
 	});
 }
 
-export async function deleteProject(id: string): Promise<void> {
-	await apiFetch<void>(`/api/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
-}
-
-export async function exportProject(id: string): Promise<ExportEnvelope> {
-	return apiFetch<ExportEnvelope>(`/api/projects/${encodeURIComponent(id)}/export`);
-}
-
 export async function importProject(envelope: ExportEnvelope): Promise<ProjectDetail> {
 	return apiFetch<ProjectDetail>('/api/projects/import', {
 		method: 'POST',

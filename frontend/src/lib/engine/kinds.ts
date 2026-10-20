@@ -1,72 +1,73 @@
 import { CompileError, type ComponentKind } from './compile';
 import { primitiveKinds } from './primitives';
 import { analogKinds } from './analog/primitives';
-import { magnitudeComparatorKind, rippleCarryAdderKind } from './primitives/adders';
-import { registerKind } from './primitives/flipflops';
-import { counterKind, shiftRegisterKind } from './primitives/sequential';
-import { ROM_DEFAULT_CONTENTS, ramKind, registerFileKind, requireMemoryAddressBits, romKind, validatedRomAddressBits } from './primitives/memory';
+import {
+	magnitudeComparatorKind,
+	magnitudeComparatorPins,
+	rippleCarryAdderKind,
+	rippleCarryAdderPins
+} from './primitives/adders';
+import { registerKind, registerPins } from './primitives/flipflops';
+import { counterKind, counterPins, shiftRegisterKind, shiftRegisterPins } from './primitives/sequential';
+import {
+	ROM_DEFAULT_CONTENTS,
+	ramKind,
+	ramPins,
+	registerFileKind,
+	registerFilePins,
+	requireMemoryAddressBits,
+	romKind,
+	romPins
+} from './primitives/memory';
 import {
 	DEFAULT_ADDRESS_BITS,
 	DEFAULT_WORD_BITS,
 	DEFAULT_WIDTH,
-	MAX_ADDRESS_BITS,
-	MAX_WORD_BITS,
-	bitPins,
-	requireWordWidth
+	requireWordWidth,
+	type Pinout
 } from './primitives/pins';
 import type { Domain } from '../model/circuit';
 
-export interface PrimitivePinout {
-	readonly inputs: readonly string[];
-	readonly outputs: readonly string[];
-}
-
 export type ComponentParams = Record<string, unknown>;
 
-/**
- * Single resolver owning params-driven resolution. Every consumer
- * resolves each component from its own kind and parameters at use time with
- * fallback to the static registry; validation mirrors the engine
- * CompileError codes thrown by the underlying factories.
- */
-export const PARAMETERIZED_FAMILY_KINDS: readonly string[] = Object.freeze([
-	'rippleCarryAdder',
-	'magnitudeComparator',
-	'register',
-	'counter',
-	'shiftRegister',
-	'registerFile',
-	'ram',
-	'rom'
-]);
+export type ParameterShape = 'width' | 'memory' | 'rom';
 
-const PARAMETERIZED_FAMILY_SET: ReadonlySet<string> = new Set(PARAMETERIZED_FAMILY_KINDS);
+interface FamilySpec {
+	readonly shape: ParameterShape;
+	readonly defaults: () => ComponentParams;
+	readonly pinout: (params?: ComponentParams) => Pinout;
+	readonly build: (params?: ComponentParams) => ComponentKind;
+}
+
+function readIntegerParam(
+	params: ComponentParams | undefined,
+	key: string,
+	fallback: number
+): number {
+	const raw = params?.[key];
+	if (raw === undefined) return fallback;
+	if (typeof raw !== 'number' || !Number.isInteger(raw)) {
+		throw new CompileError(`${key} must be an integer, got ${String(raw)}`, 'invalid-primitive-parameter');
+	}
+	return raw;
+}
 
 function readWidth(params: ComponentParams | undefined): number {
-	const raw = params?.['width'];
-	if (raw === undefined) return DEFAULT_WIDTH;
-	if (typeof raw !== 'number' || !Number.isInteger(raw)) {
-		throw new CompileError(`width must be an integer, got ${String(raw)}`, 'invalid-primitive-parameter');
-	}
-	return Math.min(MAX_WORD_BITS, Math.max(1, raw));
+	const width = readIntegerParam(params, 'width', DEFAULT_WIDTH);
+	requireWordWidth(width, 'width');
+	return width;
 }
 
 function readAddressBits(params: ComponentParams | undefined): number {
-	const raw = params?.['addressBits'];
-	if (raw === undefined) return DEFAULT_ADDRESS_BITS;
-	if (typeof raw !== 'number' || !Number.isInteger(raw)) {
-		throw new CompileError(`addressBits must be an integer, got ${String(raw)}`, 'invalid-primitive-parameter');
-	}
-	return raw;
+	const addressBits = readIntegerParam(params, 'addressBits', DEFAULT_ADDRESS_BITS);
+	requireMemoryAddressBits(addressBits, 'addressBits');
+	return addressBits;
 }
 
 function readWordBits(params: ComponentParams | undefined): number {
-	const raw = params?.['wordBits'];
-	if (raw === undefined) return DEFAULT_WORD_BITS;
-	if (typeof raw !== 'number' || !Number.isInteger(raw)) {
-		throw new CompileError(`wordBits must be an integer, got ${String(raw)}`, 'invalid-primitive-parameter');
-	}
-	return raw;
+	const wordBits = readIntegerParam(params, 'wordBits', DEFAULT_WORD_BITS);
+	requireWordWidth(wordBits, 'wordBits');
+	return wordBits;
 }
 
 function readRomContents(params: ComponentParams | undefined): readonly number[] {
@@ -78,162 +79,115 @@ function readRomContents(params: ComponentParams | undefined): readonly number[]
 	return raw as readonly number[];
 }
 
+function readRegisters(params: ComponentParams | undefined): number | undefined {
+	const raw = params?.['registers'];
+	if (raw === undefined) return undefined;
+	if (typeof raw !== 'number' || !Number.isInteger(raw)) {
+		throw new CompileError(
+			`register file registers must be an integer, got ${String(raw)}`,
+			'invalid-register-file-size'
+		);
+	}
+	return raw;
+}
+
+// One descriptor per parameterized family: defaults, pinout, and factory live
+// together so adding a family cannot leave a stale list or a duplicate pin map
+// behind. Factories and pinout helpers share the same pin definitions.
+const FAMILIES: Readonly<Record<string, FamilySpec>> = Object.freeze({
+	rippleCarryAdder: {
+		shape: 'width',
+		defaults: () => ({ width: DEFAULT_WIDTH }),
+		pinout: (params) => rippleCarryAdderPins(readWidth(params)),
+		build: (params) => rippleCarryAdderKind(readWidth(params))
+	},
+	magnitudeComparator: {
+		shape: 'width',
+		defaults: () => ({ width: DEFAULT_WIDTH }),
+		pinout: (params) => magnitudeComparatorPins(readWidth(params)),
+		build: (params) => magnitudeComparatorKind(readWidth(params))
+	},
+	register: {
+		shape: 'width',
+		defaults: () => ({ width: DEFAULT_WIDTH }),
+		pinout: (params) => registerPins(readWidth(params)),
+		build: (params) => registerKind(readWidth(params))
+	},
+	counter: {
+		shape: 'width',
+		defaults: () => ({ width: DEFAULT_WIDTH }),
+		pinout: (params) => counterPins(readWidth(params)),
+		build: (params) => counterKind(readWidth(params))
+	},
+	shiftRegister: {
+		shape: 'width',
+		defaults: () => ({ width: DEFAULT_WIDTH }),
+		pinout: (params) => shiftRegisterPins(readWidth(params)),
+		build: (params) => shiftRegisterKind(readWidth(params))
+	},
+	registerFile: {
+		shape: 'memory',
+		defaults: () => ({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
+		pinout: (params) =>
+			registerFilePins(readAddressBits(params), readWordBits(params), readRegisters(params)),
+		build: (params) =>
+			registerFileKind({
+				addressBits: readAddressBits(params),
+				wordBits: readWordBits(params),
+				registers: readRegisters(params)
+			})
+	},
+	ram: {
+		shape: 'memory',
+		defaults: () => ({ addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS }),
+		pinout: (params) => ramPins(readAddressBits(params), readWordBits(params)),
+		build: (params) =>
+			ramKind({ addressBits: readAddressBits(params), wordBits: readWordBits(params) })
+	},
+	rom: {
+		shape: 'rom',
+		defaults: () => ({ contents: [...ROM_DEFAULT_CONTENTS], wordBits: DEFAULT_WORD_BITS }),
+		pinout: (params) => romPins(readRomContents(params), readWordBits(params)),
+		build: (params) =>
+			romKind({ contents: readRomContents(params), wordBits: readWordBits(params) })
+	}
+});
+
+export const PARAMETERIZED_FAMILY_KINDS: readonly string[] = Object.freeze(Object.keys(FAMILIES));
+
+const PARAMETERIZED_FAMILY_SET: ReadonlySet<string> = new Set(PARAMETERIZED_FAMILY_KINDS);
+
 export function isParameterizedFamily(kind: string): boolean {
 	return PARAMETERIZED_FAMILY_SET.has(kind);
 }
 
+export function parameterShapeFor(kind: string): ParameterShape | null {
+	return FAMILIES[kind]?.shape ?? null;
+}
+
 export function defaultParamsForKind(kind: string): ComponentParams | null {
-	switch (kind) {
-		case 'rippleCarryAdder':
-		case 'magnitudeComparator':
-		case 'register':
-		case 'counter':
-		case 'shiftRegister':
-			return { width: DEFAULT_WIDTH };
-		case 'registerFile':
-		case 'ram':
-			return { addressBits: DEFAULT_ADDRESS_BITS, wordBits: DEFAULT_WORD_BITS };
-		case 'rom':
-			return { contents: [...ROM_DEFAULT_CONTENTS], wordBits: DEFAULT_WORD_BITS };
-		default:
-			return null;
-	}
+	const family = FAMILIES[kind];
+	return family ? family.defaults() : null;
 }
 
 /**
  * Pin lists for a parameterized family without building the full kind: same
- * names the factories produce, validated with the same codes, but no
- * evaluate closure and no ROM word expansion. Scene and store pin lookups
- * run per rebuild; compile and simulation keep using the full factories.
- * An equivalence test locks these pinouts against the factories.
+ * names the factories produce, validated with the same codes, but no evaluate
+ * closure and no ROM word expansion. Scene and store pin lookups run per
+ * rebuild; compile and simulation keep using the full factories.
  */
 export function pinoutForParameterizedKind(
 	kind: string,
 	params?: ComponentParams
-): PrimitivePinout | null {
-	switch (kind) {
-		case 'rippleCarryAdder': {
-			const width = readWidth(params);
-			return {
-				inputs: [...bitPins('a', width), ...bitPins('b', width), 'cin'],
-				outputs: [...bitPins('s', width), 'cout']
-			};
-		}
-		case 'magnitudeComparator': {
-			const width = readWidth(params);
-			return {
-				inputs: [...bitPins('a', width), ...bitPins('b', width)],
-				outputs: ['eq', 'gt', 'lt']
-			};
-		}
-		case 'register': {
-			const width = readWidth(params);
-			return { inputs: ['clk', ...bitPins('d', width)], outputs: bitPins('q', width) };
-		}
-		case 'counter': {
-			const width = readWidth(params);
-			return {
-				inputs: ['clk', 'reset', 'enable', 'load', ...bitPins('d', width)],
-				outputs: bitPins('q', width)
-			};
-		}
-		case 'shiftRegister': {
-			const width = readWidth(params);
-			return {
-				inputs: ['clk', 'reset', 'load', 'sin', ...bitPins('d', width)],
-				outputs: bitPins('q', width)
-			};
-		}
-		case 'ram': {
-			const addressBits = readAddressBits(params);
-			const wordBits = readWordBits(params);
-			requireMemoryAddressBits(addressBits, 'RAM address bits');
-			requireWordWidth(wordBits);
-			return {
-				inputs: [...bitPins('a', addressBits), ...bitPins('d', wordBits), 'we', 'clk'],
-				outputs: bitPins('q', wordBits)
-			};
-		}
-		case 'registerFile': {
-			const addressBits = readAddressBits(params);
-			const wordBits = readWordBits(params);
-			requireMemoryAddressBits(addressBits, 'register file address bits');
-			requireWordWidth(wordBits);
-			const size = 1 << addressBits;
-			const registers = params?.['registers'];
-			if (registers !== undefined) {
-				if (typeof registers !== 'number' || !Number.isInteger(registers) || registers < 1 || registers > size) {
-					throw new CompileError(
-						`register file registers must be between 1 and ${size}, got ${registers}`,
-						'invalid-register-file-size'
-					);
-				}
-			}
-			return {
-				inputs: [
-					...bitPins('ra', addressBits),
-					...bitPins('rb', addressBits),
-					...bitPins('wa', addressBits),
-					...bitPins('wd', wordBits),
-					'we',
-					'clk'
-				],
-				outputs: [...bitPins('qa', wordBits), ...bitPins('qb', wordBits)]
-			};
-		}
-		case 'rom': {
-			const wordBits = readWordBits(params);
-			const contents = readRomContents(params);
-			const addressBits = validatedRomAddressBits(contents, wordBits);
-			return { inputs: bitPins('a', addressBits), outputs: bitPins('d', wordBits) };
-		}
-		default:
-			return null;
-	}
+): Pinout | null {
+	const family = FAMILIES[kind];
+	return family ? family.pinout(params) : null;
 }
 
 /** Map a parameterized family to its factory from parameters; null otherwise. */
-export function resolveParameterizedKind(
-	kind: string,
-	params?: ComponentParams
-): ComponentKind | null {
-	switch (kind) {
-		case 'rippleCarryAdder':
-			return rippleCarryAdderKind(readWidth(params));
-		case 'magnitudeComparator':
-			return magnitudeComparatorKind(readWidth(params));
-		case 'register':
-			return registerKind(readWidth(params));
-		case 'counter':
-			return counterKind(readWidth(params));
-		case 'shiftRegister':
-			return shiftRegisterKind(readWidth(params));
-		case 'ram':
-			return ramKind({ addressBits: readAddressBits(params), wordBits: readWordBits(params) });
-		case 'registerFile': {
-			const options: { addressBits: number; wordBits: number; registers?: number } = {
-				addressBits: readAddressBits(params),
-				wordBits: readWordBits(params)
-			};
-			const registers = params?.['registers'];
-			if (registers !== undefined) {
-				if (typeof registers !== 'number' || !Number.isInteger(registers)) {
-					throw new CompileError(
-						`register file registers must be an integer, got ${String(registers)}`,
-						'invalid-register-file-size'
-					);
-				}
-				options.registers = registers;
-			}
-			return registerFileKind(options);
-		}
-		case 'rom':
-			// ROM depth derives from contents length and is never directly
-			// edited: addressBits/depth params are ignored here.
-			return romKind({ contents: readRomContents(params), wordBits: readWordBits(params) });
-		default:
-			return null;
-	}
+function resolveParameterizedKind(kind: string, params?: ComponentParams): ComponentKind | null {
+	const family = FAMILIES[kind];
+	return family ? family.build(params) : null;
 }
 
 /**
@@ -248,7 +202,7 @@ export function resolveComponentKind(
 	return resolveParameterizedKind(kind, params) ?? primitiveKinds[kind] ?? null;
 }
 
-function registryFor(domain: Domain): Readonly<Record<string, PrimitivePinout>> {
+function registryFor(domain: Domain): Readonly<Record<string, Pinout>> {
 	return domain === 'analog' ? analogKinds : primitiveKinds;
 }
 
@@ -256,7 +210,7 @@ export function resolveKind(
 	kind: string,
 	domain: Domain,
 	params?: ComponentParams
-): PrimitivePinout | null {
+): Pinout | null {
 	if (domain === 'logic' && isParameterizedFamily(kind)) {
 		const pinout = pinoutForParameterizedKind(kind, params);
 		if (!pinout) return null;
@@ -274,6 +228,6 @@ export function kindNamesForDomain(domain: Domain): string[] {
 }
 
 export function kindExistsInOtherDomain(kind: string, domain: Domain): boolean {
-	const other: Domain = domain === 'analog' ? 'logic' : 'analog';
+	const other: Domain = domain === 'logic' ? 'analog' : 'logic';
 	return isKindInDomain(kind, other);
 }

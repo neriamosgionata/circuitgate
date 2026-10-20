@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CircuitDocument } from '../../model/circuit';
-import type { ComponentKinds } from '../compile';
+import { CompileError, type ComponentKinds } from '../compile';
 import { Simulator } from '../evaluate';
 import { primitiveKinds } from '../primitives';
 import { magnitudeComparatorKind, rippleCarryAdderKind } from '../primitives/adders';
@@ -97,33 +97,44 @@ describe('gate primitives', () => {
 		expect(sim.getNet('S')).toBe(0);
 	});
 
-	it('exposes the fixed primitive kinds in the ready-made registry', () => {
-		for (const name of [
-			'and',
-			'or',
-			'not',
-			'nand',
-			'nor',
-			'xor',
-			'xnor',
-			'buffer',
-			'switch',
-			'probe',
-			'led',
-			'clock',
-			'dFlipFlop',
-			'jkFlipFlop',
-			'srFlipFlop',
-			'srLatch',
-			'mux2',
-			'mux4',
-			'halfAdder',
-			'fullAdder',
-			'decoder2',
-			'decoder3'
-		]) {
-			expect(primitiveKinds[name], name).toBeDefined();
-		}
+	it('exposes exactly the fixed primitive kinds in the ready-made registry', () => {
+		expect(Object.keys(primitiveKinds).sort()).toEqual(
+			[
+				'and',
+				'or',
+				'not',
+				'nand',
+				'nor',
+				'xor',
+				'xnor',
+				'buffer',
+				'triStateBuffer',
+				'switch',
+				'probe',
+				'led',
+				'clock',
+				'dFlipFlop',
+				'jkFlipFlop',
+				'srFlipFlop',
+				'srLatch',
+				'mux2',
+				'mux4',
+				'halfAdder',
+				'fullAdder',
+				'decoder2',
+				'decoder3',
+				'sevenSegDecoder',
+				'sevenSegDisplay',
+				'rippleCarryAdder',
+				'magnitudeComparator',
+				'register',
+				'counter',
+				'shiftRegister',
+				'registerFile',
+				'ram',
+				'rom'
+			].sort()
+		);
 	});
 
 	it('toggles the clock kind in timed mode', () => {
@@ -309,6 +320,13 @@ describe('flip-flops and registers', () => {
 		sim.setNet('CLK', 1);
 		sim.settle();
 		expect([sim.getNet('Q0'), sim.getNet('Q1'), sim.getNet('Q2'), sim.getNet('Q3')]).toEqual([1, 1, 0, 0]);
+	});
+
+	it('rejects a register state word whose width no longer matches the kind', () => {
+		const kind = registerKind(4);
+		expect(() =>
+			kind.evaluate!([0, 1, 0, 1, 0], { bits: [0, 1], lastClk: 0 })
+		).toThrow(CompileError);
 	});
 
 	it('latches a register on clock edges in timed mode', () => {

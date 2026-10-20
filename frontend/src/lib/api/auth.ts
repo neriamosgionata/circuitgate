@@ -1,17 +1,7 @@
 import { apiFetch, clearCsrf } from './client';
 
-export interface Me {
-	id: string;
-	email: string;
-	verified: boolean;
-}
-
 export interface StatusResponse {
 	status: string;
-}
-
-export async function fetchMe(): Promise<Me> {
-	return apiFetch<Me>('/api/auth/me');
 }
 
 export async function register(email: string, password: string): Promise<StatusResponse> {

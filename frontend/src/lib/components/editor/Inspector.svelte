@@ -3,7 +3,7 @@
 	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
-	import { kindNamesForDomain, isParameterizedFamily } from '../../engine/kinds';
+	import { kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
 	import {
 		DEFAULT_ADDRESS_BITS,
 		DEFAULT_WORD_BITS,
@@ -49,7 +49,7 @@
 	});
 
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
-	const widthKinds = ['rom', 'ram', 'register', 'counter', 'shiftRegister', 'registerFile', 'rippleCarryAdder', 'magnitudeComparator'];
+	const selectedShape = $derived(selected ? parameterShapeFor(selected.kind) : null);
 	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
 	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
 	const modelOptions = $derived(
@@ -154,10 +154,11 @@
 
 	/** Parameter keys covered by the dedicated parameterized-family controls. */
 	function hiddenParamKeys(kind: string): ReadonlySet<string> {
-		if (!isParameterizedFamily(kind)) return new Set();
-		if (kind === 'ram' || kind === 'registerFile') return new Set(['wordBits', 'addressBits']);
-		if (kind === 'rom') return new Set(['wordBits', 'contents']);
-		return new Set(['width']);
+		const shape = parameterShapeFor(kind);
+		if (shape === 'memory') return new Set(['wordBits', 'addressBits']);
+		if (shape === 'rom') return new Set(['wordBits', 'contents']);
+		if (shape === 'width') return new Set(['width']);
+		return new Set();
 	}
 
 	function parseIntInRange(
@@ -288,6 +289,29 @@
 	}
 </script>
 
+{#snippet numericField(
+	label: string,
+	testId: string,
+	errorTestId: string,
+	value: number,
+	errorKey: string,
+	commit: (text: string) => void
+)}
+	<label>
+		<span>{label}</span>
+		<input
+			type="text"
+			inputmode="numeric"
+			data-testid={testId}
+			value={value}
+			onchange={(event) => commit(event.currentTarget.value)}
+		/>
+	</label>
+	{#if paramError?.key === errorKey}
+		<p class="error" role="alert" data-testid={errorTestId}>{paramError.message}</p>
+	{/if}
+{/snippet}
+
 <aside class="inspector">
 	<h2>Inspector</h2>
 	{#if !selected}
@@ -352,68 +376,57 @@
 					</select>
 				</label>
 			{/if}
-		{#if isParameterizedFamily(selected.kind)}
-			{#if selected.kind === 'rippleCarryAdder' || selected.kind === 'magnitudeComparator' || selected.kind === 'register'}
-				<label>
-					<span>Bus width</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						data-testid="width-input"
-						value={currentWidth(selected)}
-						onchange={(event) => commitWidthText(selected.id, 'width', event.currentTarget.value)}
-					/>
-				</label>
-				{#if paramError?.key === 'width'}<p class="error" role="alert" data-testid="width-error">{paramError.message}</p>{/if}
-			{:else if selected.kind === 'ram' || selected.kind === 'registerFile'}
-				<label>
-					<span>Word width</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						data-testid="wordbits-input"
-						value={currentWordBits(selected)}
-						onchange={(event) => commitWidthText(selected.id, 'wordBits', event.currentTarget.value)}
-					/>
-				</label>
-				{#if paramError?.key === 'wordBits'}<p class="error" role="alert" data-testid="wordbits-error">{paramError.message}</p>{/if}
-				<label>
-					<span>Address width</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						data-testid="addressbits-input"
-						value={currentAddressBits(selected)}
-						onchange={(event) => commitAddressText(selected.id, event.currentTarget.value)}
-					/>
-				</label>
-				{#if paramError?.key === 'addressBits'}<p class="error" role="alert" data-testid="addressbits-error">{paramError.message}</p>{/if}
-			{:else if selected.kind === 'rom'}
-				<label>
-					<span>Word width</span>
-					<input
-						type="text"
-						inputmode="numeric"
-						data-testid="wordbits-input"
-						value={currentWordBits(selected)}
-						onchange={(event) => commitWidthText(selected.id, 'wordBits', event.currentTarget.value)}
-					/>
-				</label>
-				{#if paramError?.key === 'wordBits'}<p class="error" role="alert" data-testid="wordbits-error">{paramError.message}</p>{/if}
-				<label>
-					<span>Contents (JSON)</span>
-					<textarea
-						rows="3"
-						data-testid="contents-input"
-						value={currentRomContentsText(selected)}
-						onchange={(event) => commitRomContents(selected.id, event.currentTarget.value, currentWordBits(selected))}
-					></textarea>
-				</label>
-				{#if paramError?.key === 'contents'}<p class="error" role="alert" data-testid="contents-error">{paramError.message}</p>{/if}
-				<p class="muted" data-testid="rom-depth">{romDepthText(selected)}</p>
-			{/if}
-			{#if paramNotice}<p class="notice" role="status" data-testid="param-notice">{paramNotice}</p>{/if}
-		{:else if widthKinds.includes(selected.kind) || currentWidth(selected) > 1}
+		{#if selectedShape === 'width'}
+			{@render numericField(
+				'Bus width',
+				'width-input',
+				'width-error',
+				currentWidth(selected),
+				'width',
+				(text) => commitWidthText(selected.id, 'width', text)
+			)}
+		{:else if selectedShape === 'memory'}
+			{@render numericField(
+				'Word width',
+				'wordbits-input',
+				'wordbits-error',
+				currentWordBits(selected),
+				'wordBits',
+				(text) => commitWidthText(selected.id, 'wordBits', text)
+			)}
+			{@render numericField(
+				'Address width',
+				'addressbits-input',
+				'addressbits-error',
+				currentAddressBits(selected),
+				'addressBits',
+				(text) => commitAddressText(selected.id, text)
+			)}
+		{:else if selectedShape === 'rom'}
+			{@render numericField(
+				'Word width',
+				'wordbits-input',
+				'wordbits-error',
+				currentWordBits(selected),
+				'wordBits',
+				(text) => commitWidthText(selected.id, 'wordBits', text)
+			)}
+			<label>
+				<span>Contents (JSON)</span>
+				<textarea
+					rows="3"
+					data-testid="contents-input"
+					value={currentRomContentsText(selected)}
+					onchange={(event) => commitRomContents(selected.id, event.currentTarget.value, currentWordBits(selected))}
+				></textarea>
+			</label>
+			{#if paramError?.key === 'contents'}<p class="error" role="alert" data-testid="contents-error">{paramError.message}</p>{/if}
+			<p class="muted" data-testid="rom-depth">{romDepthText(selected)}</p>
+		{/if}
+		{#if selectedShape !== null && paramNotice}
+			<p class="notice" role="status" data-testid="param-notice">{paramNotice}</p>
+		{/if}
+		{#if selectedShape === null && currentWidth(selected) > 1}
 			<label>
 				<span>Bus width</span>
 				<input
