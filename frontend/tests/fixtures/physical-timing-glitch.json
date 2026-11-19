@@ -1,0 +1,49 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "sw",
+        "kind": "switch",
+        "inputs": {},
+        "outputs": { "out": "A" }
+      },
+      {
+        "id": "fast",
+        "kind": "buffer",
+        "inputs": { "a": "A" },
+        "outputs": { "out": "FAST" }
+      },
+      {
+        "id": "slow",
+        "kind": "buffer",
+        "params": { "delay": 5 },
+        "inputs": { "a": "A" },
+        "outputs": { "out": "SLOW" }
+      },
+      {
+        "id": "mix",
+        "kind": "xor",
+        "inputs": { "a": "FAST", "b": "SLOW" },
+        "outputs": { "out": "OUT" }
+      },
+      { "id": "p_a", "kind": "probe", "inputs": { "in": "A" }, "outputs": {} },
+      { "id": "p_fast", "kind": "probe", "inputs": { "in": "FAST" }, "outputs": {} },
+      { "id": "p_slow", "kind": "probe", "inputs": { "in": "SLOW" }, "outputs": {} },
+      { "id": "p_out", "kind": "probe", "inputs": { "in": "OUT" }, "outputs": {} }
+    ]
+  },
+  "definitions": {},
+  "layouts": {
+    "": {
+      "sw": { "position": { "x": 40, "y": 40 }, "label": "SW" },
+      "fast": { "position": { "x": 180, "y": 40 }, "label": "fast" },
+      "slow": { "position": { "x": 180, "y": 160 }, "label": "slow" },
+      "mix": { "position": { "x": 340, "y": 100 }, "label": "mix" },
+      "p_a": { "position": { "x": 40, "y": 280 }, "label": "A" },
+      "p_fast": { "position": { "x": 180, "y": 280 }, "label": "FAST" },
+      "p_slow": { "position": { "x": 320, "y": 280 }, "label": "SLOW" },
+      "p_out": { "position": { "x": 460, "y": 280 }, "label": "OUT" }
+    }
+  }
+}

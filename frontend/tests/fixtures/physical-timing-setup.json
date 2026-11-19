@@ -1,0 +1,43 @@
+{
+  "circuit": {
+    "schemaVersion": 1,
+    "components": [
+      {
+        "id": "clk",
+        "kind": "clock",
+        "params": { "period": 20, "duty": 50 },
+        "inputs": {},
+        "outputs": { "out": "CLK" }
+      },
+      {
+        "id": "delay",
+        "kind": "buffer",
+        "params": { "delay": 19 },
+        "inputs": { "a": "CLK" },
+        "outputs": { "out": "D" }
+      },
+      {
+        "id": "ff",
+        "kind": "dFlipFlop",
+        "inputs": { "d": "D", "clk": "CLK" },
+        "outputs": { "q": "Q", "qn": "QN" }
+      },
+      { "id": "p_clk", "kind": "probe", "inputs": { "in": "CLK" }, "outputs": {} },
+      { "id": "p_d", "kind": "probe", "inputs": { "in": "D" }, "outputs": {} },
+      { "id": "p_q", "kind": "probe", "inputs": { "in": "Q" }, "outputs": {} },
+      { "id": "p_qn", "kind": "probe", "inputs": { "in": "QN" }, "outputs": {} }
+    ]
+  },
+  "definitions": {},
+  "layouts": {
+    "": {
+      "clk": { "position": { "x": 40, "y": 40 }, "label": "CLK" },
+      "delay": { "position": { "x": 180, "y": 40 }, "label": "D delay" },
+      "ff": { "position": { "x": 320, "y": 40 } },
+      "p_clk": { "position": { "x": 40, "y": 180 }, "label": "CLK" },
+      "p_d": { "position": { "x": 180, "y": 180 }, "label": "D" },
+      "p_q": { "position": { "x": 320, "y": 180 }, "label": "Q" },
+      "p_qn": { "position": { "x": 460, "y": 180 }, "label": "QN" }
+    }
+  }
+}

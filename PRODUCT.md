@@ -24,7 +24,7 @@ Browsers at 1366x768 and larger, with connectivity required for accounts and sto
 
 ## Capabilities and Constraints
 
-- Logic domain: schematic canvas, gates/flip-flops/mux/adders/ROM/RAM/register-file, subcircuits, delta-cycle and timed simulation, waveform viewer.
+- Logic domain: schematic canvas, gates/flip-flops/mux/adders/ROM/RAM/register-file, subcircuits, delta-cycle, timed, and physical-timing simulation (educational delay defaults, per-instance overrides, setup/hold diagnostics), waveform viewer.
 - Analog domain (shipping): SPICE-class ngspice WASM engine; `.op`, `.tran`, `.ac`, `.meas`; device library with curated in-house macromodels (741/TL072/555/393/7805 class); bounded SPICE `.model`/`.subckt` import; scope, Bode, operating-point, and measurement views.
 - Mixed-signal co-simulation, PCB layout/fabrication, and real-parts/BOM are explicitly not in this product slice.
 - Projects: versioned document, export/import `.circuitgate.json`, teams, sharing, single-editor locks, realtime state updates. Logic documents must remain valid and unchanged.
