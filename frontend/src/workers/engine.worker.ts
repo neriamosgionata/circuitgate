@@ -8,7 +8,8 @@ const scope = self as unknown as {
 
 // Flush coalesced value updates in a microtask: the worker already batches
 // per commit, and waiting for a timer would add up to a frame of latency to
-// every interactive toggle.
+// every interactive toggle. The physical Run loop yields on a macrotask so
+// Pause and mode commands can reach the worker between timestamps.
 const host = new SimulationHost(
 	(event) => {
 		scope.postMessage(event);
@@ -17,6 +18,10 @@ const host = new SimulationHost(
 		schedule: (callback) => {
 			queueMicrotask(callback);
 			return () => {};
+		},
+		runSchedule: (callback) => {
+			const handle = setTimeout(callback, 0);
+			return () => clearTimeout(handle);
 		}
 	}
 );

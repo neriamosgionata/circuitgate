@@ -1,4 +1,10 @@
-export type DiagnosticKind = 'compile-error' | 'oscillation' | 'protocol' | 'analog';
+export type DiagnosticKind =
+	| 'compile-error'
+	| 'oscillation'
+	| 'protocol'
+	| 'analog'
+	| 'timing'
+	| 'event-limit';
 
 export interface Diagnostic {
 	id: string;
@@ -9,6 +15,10 @@ export interface Diagnostic {
 	nets?: string[];
 	analysisId?: string;
 	tick?: number;
+	/** Physical-mode timestamp in picoseconds. */
+	time?: number;
+	/** Absolute inclusive violation window in picoseconds. */
+	window?: { from: number; to: number };
 }
 
 export type DiagnosticsListener = (diagnostics: readonly Diagnostic[]) => void;
@@ -34,6 +44,14 @@ export class DiagnosticsStore {
 		this.diagnostics.set(diagnostic.id, diagnostic);
 		this.emit();
 		return true;
+	}
+
+	/** Insert or refresh a diagnostic while keeping its stable id. */
+	upsert(diagnostic: Diagnostic): boolean {
+		const isNew = !this.diagnostics.has(diagnostic.id);
+		this.diagnostics.set(diagnostic.id, diagnostic);
+		this.emit();
+		return isNew;
 	}
 
 	dismiss(id: string): boolean {
