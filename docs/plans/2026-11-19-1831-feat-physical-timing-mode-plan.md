@@ -205,7 +205,7 @@ None. The deferred planning questions are resolved in the Planning Contract: tim
 
 - KTD3. **Timing profiles resolved at compile.** `frontend/src/lib/engine/timing.ts` owns per-kind defaults, param keys, validation, and field lists; conversion helpers live in `frontend/src/lib/engine/time.ts`. `compileWithResolver` receives an optional timing resolver and stores the resolved profile on each compiled component. Defaults never enter `FAMILIES.defaults` or placement params; absent params resolve to the default, and explicit overrides persist. Governs R2, R3, R4, R5, R18. Keeping timing out of the primitive factories leaves every value behavior unchanged and stops new documents from freezing today's defaults.
 
-- KTD4. **Sequential checks use last-transition evidence.** The scheduler records the last time each net's resolved value changed. Setup uses `[edge - setup, edge]`; hold uses `[edge, edge + hold]`; both ends are inclusive, and same-time transitions apply before the check. Every non-clock input of a clocked part is checked; a violation drives every output and the internal state X. X or Z data produces X without a timing diagnostic. Initial settling at t=0 is not setup/hold evidence; checks begin at the first active edge. A capture commits at `edge + max(hold, clockToQ)` after the hold window closes. A DFF, JK/SR flip-flop, or register recovers on the next compliant edge that samples a known value; a counter stays X until a defined load or reset, and a shift register stays X until enough known serial inputs shift the X bits out or a reset/load applies. `srLatch` remains asynchronous with a delay only. Governs R12, R13, R14, R15. A hold violation is not knowable at the edge, and emitting Q first would create a second glitch; withholding the commit keeps the result deterministic.
+- KTD4. **Sequential checks use last-transition evidence.** The scheduler records the last time each net's resolved value changed. Setup uses `[edge - setup, edge]`; hold uses `[edge, edge + hold]`; both ends are inclusive, and same-time transitions apply before the check. Every non-clock input of a clocked part is checked; a violation drives every output and the internal state X. X or Z data produces X without a timing diagnostic. The first active edge establishes the clock state and is exempt from timing diagnostics; checks begin with the next active edge, so the clock's initial low propagation cannot create a power-up violation. A capture commits at `edge + max(hold, clockToQ)` after the hold window closes. A DFF, JK/SR flip-flop, or register recovers on the next compliant edge that samples a known value; a counter stays X until a defined load or reset, and a shift register stays X until enough known serial inputs shift the X bits out or a reset/load applies. `srLatch` remains asynchronous with a delay only. Governs R12, R13, R14, R15. A hold violation is not knowable at the edge, and emitting Q first would create a second glitch; withholding the commit keeps the result deterministic.
 
 - KTD5. **Physical clock phase and period validation.** The clock starts low at t=0. Duty is the high percentage; the first rising edge is at `(1 - duty/100) * period`, the falling edge at `period`, and the pattern repeats. Clocked parts use rising edges; the existing polarity control is labeled as not used in physical timing. Period must be positive and duty strictly between 0 and 100. When a clock net directly drives a clocked part, the period must exceed that part's `max(hold, clockToQ) + setup`; a compile-time check rejects a shorter period with a timing error, and the store surfaces the same rule. Governs R3, R17. The convention makes the first active edge capturable and gives the demo a repeatable position; falling-edge parts do not exist in the current primitive set, and overlapping captures are rejected rather than resolved by queue order.
 
@@ -253,6 +253,7 @@ flowchart TB
 - Waveform retention stays at the existing 4096 changes per net; a long physical run may truncate the visible window. Horizontal zoom is deferred.
 - The event limit pauses the advance and requires Reset before Run or Step resumes; it does not mark nets X.
 - Timing defaults are educational values, not calibrated to a specific logic family.
+- The first active edge after power-up establishes the clock state and is exempt from setup/hold diagnostics; the next active edge starts timing checks.
 
 ### Implementation Constraints
 
@@ -382,7 +383,7 @@ All units ship in one PR. Unit order is dependency order.
 - **Approach:**
   - Track the last resolved transition time for each net and compare it with the active edge.
   - Check every non-clock input of a clocked part: D, J/K, S/R, register data bits, counter reset/enable/load and data bits, and shift reset/load/serials/data bits.
-  - Setup window is `[edge - setup, edge]`; hold window is `[edge, edge + hold]`; both ends inclusive. Same-time transitions apply before the check. Initial settling at t=0 is not setup/hold evidence; checks begin at the first active edge.
+  - Setup window is `[edge - setup, edge]`; hold window is `[edge, edge + hold]`; both ends inclusive. Same-time transitions apply before the check. The first active edge establishes the clock state and is exempt from timing checks; checks begin with the next active edge, so the clock's initial low propagation cannot create a power-up violation.
   - A violation drives every output and the internal state X. X or Z data produces X without a timing diagnostic. A capture commits at `edge + max(hold, clockToQ)`.
   - A DFF, JK/SR flip-flop, or register recovers on the next compliant edge that samples a known value. A counter stays X until a defined load or reset; a shift register stays X until enough known serial inputs shift the X bits out, or a reset/load applies.
   - When a clock net directly drives a clocked part, reject a period not greater than that part's `max(hold, clockToQ) + setup` with a clock-period CompileError.
@@ -397,7 +398,7 @@ All units ship in one PR. Unit order is dependency order.
   - Q appears at `edge + clockToQ` when hold is shorter, and at `edge + hold` when hold is longer.
   - A DFF/register recovers on the next compliant edge; a counter remains X until load/reset; a shift register clears X only after enough known serial inputs or a reset/load.
   - A clock period not greater than `max(hold, clockToQ) + setup` is rejected at compile time.
-  - Initial clock settling does not raise a setup/hold diagnostic before the first active edge.
+  - Initial clock settling does not raise a setup/hold diagnostic at the first active edge; the second active edge is checked.
   - Repeated runs with the same document and timing values are identical.
   - The SR latch applies its delay and never raises a setup/hold diagnostic.
 - **Verification:** Sequential timing tests pass and the existing sequential primitive tests remain green.
