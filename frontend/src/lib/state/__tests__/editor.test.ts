@@ -834,4 +834,14 @@ describe('physical timing parameters', () => {
 		expect(params(store, 'ff')).toEqual({});
 		expect(store.clearTimingParam('ff', 'setup')).toEqual({ ok: true, value: 0 });
 	});
+
+	it('does not reset an override into a clock period that is too short', () => {
+		const store = timingStore();
+		expectOk(store.setParam('ff', 'clockToQ', 1));
+		expectOk(store.setParam('clk', 'period', 6));
+		expect(store.clearTimingParam('ff', 'clockToQ')).toEqual({
+			ok: false,
+			error: 'invalid-clock-period'
+		});
+	});
 });

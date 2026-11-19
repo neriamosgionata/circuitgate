@@ -760,6 +760,21 @@ export class CircuitEditorStore {
 		}
 		const params = { ...(component.params ?? {}) };
 		delete params[key];
+		if (key !== 'duty') {
+			const defaults = timingForComponent(component.kind);
+			const fallback =
+				key === 'period'
+					? (defaults.periodPs ?? 20_000) / 1000
+					: key === 'delay'
+						? defaults.delayPs / 1000
+						: key === 'clockToQ'
+							? (defaults.clockToQPs ?? 0) / 1000
+							: key === 'setup'
+								? (defaults.setupPs ?? 0) / 1000
+								: (defaults.holdPs ?? 0) / 1000;
+			const crossField = this.timingCrossFieldProblem(component, key, fallback);
+			if (crossField !== null) return { ok: false, error: 'invalid-clock-period' };
+		}
 		return this.applyParams(id, params);
 	}
 
