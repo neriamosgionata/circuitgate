@@ -4,6 +4,13 @@
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
 	import { kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
+	import { formatTimePs, nsToPs } from '../../engine/time';
+	import {
+		timingFieldsForKind,
+		timingForComponent,
+		validateTimingParam,
+		type TimingField
+	} from '../../engine/timing';
 	import {
 		DEFAULT_ADDRESS_BITS,
 		DEFAULT_WORD_BITS,
@@ -13,14 +20,16 @@
 	} from '../../engine/primitives/pins';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
 	import type { Component, ComponentId } from '../../model/circuit';
+	import type { SimulationMode } from '../../sim/protocol';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
 
 	interface Props {
 		store: CircuitEditorStore;
+		mode?: SimulationMode;
 		readonly?: boolean;
 	}
 
-	let { store, readonly = false }: Props = $props();
+	let { store, mode = 'delta', readonly = false }: Props = $props();
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let kindError = $state<string | null>(null);
 	let paramError = $state<{ key: string; message: string } | null>(null);
@@ -64,6 +73,9 @@
 			: ''
 	);
 	const parameterSpecs = $derived(selected ? analogKind(selected.kind)?.parameters ?? [] : []);
+	const timingFields = $derived(
+		selected && snapshot.domain === 'logic' ? timingFieldsForKind(selected.kind) : []
+	);
 	const visibleParams = $derived(
 		selected
 			? Object.entries(selected.params ?? {}).filter(
@@ -71,6 +83,90 @@
 				)
 			: []
 	);
+
+	function safeTimingProfile(component: Component) {
+		try {
+			return timingForComponent(component.kind, component.params);
+		} catch {
+			return null;
+		}
+	}
+
+	function timingLabel(field: TimingField): string {
+		if (field === 'delay') return 'Propagation delay';
+		if (field === 'clockToQ') return 'Clock-to-Q';
+		if (field === 'setup') return 'Setup';
+		if (field === 'hold') return 'Hold';
+		if (field === 'period') return 'Period';
+		return 'Duty (%)';
+	}
+
+	function timingValue(component: Component, field: TimingField): string {
+		const raw = component.params?.[field];
+		if (typeof raw === 'number') {
+			if (field === 'duty') return String(raw);
+			return formatTimePs(nsToPs(raw));
+		}
+		const profile = safeTimingProfile(component);
+		if (!profile) return '';
+		if (field === 'delay') return formatTimePs(profile.delayPs);
+		if (field === 'clockToQ') return formatTimePs(profile.clockToQPs ?? 0);
+		if (field === 'setup') return formatTimePs(profile.setupPs ?? 0);
+		if (field === 'hold') return formatTimePs(profile.holdPs ?? 0);
+		if (field === 'period') return formatTimePs(profile.periodPs ?? 0);
+		return String((profile.duty ?? 0) * 100);
+	}
+
+	function hasTimingOverride(component: Component, field: TimingField): boolean {
+		return typeof component.params?.[field] === 'number';
+	}
+
+	function parseTimingText(field: TimingField, text: string): { ok: true; value: number } | { ok: false; message: string } {
+		const trimmed = text.trim();
+		if (trimmed.length === 0) return { ok: false, message: 'Enter a value.' };
+		if (field === 'duty') {
+			const value = Number(trimmed.replace(/%$/, ''));
+			if (!Number.isFinite(value)) return { ok: false, message: 'Duty must be a number.' };
+			return { ok: true, value };
+		}
+		const withoutUnit = stripTrailingUnit(trimmed);
+		if (withoutUnit.unit !== '' && withoutUnit.unit !== 's') {
+			return { ok: false, message: 'Use ns, us, ms, or s for time values.' };
+		}
+		if (withoutUnit.unit === '') {
+			const value = Number(withoutUnit.core);
+			return Number.isFinite(value)
+				? { ok: true, value }
+				: { ok: false, message: 'Time must be a number.' };
+		}
+		const parsed = parseSI(withoutUnit.core);
+		if (!parsed.ok) return { ok: false, message: `Invalid value: ${parsed.error}` };
+		return { ok: true, value: parsed.value * 1e9 };
+	}
+
+	function commitTimingText(component: Component, field: TimingField, text: string): void {
+		const parsed = parseTimingText(field, text);
+		if (!parsed.ok) {
+			failParam(field, parsed.message);
+			return;
+		}
+		const validation = validateTimingParam(component.kind, field, parsed.value);
+		if (!validation.ok) {
+			failParam(field, validation.message);
+			return;
+		}
+		reportResult(field, store.setParam(component.id, field, parsed.value), (error) =>
+			error === 'invalid-clock-period'
+				? 'The clock period is too short for a directly clocked part.'
+				: `${timingLabel(field)} is invalid.`
+		);
+	}
+
+	function resetTiming(component: Component, field: TimingField): void {
+		paramError = null;
+		const result = store.clearTimingParam(component.id, field);
+		if (!result.ok) failParam(field, 'Could not reset this timing value.');
+	}
 
 	function enumOptions(key: string): readonly string[] | null {
 		if (snapshot.domain !== 'analog') return null;
@@ -155,10 +251,17 @@
 	/** Parameter keys covered by the dedicated parameterized-family controls. */
 	function hiddenParamKeys(kind: string): ReadonlySet<string> {
 		const shape = parameterShapeFor(kind);
-		if (shape === 'memory') return new Set(['wordBits', 'addressBits']);
-		if (shape === 'rom') return new Set(['wordBits', 'contents']);
-		if (shape === 'width') return new Set(['width']);
-		return new Set();
+		const keys = new Set<string>(timingFieldsForKind(kind));
+		if (shape === 'memory') {
+			keys.add('wordBits');
+			keys.add('addressBits');
+		}
+		if (shape === 'rom') {
+			keys.add('wordBits');
+			keys.add('contents');
+		}
+		if (shape === 'width') keys.add('width');
+		return keys;
 	}
 
 	function parseIntInRange(
@@ -439,6 +542,45 @@
 			</label>
 		{/if}
 		</fieldset>
+
+		{#if timingFields.length > 0}
+			<fieldset class="timing" disabled={mode !== 'physical'}>
+				<legend>Physical timing</legend>
+				{#if mode !== 'physical'}
+					<p class="muted" data-testid="timing-inactive-note">
+						Timing values apply only in physical timing.
+					</p>
+				{/if}
+				{#each timingFields as field (field)}
+					<label>
+						<span>{timingLabel(field)}</span>
+						<input
+							type="text"
+							data-testid={`timing-${field}-input`}
+							value={timingValue(selected, field)}
+							onchange={(event) => commitTimingText(selected, field, event.currentTarget.value)}
+						/>
+						{#if !hasTimingOverride(selected, field)}
+							<span class="muted" data-testid={`timing-${field}-default`}>Default</span>
+						{/if}
+						<button
+							type="button"
+							data-testid={`timing-${field}-reset`}
+							disabled={!hasTimingOverride(selected, field)}
+							onclick={() => resetTiming(selected, field)}
+						>
+							Reset
+						</button>
+					</label>
+					{#if paramError?.key === field}
+						<p class="error" role="alert" data-testid={`timing-${field}-error`}>
+							{paramError.message}
+						</p>
+					{/if}
+				{/each}
+				<p class="muted">Clock polarity is not used in physical timing.</p>
+			</fieldset>
+		{/if}
 
 		{#if modelBacked}
 			<fieldset>
