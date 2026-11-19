@@ -1,5 +1,11 @@
 import type { CircuitDocument } from '../model/circuit';
-import type { CompiledComponent, KindResolver, TimingResolver } from './compile';
+import {
+	CompileError,
+	type CompiledComponent,
+	type CompiledNetlist,
+	type KindResolver,
+	type TimingResolver
+} from './compile';
 import { Simulator } from './evaluate';
 import { PhysicalTaskQueue, type PhysicalTask } from './eventQueue';
 import type { TimingProfile } from './timing';
@@ -40,6 +46,7 @@ interface PendingCapture {
 	state: unknown;
 	setupViolated: boolean;
 	holdViolated: boolean;
+	skipChecks: boolean;
 }
 
 const ZERO_TIMING: TimingProfile = { delayPs: 0 };
@@ -47,6 +54,37 @@ const ZERO_TIMING: TimingProfile = { delayPs: 0 };
 interface DriverRef {
 	component: number;
 	pin: number;
+}
+
+/**
+ * Reject a clock that is too fast for a directly clocked sequential part.
+ * The output commit waits for the hold window, then applies clock-to-Q, so the
+ * next edge must leave room for both that commit and the next setup window.
+ */
+export function validatePhysicalTiming(netlist: CompiledNetlist): void {
+	const clocks = new Map<number, TimingProfile>();
+	for (const component of netlist.components) {
+		if (!component.timing?.clock) continue;
+		for (const net of component.outputNets) clocks.set(net, component.timing);
+	}
+	for (const component of netlist.components) {
+		if (!component.timing?.sequential) continue;
+		const clockPin = component.kind.inputs.indexOf('clk');
+		if (clockPin < 0) continue;
+		const clock = clocks.get(component.inputNets[clockPin]);
+		if (!clock) continue;
+		const period = clock.periodPs ?? 0;
+		const hold = component.timing.holdPs ?? 0;
+		const clockToQ = component.timing.clockToQPs ?? 0;
+		const setup = component.timing.setupPs ?? 0;
+		const minimum = Math.max(hold, clockToQ) + setup;
+		if (period <= minimum) {
+			throw new CompileError(
+				`clock period ${period}ps is too short for ${component.id}; needs more than ${minimum}ps`,
+				'invalid-clock-period'
+			);
+		}
+	}
 }
 
 export class PhysicalSimulator extends Simulator {
@@ -59,6 +97,7 @@ export class PhysicalSimulator extends Simulator {
 	private lastScheduled: LogicValue[][] = [];
 	private lastChangePs: number[] = [];
 	private lastClock: LogicValue[] = [];
+	private firstEdgeSeen: boolean[] = [];
 	private driversByNet: DriverRef[][] = [];
 	private pending = new Map<number, PendingCapture>();
 	private initialTouched = new Set<number>();
@@ -70,6 +109,7 @@ export class PhysicalSimulator extends Simulator {
 		timingResolver?: TimingResolver
 	) {
 		super(document, resolver, initialValues, timingResolver);
+		validatePhysicalTiming(this.netlist);
 	}
 
 	get timePs(): number {
@@ -168,6 +208,7 @@ export class PhysicalSimulator extends Simulator {
 		this.lastScheduled = this.drivers.map((pins) => [...pins]);
 		this.lastChangePs = this.netlist.netIds.map(() => -1);
 		this.lastClock = this.netlist.components.map(() => 'X' as LogicValue);
+		this.firstEdgeSeen = this.netlist.components.map(() => false);
 		this.driversByNet = this.netlist.netIds.map(() => []);
 
 		for (const component of this.netlist.components) {
@@ -321,7 +362,11 @@ export class PhysicalSimulator extends Simulator {
 			this.lastClock[index] = clk;
 
 			if (previous === 0 && clk === 1) {
-				const setup = this.checkSetup(component, profile);
+				const skipChecks = !this.firstEdgeSeen[index];
+				this.firstEdgeSeen[index] = true;
+				const setup = skipChecks
+					? { violated: false, from: this.currentTimePs, to: this.currentTimePs }
+					: this.checkSetup(component, profile);
 				const outcome = component.kind.evaluate(inputs, this.states[index]);
 				const hold = profile.holdPs ?? 0;
 				const clockToQ = profile.clockToQPs ?? 0;
@@ -334,7 +379,8 @@ export class PhysicalSimulator extends Simulator {
 					outputs: [...outcome.outputs],
 					state: outcome.state,
 					setupViolated: setup.violated,
-					holdViolated: false
+					holdViolated: false,
+					skipChecks
 				};
 				this.pending.set(index, pending);
 				if (setup.violated) {
@@ -428,6 +474,7 @@ export class PhysicalSimulator extends Simulator {
 		const value = this.values[net];
 		if (value !== 0 && value !== 1) return;
 		for (const pending of this.pending.values()) {
+			if (pending.skipChecks) continue;
 			if (timePs <= pending.edgeTimePs || timePs > pending.holdUntilPs) continue;
 			if (!pending.inputNets.includes(net)) continue;
 			pending.holdViolated = true;
