@@ -29,6 +29,32 @@ test.describe('physical timing mode', () => {
 		await expect(diagnostic).toContainText('28ns–30ns');
 	});
 
+	test('Inspector timing overrides show defaults and can be reset', async ({ page }) => {
+		await openFixture(page, 'physical-timing-setup.json', { emailPrefix: 'physical-inspector' });
+		await selectPhysical(page);
+		await page.locator('.canvas-slot canvas').click({ position: { x: 400, y: 128 } });
+
+		const setup = page.getByTestId('timing-setup-input');
+		await expect(setup).toBeVisible();
+		await expect(setup).toHaveValue('2ns');
+		await expect(page.getByTestId('timing-setup-default')).toBeVisible();
+		await expect(page.getByTestId('timing-setup-reset')).toBeDisabled();
+
+		await setup.fill('1.5ns');
+		await setup.blur();
+		await expect(page.getByTestId('timing-setup-error')).toHaveCount(0);
+		await expect(page.getByTestId('timing-setup-default')).toHaveCount(0);
+		await expect(page.getByTestId('timing-setup-reset')).toBeEnabled();
+
+		await page.getByTestId('timing-setup-reset').click();
+		await expect(page.getByTestId('timing-setup-default')).toBeVisible();
+		await expect(setup).toHaveValue('2ns');
+
+		await page.getByTestId('simulation-mode').selectOption('delta');
+		await expect(page.getByTestId('timing-inactive-note')).toBeVisible();
+		await expect(setup).toBeDisabled();
+	});
+
 	test('a reconvergent glitch appears and clears on the probe', async ({ page }) => {
 		await openFixture(page, 'physical-timing-glitch.json', { emailPrefix: 'physical-glitch' });
 		await selectPhysical(page);
