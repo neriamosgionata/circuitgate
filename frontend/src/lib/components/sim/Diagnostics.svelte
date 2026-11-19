@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatTimePs } from '../../engine/time';
 	import type { Diagnostic } from '../../sim/diagnostics';
 
 	interface Props {
@@ -13,7 +14,14 @@
 	function kindLabel(diagnostic: Diagnostic): string {
 		if (diagnostic.kind === 'compile-error') return 'compile error';
 		if (diagnostic.kind === 'analog') return 'analysis';
+		if (diagnostic.kind === 'timing') return 'timing';
+		if (diagnostic.kind === 'event-limit') return 'event limit';
 		return 'oscillation';
+	}
+
+	function windowLabel(diagnostic: Diagnostic): string {
+		if (!diagnostic.window) return '';
+		return `${formatTimePs(diagnostic.window.from)}–${formatTimePs(diagnostic.window.to)}`;
 	}
 </script>
 
@@ -23,6 +31,9 @@
 			<div class="entry" class:error={diagnostic.kind === 'compile-error'}>
 				<span class="kind">{kindLabel(diagnostic)}</span>
 				<span class="message">{diagnostic.message}</span>
+				{#if diagnostic.kind === 'timing' && diagnostic.window}
+					<span class="window" data-testid="diagnostic-window">{windowLabel(diagnostic)}</span>
+				{/if}
 				{#if diagnostic.componentIds && diagnostic.componentIds.length > 0}
 					<button
 						type="button"
@@ -79,6 +90,12 @@
 
 	.message {
 		flex: 1 1 auto;
+	}
+
+	.window {
+		font-size: 11px;
+		color: #546e7a;
+		font-variant-numeric: tabular-nums;
 	}
 
 	.locate-net,

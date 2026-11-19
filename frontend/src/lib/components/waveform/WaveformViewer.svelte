@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { formatTimePs } from '../../engine/time';
 	import { presentSignal } from '../../render/scene';
+	import type { SimulationMode } from '../../sim/protocol';
 	import type { WaveformChange } from '../../sim/recorder';
 	import {
 		tickToX,
+		timeAxisTicks,
 		visibleLaneRange,
 		windowSegments,
 		type WaveformSegment
@@ -14,6 +17,7 @@
 		historyFor: (net: string) => readonly WaveformChange[];
 		tick: number;
 		version: number;
+		mode?: SimulationMode;
 		selectedNets?: ReadonlySet<string>;
 		onSelectNet?: (net: string) => void;
 	}
@@ -23,18 +27,21 @@
 		historyFor,
 		tick,
 		version,
+		mode = 'delta',
 		selectedNets = new Set<string>(),
 		onSelectNet
 	}: Props = $props();
 
 	const ROW_HEIGHT = 22;
 	const GUTTER = 120;
+	const AXIS_HEIGHT = 18;
 
 	let wrapper: HTMLDivElement | undefined = $state();
 	let canvas: HTMLCanvasElement | undefined = $state();
 	let scrollTop = $state(0);
 	let width = $state(640);
 	let height = $state(180);
+	const plotHeight = $derived(Math.max(1, height - (mode === 'physical' ? AXIS_HEIGHT : 0)));
 
 	const startTick = $derived.by(() => {
 		void version;
@@ -111,6 +118,16 @@
 			ctx.lineTo(x1, y);
 		}
 		ctx.stroke();
+		// Keep a pulse narrower than a pixel from disappearing entirely.
+		ctx.beginPath();
+		for (const segment of segments) {
+			const x0 = x(segment.startTick);
+			const x1 = x(segment.endTick);
+			if (x1 - x0 >= 1) continue;
+			ctx.moveTo(x0, lowY);
+			ctx.lineTo(x0, highY);
+		}
+		ctx.stroke();
 		if (first.oscillating) {
 			ctx.setLineDash([3, 3]);
 			ctx.beginPath();
@@ -145,7 +162,7 @@
 		const plotWidth = Math.max(1, width - GUTTER);
 		const span = Math.max(1, endTick - startTick);
 		const tickScale = plotWidth / span;
-		const range = visibleLaneRange(scrollTop, height, ROW_HEIGHT, nets.length);
+		const range = visibleLaneRange(scrollTop, plotHeight, ROW_HEIGHT, nets.length);
 		const offset = range.start * ROW_HEIGHT - scrollTop;
 
 		ctx.font = '11px sans-serif';
@@ -183,6 +200,17 @@
 		ctx.moveTo(GUTTER - 0.5, 0);
 		ctx.lineTo(GUTTER - 0.5, height);
 		ctx.stroke();
+
+		if (mode === 'physical') {
+			ctx.fillStyle = '#546e7a';
+			ctx.font = '10px sans-serif';
+			ctx.textAlign = 'center';
+			for (const time of timeAxisTicks(startTick, endTick, 4)) {
+				const x = Math.min(width - 22, Math.max(GUTTER + 12, GUTTER + tickToX(time, startTick, tickScale)));
+				ctx.fillText(formatTimePs(time), x, height - 4);
+			}
+			ctx.textAlign = 'start';
+		}
 	}
 
 	function selectAt(event: MouseEvent) {
@@ -261,6 +289,7 @@
 		role="listbox"
 		tabindex="0"
 		aria-label="Waveform lanes"
+		style:bottom={mode === 'physical' ? `${AXIS_HEIGHT}px` : '0px'}
 		onscroll={(event) => (scrollTop = event.currentTarget.scrollTop)}
 		onclick={selectAt}
 		onkeydown={(event) => {

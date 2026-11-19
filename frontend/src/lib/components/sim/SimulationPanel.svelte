@@ -4,7 +4,11 @@
 	import type { LogicValue } from '../../engine/values';
 	import type { CircuitDocument, Component } from '../../model/circuit';
 	import { DiagnosticsStore, type Diagnostic } from '../../sim/diagnostics';
-	import { type SimulationEvent, type SimulationMode } from '../../sim/protocol';
+	import {
+		type SimulationEvent,
+		type SimulationMode,
+		type SimulationPauseReason
+	} from '../../sim/protocol';
 	import { WaveformRecorder } from '../../sim/recorder';
 	import { WorkerSimulationSession, type WorkerLike } from '../../sim/session';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
@@ -15,9 +19,11 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		mode: SimulationMode;
+		onModeChange: (mode: SimulationMode) => void;
 	}
 
-	let { store }: Props = $props();
+	let { store, mode, onModeChange }: Props = $props();
 
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	$effect(() => {
@@ -38,10 +44,10 @@
 	const mirror = new WaveformRecorder();
 	let version = $state(0);
 	let nets = $state<string[]>([]);
-	let mode = $state<SimulationMode>('delta');
 	let running = $state(false);
 	let tick = $state(0);
 	let ready = $state(false);
+	let pauseReason = $state<SimulationPauseReason | null>(null);
 	let session: WorkerSimulationSession | null = null;
 	let commandId = 0;
 
@@ -54,13 +60,12 @@
 		switch (event.type) {
 			case 'ready':
 				nets = event.nets;
-				mode = event.mode;
 				ready = true;
 				break;
 			case 'status':
 				running = event.running;
-				mode = event.mode;
 				tick = event.tick;
+				pauseReason = event.pauseReason ?? null;
 				break;
 			case 'values':
 				for (const change of event.changes) {
@@ -86,15 +91,23 @@
 				}
 				break;
 			case 'diagnostic':
-				diagnostics.add(event.diagnostic);
+				if (event.cleared) {
+					diagnostics.dismiss(event.diagnostic.id);
+				} else if (event.diagnostic.kind === 'timing') {
+					diagnostics.upsert(event.diagnostic);
+				} else {
+					diagnostics.add(event.diagnostic);
+				}
 				break;
 			case 'restarted':
 				mirror.clear();
 				store.clearNetValues();
+				diagnostics.clear();
 				nets = [];
 				ready = false;
 				running = false;
 				tick = 0;
+				pauseReason = null;
 				version += 1;
 				break;
 			case 'ack':
@@ -115,6 +128,7 @@
 		ready = false;
 		running = false;
 		tick = 0;
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session = new WorkerSimulationSession({
@@ -163,14 +177,18 @@
 
 	function reset() {
 		mirror.clear();
+		diagnostics.clear();
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session?.send({ type: 'reset', id: nextId() });
 	}
 
 	function changeMode(next: SimulationMode) {
-		mode = next;
+		onModeChange(next);
 		mirror.clear();
+		diagnostics.clear();
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session?.send({ type: 'setMode', id: nextId(), mode: next });
@@ -227,6 +245,7 @@
 			{running}
 			{tick}
 			{ready}
+			{pauseReason}
 			onRun={run}
 			onPause={pause}
 			onStep={step}
@@ -273,6 +292,7 @@
 			{nets}
 			tick={tick}
 			{version}
+			{mode}
 			{selectedNets}
 			historyFor={(net) => mirror.history(net)}
 			onSelectNet={(net) => {

@@ -39,9 +39,12 @@
 		type ProjectRealtimeState
 	} from '../../../../lib/realtime/stores';
 	import { CircuitEditorStore } from '../../../../lib/state/circuitStore';
+	import type { SimulationMode } from '../../../../lib/sim/protocol';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	let simulationMode = $state<SimulationMode>('delta');
 
 	type LockRole = 'acquiring' | 'holder' | 'waiting' | 'lost' | 'free';
 
@@ -679,11 +682,15 @@
 					{#if snapshot.domain === 'analog'}
 						<AnalysisPanel {store} readonly={readOnly} />
 					{:else}
-						<SimulationPanel {store} />
+						<SimulationPanel
+							{store}
+							mode={simulationMode}
+							onModeChange={(next) => (simulationMode = next)}
+						/>
 					{/if}
 				{/key}
 			</div>
-			<Inspector {store} readonly={readOnly} />
+			<Inspector {store} mode={simulationMode} readonly={readOnly} />
 		</main>
 
 		<ShareDialog

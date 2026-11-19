@@ -1,11 +1,13 @@
 <script lang="ts">
-	import type { SimulationMode } from '../../sim/protocol';
+	import { formatTimePs } from '../../engine/time';
+	import type { SimulationMode, SimulationPauseReason } from '../../sim/protocol';
 
 	interface Props {
 		mode: SimulationMode;
 		running: boolean;
 		tick: number;
 		ready: boolean;
+		pauseReason?: SimulationPauseReason | null;
 		onRun: () => void;
 		onPause: () => void;
 		onStep: () => void;
@@ -13,31 +15,57 @@
 		onModeChange: (mode: SimulationMode) => void;
 	}
 
-	let { mode, running, tick, ready, onRun, onPause, onStep, onReset, onModeChange }: Props =
-		$props();
+	let {
+		mode,
+		running,
+		tick,
+		ready,
+		pauseReason = null,
+		onRun,
+		onPause,
+		onStep,
+		onReset,
+		onModeChange
+	}: Props = $props();
+
+	const timeLabel = $derived(mode === 'physical' ? formatTimePs(tick) : `tick ${tick}`);
+	const eventLimited = $derived(pauseReason === 'event-limit');
+	const pauseLabel = $derived(
+		pauseReason === 'timing'
+			? 'paused: timing violation'
+			: pauseReason === 'event-limit'
+				? 'paused: event limit — reset to continue'
+				: ''
+	);
 </script>
 
 <div class="controls">
-	<button type="button" onclick={onRun} disabled={!ready || running}>Run</button>
+	<button type="button" onclick={onRun} disabled={!ready || running || eventLimited}>Run</button>
 	<button type="button" onclick={onPause} disabled={!ready || !running}>Pause</button>
-	<button type="button" onclick={onStep} disabled={!ready || running}>Step</button>
+	<button type="button" onclick={onStep} disabled={!ready || running || eventLimited}>Step</button>
 	<button type="button" onclick={onReset} disabled={!ready}>Reset</button>
 	<label>
 		<span>Mode</span>
 		<select
+			data-testid="simulation-mode"
 			value={mode}
 			disabled={running}
 			onchange={(event) => {
-				onModeChange(event.currentTarget.value === 'timed' ? 'timed' : 'delta');
+				const next = event.currentTarget.value;
+				onModeChange(next === 'timed' ? 'timed' : next === 'physical' ? 'physical' : 'delta');
 			}}
 		>
 			<option value="delta">delta-cycle</option>
 			<option value="timed">timed</option>
+			<option value="physical">physical timing</option>
 		</select>
 	</label>
-	<span class="tick">tick {tick}</span>
+	<span class="tick" data-testid="sim-time">{timeLabel}</span>
 	{#if running}
 		<span class="running">running</span>
+	{/if}
+	{#if pauseLabel}
+		<span class="pause" data-testid="sim-pause-reason">{pauseLabel}</span>
 	{/if}
 </div>
 
@@ -90,5 +118,10 @@
 	.running {
 		font-size: 11px;
 		color: #2e7d32;
+	}
+
+	.pause {
+		font-size: 11px;
+		color: #b26a00;
 	}
 </style>
