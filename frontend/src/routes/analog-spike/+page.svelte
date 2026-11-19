@@ -69,17 +69,45 @@ R2 2 0 10k
 </svelte:head>
 
 <main>
-	<h1>Analog engine spike</h1>
-	<p>U1 browser proof harness: runs the vendored ngspice-WASM engine in a module worker.</p>
-	<p data-testid="analog-spike-status">{status}</p>
-	<p data-testid="analog-spike-detail">{detail}</p>
+	<div class="sheet spike">
+		<h1>Analog engine spike</h1>
+		<p>U1 browser proof harness: runs the vendored ngspice-WASM engine in a module worker.</p>
+		<p>
+			<span class="stamp" class:is-void={status === 'error'} data-testid="analog-spike-status">
+				{status}
+			</span>
+		</p>
+		<p class="detail" data-testid="analog-spike-detail">{detail}</p>
+	</div>
 </main>
 
 <style>
 	main {
-		max-width: 48rem;
+		max-width: 52rem;
 		margin: 4rem auto;
-		padding: 0 1rem;
-		font-family: system-ui, sans-serif;
+		padding: 0 20px;
+	}
+
+	.spike {
+		padding: 26px;
+	}
+
+	h1 {
+		margin-bottom: 6px;
+	}
+
+	p {
+		color: var(--ink-soft);
+	}
+
+	.stamp {
+		font-family: var(--font-mono);
+		text-transform: none;
+	}
+
+	.detail {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		overflow-wrap: anywhere;
 	}
 </style>

@@ -28,7 +28,13 @@
 {#if diagnostics.length > 0}
 	<div class="diagnostics" role="status">
 		{#each diagnostics as diagnostic (diagnostic.id)}
-			<div class="entry" class:error={diagnostic.kind === 'compile-error'}>
+			<div
+				class="entry"
+				class:error={diagnostic.kind === 'compile-error' || diagnostic.kind === 'analog'}
+				class:warning={diagnostic.kind === 'timing' ||
+					diagnostic.kind === 'oscillation' ||
+					diagnostic.kind === 'event-limit'}
+			>
 				<span class="kind">{kindLabel(diagnostic)}</span>
 				<span class="message">{diagnostic.message}</span>
 				{#if diagnostic.kind === 'timing' && diagnostic.window}
@@ -64,43 +70,56 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		font-size: 13px;
+		font-size: 12.5px;
 	}
 
 	.entry {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 4px 8px;
-		padding: 6px 8px;
-		background: var(--sheet-raised);
-		border: 2px solid var(--stamp-red);
-		border-radius: 2px;
+		align-items: center;
+		gap: 6px 8px;
+		padding: 7px 10px;
+		background: var(--warn-soft);
+		border: 1px solid #ecd49c;
+		border-radius: var(--radius-sm);
 		color: var(--ink);
 	}
 
+	.entry.error {
+		background: var(--danger-soft);
+		border-color: #e6b6b1;
+	}
+
 	.kind {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 700;
-		letter-spacing: 0.12em;
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--stamp-red);
+		color: var(--warn);
+		white-space: nowrap;
+	}
+
+	.entry.error .kind {
+		color: var(--danger);
 	}
 
 	.message {
 		flex: 1 1 auto;
+		min-width: 0;
 	}
 
 	.window {
-		font-size: 11px;
-		color: #546e7a;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-soft);
 		font-variant-numeric: tabular-nums;
 	}
 
 	.locate-net,
 	.dismiss {
-		padding: 2px 7px;
+		padding: 2px 8px;
+		min-height: 24px;
 		font-size: 11px;
+		background: var(--paper);
 	}
 </style>

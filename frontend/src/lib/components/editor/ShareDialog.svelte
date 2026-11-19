@@ -130,29 +130,36 @@
 	.overlay {
 		position: fixed;
 		inset: 0;
-		background: rgb(38 50 56 / 45%);
+		background: rgba(16, 24, 32, 0.5);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		z-index: 20;
+		padding: 16px;
 	}
 
 	.dialog {
-		width: min(420px, calc(100vw - 32px));
-		background: #ffffff;
-		border-radius: 8px;
-		padding: 16px;
-		box-shadow: 0 12px 32px rgb(0 0 0 / 25%);
+		width: min(460px, 100%);
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-lg);
+		padding: 22px;
+		box-shadow: var(--shadow-2);
 	}
 
 	h2 {
-		margin: 0 0 6px;
-		font-size: 16px;
+		margin: 0 0 4px;
+		font-size: 19px;
+		line-height: 1.2;
 	}
 
 	.muted {
-		color: #607d8b;
-		font-size: 12px;
+		color: var(--ink-soft);
+		font-size: 12.5px;
+	}
+
+	p.muted {
+		margin: 0 0 14px;
 	}
 
 	.shares {
@@ -169,54 +176,39 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 8px;
-		padding: 6px 8px;
-		background: #f5f7f8;
-		border: 1px solid #cfd8dc;
-		border-radius: 4px;
+		padding: 8px 10px;
+		background: var(--paper-soft);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 		font-size: 13px;
 	}
 
 	.add {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
+		padding-top: 14px;
+		border-top: 1px solid var(--rule);
 	}
 
 	.add select {
-		flex: 1;
-		padding: 6px;
-		border: 1px solid #b0bec5;
-		border-radius: 4px;
-	}
-
-	button {
-		padding: 6px 10px;
-		border: 1px solid #90a4ae;
-		border-radius: 4px;
-		background: #1565c0;
-		color: #ffffff;
-		font-size: 12px;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		opacity: 0.6;
-		cursor: default;
+		flex: 1 1 180px;
+		min-width: 0;
 	}
 
 	.actions {
 		display: flex;
 		justify-content: flex-end;
-		margin-top: 12px;
-	}
-
-	.actions button {
-		background: #ffffff;
-		color: #263238;
+		margin-top: 16px;
 	}
 
 	.error {
 		margin: 10px 0 0;
-		color: #c62828;
-		font-size: 12px;
+		padding: 8px 10px;
+		border: 1px solid #e6b6b1;
+		border-radius: var(--radius-sm);
+		background: var(--danger-soft);
+		color: #8f1f16;
+		font-size: 12.5px;
 	}
 </style>

@@ -124,23 +124,30 @@
 			busyMemberId = null;
 		}
 	}
+
+	function initials(email: string): string {
+		return email.slice(0, 2).toUpperCase();
+	}
 </script>
 
 <svelte:head>
 	<title>Teams · CircuitGate</title>
 </svelte:head>
 
-<div class="teams">
-	<header>
-		<h1>Teams</h1>
-		<p class="muted">Create a team and add members by their verified email address.</p>
+<div class="page-frame">
+	<header class="page-head">
+		<div>
+			<h1>Teams</h1>
+			<p class="lede">Share project sheets with classmates. Members join by verified email address.</p>
+		</div>
 	</header>
 
-	<section class="actions">
+	<section class="create-strip sheet" aria-labelledby="create-team-heading">
+		<h2 id="create-team-heading">New team</h2>
 		<form onsubmit={create}>
 			<label class="visually-hidden" for="new-team-name">New team name</label>
-			<input id="new-team-name" placeholder="New team name" bind:value={newName} />
-			<button type="submit" data-testid="create-team" disabled={creating}>
+			<input id="new-team-name" placeholder="New team name" bind:value={newName} autocomplete="off" />
+			<button type="submit" class="primary" data-testid="create-team" disabled={creating}>
 				{creating ? 'Creating…' : 'Create team'}
 			</button>
 		</form>
@@ -149,26 +156,51 @@
 	{#if actionError}<p class="error" role="alert" data-testid="team-error">{actionError}</p>{/if}
 
 	{#if loading}
-		<p role="status">Loading teams…</p>
+		<div class="workspace">
+			<section class="sheet panel">
+				<div class="sheet-head"><h2>Your teams</h2></div>
+				<div class="sheet-body">
+					<p class="skeleton skeleton-line" aria-hidden="true"></p>
+					<p class="skeleton skeleton-line short" aria-hidden="true"></p>
+				</div>
+			</section>
+			<p class="visually-hidden" role="status">Loading teams…</p>
+		</div>
 	{:else if loadError}
-		<div class="error" role="alert">
+		<div class="error sheet" role="alert">
 			<p>{loadError}</p>
 			<button type="button" onclick={load}>Retry</button>
 		</div>
 	{:else}
-		<div class="layout">
-			<section class="team-panel">
-				<h2>Your teams</h2>
+		<div class="workspace">
+			<section class="sheet panel" aria-labelledby="teams-heading">
+				<div class="sheet-head">
+					<h2 id="teams-heading">Your teams</h2>
+					<span class="note">{teams.length} joined</span>
+				</div>
 				{#if teams.length === 0}
-					<p class="muted" data-testid="team-empty">No teams yet. Create one to start collaborating.</p>
+					<div class="empty">
+						<p class="muted" data-testid="team-empty">No teams yet. Create one to start collaborating.</p>
+					</div>
 				{:else}
 					<ul class="team-list" data-testid="team-list">
 						{#each teams as team (team.id)}
-							<li data-testid="team-row">
-								<button type="button" class="name" data-testid="team-name" onclick={() => openTeam(team.id)}>
+							<li
+								class="team-row"
+								class:active={selected?.id === team.id}
+								data-testid="team-row"
+							>
+								<span class="monogram" aria-hidden="true">{initials(team.name)}</span>
+								<button
+									type="button"
+									class="name"
+									data-testid="team-name"
+									onclick={() => openTeam(team.id)}
+									aria-pressed={selected?.id === team.id}
+								>
 									{team.name}
 								</button>
-								<span class="role-badge">{team.role}</span>
+								<span class="chip">{team.role}</span>
 							</li>
 						{/each}
 					</ul>
@@ -176,38 +208,62 @@
 			</section>
 
 			{#if selected}
-				<section class="detail" data-testid="team-detail">
-					<h2>{selected.name}</h2>
-					<p class="muted">Your role: <span data-testid="team-role">{selected.role}</span></p>
+				<section class="sheet detail" data-testid="team-detail" aria-labelledby="team-detail-heading">
+					<div class="sheet-head">
+						<h2 id="team-detail-heading">{selected.name}</h2>
+						<span class="note">
+							{selected.members.length} {selected.members.length === 1 ? 'member' : 'members'}
+						</span>
+					</div>
+					<div class="detail-body">
+						<p class="muted">
+							Your role: <span class="chip" data-testid="team-role">{selected.role}</span>
+						</p>
 
-					{#if selected.role === 'owner'}
-						<form class="add-member" onsubmit={addMember}>
-							<label class="visually-hidden" for="member-email">Member email</label>
-							<input id="member-email" type="email" placeholder="Member email" bind:value={memberEmail} />
-							<button type="submit" data-testid="add-member" disabled={adding}>
-								{adding ? 'Adding…' : 'Add member'}
-							</button>
-						</form>
-					{/if}
+						{#if selected.role === 'owner'}
+							<form class="add-member" onsubmit={addMember}>
+								<label class="visually-hidden" for="member-email">Member email</label>
+								<input id="member-email" type="email" placeholder="Member email" bind:value={memberEmail} />
+								<button type="submit" data-testid="add-member" disabled={adding}>
+									{adding ? 'Adding…' : 'Add member'}
+								</button>
+							</form>
+						{:else}
+							<p class="muted note-line">Only the team owner can add or remove members.</p>
+						{/if}
 
-					<ul class="member-list" data-testid="member-list">
-						{#each selected.members as member (member.userId)}
-							<li data-testid="member-row">
-								<span class="member-email" data-testid="member-email">{member.email}</span>
-								<span class="role-badge">{member.role}</span>
-								{#if selected.role === 'owner' && member.role !== 'owner'}
-									<button
-										type="button"
-										data-testid="remove-member"
-										disabled={busyMemberId === member.userId}
-										onclick={() => removeMember(member.userId)}
-									>
-										{busyMemberId === member.userId ? 'Removing…' : 'Remove'}
-									</button>
-								{/if}
-							</li>
-						{/each}
-					</ul>
+						<ul class="member-list" data-testid="member-list">
+							{#each selected.members as member (member.userId)}
+								<li data-testid="member-row">
+									<span class="member-monogram" aria-hidden="true">{initials(member.email)}</span>
+									<div class="member-main">
+										<span class="member-email" data-testid="member-email">{member.email}</span>
+									</div>
+									<span class="chip">{member.role}</span>
+									{#if selected.role === 'owner' && member.role !== 'owner'}
+										<button
+											type="button"
+											class="danger"
+											data-testid="remove-member"
+											disabled={busyMemberId === member.userId}
+											onclick={() => removeMember(member.userId)}
+										>
+											{busyMemberId === member.userId ? 'Removing…' : 'Remove'}
+										</button>
+									{/if}
+								</li>
+							{/each}
+						</ul>
+					</div>
+				</section>
+			{:else}
+				<section class="sheet detail detail-empty">
+					<div class="sheet-head"><h2>Team sheet</h2></div>
+					<div class="detail-body">
+						<p class="muted">
+							Select a team from the list to see its members, or create a team above.
+						</p>
+					</div>
 				</section>
 			{/if}
 		</div>
@@ -215,183 +271,238 @@
 </div>
 
 <style>
-	.teams {
-		flex: 1;
-		width: 100%;
-		max-width: 1080px;
-		margin: 0 auto;
-		padding: 18px clamp(14px, 4vw, 36px) 30px;
-		overflow: auto;
+	.page-head {
+		margin-bottom: 20px;
 	}
 
-	.teams > header h1 {
-		margin: 0;
-		font-size: 30px;
-	}
-
-	.muted {
-		color: var(--ink-soft);
-		font-size: 13px;
-	}
-
-	.actions {
+	.create-strip {
 		display: flex;
+		align-items: center;
 		flex-wrap: wrap;
-		align-items: stretch;
-		gap: 10px;
-		margin: 16px 0 14px;
-		padding: 10px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+		gap: 12px 16px;
+		padding: 14px;
+		margin-bottom: 20px;
 	}
 
-	.actions form {
+	.create-strip h2 {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+	}
+
+	.create-strip form {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
+		flex: 1;
+		min-width: 0;
 	}
 
-	.error {
-		padding: 10px;
-		border: 2px solid var(--stamp-red);
-		border-radius: 2px;
-		background: var(--sheet);
-		color: var(--stamp-red);
-		font-size: 13px;
+	.create-strip input {
+		flex: 1 1 220px;
+		min-width: 0;
 	}
 
-	.layout {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 16px;
-		align-items: flex-start;
+	.workspace {
+		display: grid;
+		grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+		gap: 20px;
+		align-items: start;
 	}
 
-	.team-panel,
-	.detail {
-		min-width: 280px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+	.panel {
 		overflow: hidden;
 	}
 
-	.team-panel {
-		flex: 0 1 340px;
+	.empty {
+		padding: 18px 14px;
 	}
 
-	.team-panel h2,
-	.detail h2 {
+	.team-list {
+		list-style: none;
 		margin: 0;
-		padding: 8px 14px;
-		border-bottom: var(--rule-hair);
-		background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent);
-		font-size: 16px;
+		padding: 6px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.team-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 10px;
+		border: 1px solid transparent;
+		border-radius: var(--radius-sm);
+		transition:
+			background-color 120ms linear,
+			border-color 120ms linear;
+	}
+
+	.team-row:hover {
+		background: var(--paper-soft);
+	}
+
+	.team-row.active {
+		background: var(--accent-soft);
+		border-color: var(--accent-line);
+	}
+
+	.monogram,
+	.member-monogram {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 28px;
+		height: 28px;
+		background: var(--accent-soft);
+		color: var(--accent-strong);
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.04em;
+		border: 1px solid var(--accent-line);
+		border-radius: var(--radius-sm);
+	}
+
+	.member-monogram {
+		width: 30px;
+		height: 30px;
+		background: var(--paper-sunk);
+		color: var(--ink-soft);
+		border-color: var(--rule);
+	}
+
+	.team-row .name {
+		flex: 1;
+		min-width: 0;
+		min-height: 0;
+		padding: 0;
+		justify-content: flex-start;
+		background: transparent;
+		border: 0;
+		color: var(--ink);
+		font-family: var(--font-ui);
+		font-size: 14.5px;
+		font-weight: 600;
+		letter-spacing: -0.01em;
+		text-align: left;
+		text-transform: none;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
+	.detail .sheet-head h2 {
+		text-transform: none;
+		letter-spacing: -0.01em;
+		font-size: 15px;
+		font-weight: 650;
 		color: var(--ink);
 	}
 
-	.team-panel .muted,
-	.detail > .muted,
-	.detail > form {
-		padding: 0 14px;
+	.team-row .name:hover:not(:disabled) {
+		background: transparent;
+		color: var(--accent);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
-	.detail > form:last-child {
-		padding-bottom: 14px;
+	.detail-body {
+		padding: 14px;
 	}
 
-	.team-list,
-	.member-list {
-		list-style: none;
-		margin: 0;
-		padding: 10px 14px 14px;
+	.detail-body > .muted {
+		margin: 0 0 12px;
 		display: flex;
-		flex-direction: column;
+		align-items: center;
 		gap: 8px;
 	}
 
-	.team-list li,
+	.add-member {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+		margin-bottom: 14px;
+	}
+
+	.add-member input {
+		flex: 1 1 220px;
+		min-width: 0;
+	}
+
+	.note-line {
+		font-size: 12.5px;
+	}
+
+	.member-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		border-top: 1px solid var(--rule);
+	}
+
 	.member-list li {
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 8px 10px 8px 14px;
-		background: var(--sheet-raised);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		position: relative;
+		padding: 10px 2px;
+		border-bottom: 1px solid var(--rule);
 	}
 
-	.team-list li::before,
-	.member-list li::before {
-		content: '';
-		position: absolute;
-		left: 5px;
-		top: 7px;
-		bottom: 7px;
-		width: 3px;
-		border-radius: 1px;
-		background: var(--highlight);
+	.member-list li:last-child {
+		border-bottom: 0;
 	}
 
-	.team-list .name {
-		background: transparent;
-		border: none;
-		color: var(--ink);
-		padding: 0;
-		font-family: var(--font-head);
-		font-size: 14px;
-		font-weight: 600;
-		letter-spacing: 0.03em;
-		text-transform: none;
-		text-align: left;
-	}
-
-	.team-list .name:hover:not(:disabled) {
-		background: transparent;
-		color: var(--biro);
-	}
-
-	.role-badge {
-		margin-left: auto;
-		padding: 2px 7px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
-		background: transparent;
-		color: var(--ink-soft);
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
+	.member-main {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.member-email {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		font-family: var(--font-mono);
-		font-size: 13px;
+		font-size: 12px;
+		color: var(--ink);
 	}
 
-	.add-member {
-		display: flex;
-		gap: 8px;
-		margin-bottom: 12px;
+	.member-list button {
+		min-height: 30px;
+		padding: 4px 10px;
+		font-size: 12px;
 	}
 
-	.add-member input {
-		flex: 1;
+	.detail-empty .detail-body {
+		padding: 24px 14px;
 	}
 
-	.visually-hidden {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		clip: rect(0 0 0 0);
-		white-space: nowrap;
+	.detail-empty .muted {
+		margin: 0;
+		max-width: 44ch;
+	}
+
+	@media (max-width: 800px) {
+		.workspace {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 480px) {
+		.create-strip h2 {
+			width: 100%;
+		}
+
+		.create-strip input,
+		.create-strip button {
+			width: 100%;
+			flex-basis: 100%;
+		}
 	}
 </style>

@@ -75,14 +75,15 @@ import {
 	}
 
 	.measurement {
-		border: var(--rule-hair);
-		border-radius: 2px;
-		background: var(--sheet-raised);
-		padding: 6px 8px;
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper);
+		padding: 8px 10px;
 	}
 
 	.measurement.failed {
-		border: 2px solid var(--stamp-red);
+		border-color: #e6b6b1;
+		background: var(--danger-soft);
 	}
 
 	.head {
@@ -93,12 +94,11 @@ import {
 	}
 
 	.type {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 700;
-		letter-spacing: 0.12em;
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
 	}
 
 	.name {

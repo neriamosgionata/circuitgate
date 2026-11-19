@@ -1,182 +1,252 @@
 ---
 name: CircuitGate
-description: Browser circuit editor and simulator with a pinned-worktable interface.
+description: Browser circuit editor and simulator presented as a modern drafting sheet.
 colors:
-  board: "#b9a482"
-  board-deep: "#a08c6d"
-  sheet: "#e7e3d9"
-  sheet-raised: "#efece3"
-  sheet-sunk: "#dcd7ca"
-  ink: "#1d1d1b"
-  ink-soft: "#4a463f"
-  highlight: "#ffe23d"
-  stamp-red: "#c0271b"
-  stamp-green: "#1f6b43"
-  biro: "#1d4ed8"
-  biro-soft: "#6b8ce8"
+  ground: "#eef1f3"
+  ground-deep: "#e4e9ec"
+  paper: "#ffffff"
+  paper-soft: "#f7f9fa"
+  paper-sunk: "#edf1f3"
+  ink: "#101820"
+  ink-soft: "#46525d"
+  ink-faint: "#66737e"
+  rule: "#d9e0e5"
+  rule-strong: "#b4c0c8"
+  shell: "#0f1923"
+  shell-raised: "#16232f"
+  shell-ink: "#e9eff4"
+  accent: "#1858c9"
+  accent-strong: "#0f449c"
+  accent-soft: "#e7effc"
+  analog: "#a84a00"
+  ok: "#0c7a4e"
+  warn: "#8f5b00"
+  danger: "#bf2b1f"
 typography:
-  head:
-    fontFamily: "Saira Condensed, 'Arial Narrow', sans-serif"
-    fontWeight: 600
-    letterSpacing: "0.01em"
-  body:
-    fontFamily: "'Public Sans', system-ui, sans-serif"
-    fontSize: "14px"
-    lineHeight: 1.45
+  ui:
+    fontFamily: "Archivo, system-ui, -apple-system, 'Segoe UI', sans-serif"
+    fontWeight: 400
+    fontSize: "15px"
+    lineHeight: 1.5
+  display:
+    fontFamily: "Archivo, system-ui, sans-serif"
+    fontWeight: 650
+    letterSpacing: "-0.025em"
   mono:
-    fontFamily: "'Courier Prime', 'Courier New', monospace"
-    fontSize: "13px"
+    fontFamily: "'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace"
+    fontSize: "12px"
 rounded:
-  sm: "2px"
-  md: "3px"
+  xs: "3px"
+  sm: "4px"
+  md: "6px"
+  lg: "10px"
 spacing:
-  sm: "6px"
-  md: "10px"
-  lg: "16px"
+  xs: "4px"
+  sm: "8px"
+  md: "14px"
+  lg: "20px"
+  xl: "28px"
 components:
-  button-primary:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.sheet}"
-    rounded: "{rounded.sm}"
-    padding: "9px 12px"
-  button-primary-hover:
-    backgroundColor: "{colors.biro}"
-    textColor: "#fff"
   button:
-    backgroundColor: "{colors.sheet-raised}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
-    padding: "5px 10px"
-  button-danger:
-    backgroundColor: "{colors.sheet-raised}"
-    textColor: "{colors.stamp-red}"
+    padding: "7px 13px"
+  button-primary:
+    backgroundColor: "{colors.accent}"
+    textColor: "#ffffff"
+    rounded: "{rounded.sm}"
+    padding: "7px 13px"
   input:
-    backgroundColor: "{colors.sheet-raised}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
-    padding: "5px 8px"
-  nav-link-active:
-    backgroundColor: "{colors.highlight}"
-    textColor: "{colors.ink}"
-  chip:
-    backgroundColor: "{colors.sheet-raised}"
-    textColor: "{colors.ink-soft}"
-    rounded: "{rounded.sm}"
-    padding: "2px 7px"
+    padding: "7px 10px"
   sheet:
-    backgroundColor: "{colors.sheet}"
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-    padding: "10px"
+    rounded: "{rounded.md}"
+    padding: "14px"
+  chip:
+    backgroundColor: "{colors.paper-soft}"
+    textColor: "{colors.ink-soft}"
+    rounded: "{rounded.xs}"
+    padding: "2px 8px"
+  rail:
+    backgroundColor: "{colors.shell}"
+    textColor: "{colors.shell-ink}"
 ---
 
 # Design System: CircuitGate
 
 ## Overview
 
-**Creative North Star: "The Pinned Worktable"**
+**Creative North Star: "The Drafting Sheet"**
 
-The interface is a departmental worktable: kraft board under everything, copy-paper sheets pinned on top for each panel, toner text, biro links, highlighter for whatever the user touched, and rubber stamps for whatever ran. Exact and unhurried: plain, exact, and fast copy; nothing cute, nothing that slows a lab session; it reads as physical working material, not software chrome. The system deliberately refuses the category defaults — no dark IDE chrome, no grey-plus-blue SaaS softness, no gamified states, no rounded card grids.
+CircuitGate is a technical drawing sheet on a dark bench. The ground is a faint
+engineering grid; every project, panel, and editor surface is white paper with a
+title block that carries the real metadata of what is on it. The shell is a dark
+ink rail, the interaction accent is drafting blue, and every number is set in
+mono. The product should read as a precise instrument that a student can hand to
+a classmate, not as a generic dashboard and not as a retro paper prop.
 
 **Key Characteristics:**
-- Sheets and strips, never cards and heroes: every surface is a pinned sheet with a ruled head.
-- Marks over chrome: selection is a highlighter wash, outcomes are stamps.
-- Density with intent: packed modules and small mono values, each with a ruled header.
-- Ink on paper, everywhere: toner text, biro action color, red for void, green for pass.
+- Sheets with title blocks, not cards with decoration: metadata lives in ruled
+  cells labelled Updated, Revision, Domain, Components, Link.
+- One accent for action and one for analog. Blue means "do it here"; warm ochre
+  is reserved for analog domain identity.
+- Dense but calm: hairline rules, small tracked labels, generous page margins.
+- Real information replaces ornament: figure callouts on auth, waveform and
+  netlists in the editor, measured values in mono.
+- Auth is a split board: a dark drawing sheet carrying the value proposition and
+  a figure, with the form on white paper.
+
+The system deliberately refuses the dark-IDE editor look (the dark surface is
+navigation chrome only), grey-plus-blue SaaS dashboard softness, gamified state,
+and decorative paper textures that cost legibility.
 
 ## Colors
 
-Paper and ink with three working colors that each do a named job.
+Paper, graphite, drafting blue, and a dark rail. State colors are semantic and
+always paired with a label.
 
 ### Primary
-- **Toner Ink** (#1d1d1b): primary text, sheet borders, button ink. The voice of the sheet itself.
-- **Kraft Board** (#b9a482, deep #a08c6d): shell ground and the app rail. The worktable everything is pinned to.
+- **Ink (#101820):** primary text and the editor's circuit drawing.
+- **Drafting Blue (#1858c9):** primary action, links, selection, focus, current
+  navigation. Hover darkens to #0f449c; washes use #e7effc.
+- **Bench (#0f1923):** the fixed navigation rail, auth figure panel, and
+  `theme-color`. Not a content background.
 
-### Secondary (optional; omitted — the system has three working accents, not a hue wheel)
-
-### Tertiary (optional; omitted)
+### Secondary
+- **Analog Ochre (#a84a00):** analog domain chips, analog part glyphs, and
+  analog-only affordances. Paired with a text label, never color alone.
 
 ### Neutral
-- **Copy Paper** (#e7e3d9): sheet ground; raised #efece3 for fields, sunk #dcd7ca for plot wells.
-- **Ink Soft** (#4a463f): secondary text, captions, rail labels. Body and placeholder text floor.
-- **Rule Greys**: hairline #8a8377, faint #bbb3a3 (rules and fills only, never text).
+- **Ground (#eef1f3):** page ground with a 32px engineering grid at 3.2% ink.
+- **Paper (#ffffff) / Paper Soft (#f7f9fa) / Paper Sunk (#edf1f3):** sheets,
+  alternating rows, wells and disabled fields.
+- **Ink Soft (#46525d) / Ink Faint (#66737e):** secondary and tertiary text.
+- **Rule (#d9e0e5) / Rule Strong (#b4c0c8):** hairlines and control borders.
 
-### Named Rules (optional, powerful)
-**The Three-Jobs Rule.** Color has exactly three jobs: highlighter (#ffe23d) marks what the user touched; stamp red (#c0271b) voids what failed; stamp green (#1f6b43) passes what succeeded; biro (#1d4ed8) is the only action blue for links, selection geometry, and wires. Nothing else gets a color.
-**The Marked-Surface Rule.** A highlight wash or stamp always pairs with a text label or value; color is never the only carrier of state.
+### State
+- **Ok (#0c7a4e, soft #e3f4ec):** completed runs, live connection, saved state.
+- **Warn (#8f5b00, soft #fdf3dd):** read-only locks, shared-with-you, stale
+  results, analog identity.
+- **Danger (#bf2b1f, soft #fcebe9):** compile and solver failures, destructive
+  actions, lost locks.
+
+### Named Rules
+**The Three-Jobs Rule.** Blue is action and interaction; ochre is analog
+identity; red is failure, green is success. Nothing else carries a hue.
+
+**The Title-Block Rule.** Metadata is never loose text. Group it into a
+`.titleblock` with tracked labels and mono values.
 
 ## Typography
 
-**Display Font:** Saira Condensed (with Arial Narrow), 500–700, for sheet heads, stamps, nav, and button labels — always uppercase with tracked spacing.
-**Body Font:** Public Sans (with system-ui), 400/600/700, 14px/1.45, for prose, captions, and panel copy.
-**Label/Mono Font:** Courier Prime (with Courier New), tabular numerals, for values, voltages, currents, IDs, node names, and every editable number.
+**UI / Display Font:** Archivo (self-hosted variable woff2), weights 400–700.
+Headings at 650 with tight tracking; UI labels at 600; body at 400.
+**Mono Font:** JetBrains Mono (self-hosted variable woff2) for every value,
+identifier, timestamp, net name, measurement, and code sample. Tabular numerals.
 
-**Character:** Condensed bureaucratic heads over plain instructional prose, with typewriter values wherever a number must be trusted.
+**Character:** A drawing-office sans with technical mono annotations. No display
+serif, no condensed bureaucratic capitals, no system font as the voice.
 
 ### Hierarchy
-- **Display** (Saira Condensed 600, 26–30px, 1.1): page titles only (Projects, Teams, Account).
-- **Headline** (Saira Condensed 600, 20px): sheet heads and auth titles.
-- **Title** (Saira Condensed 600, 14–16px, tracked): panel and legend headings.
-- **Body** (Public Sans 400, 14px, 1.45): prose and help copy.
-- **Label** (Saira Condensed 600, 11–12px, 0.08–0.12em tracking, uppercase): field labels, legend captions, button text, stamps.
-
-### Named Rules (optional)
-**The Case-Carries-Rank Rule.** Rank is carried by case, weight, and rules — never by a new size alone. Sheet heads stay one size.
+- **Display** (Archivo 650, 26–34px, −0.025em): page titles and project names.
+- **Headline** (Archivo 650, 19px): sheet titles in dialogs and empty states.
+- **Title** (Archivo 650, 14–15px): card and project names.
+- **Label** (Archivo 650, 10–11px, 0.09em, uppercase): sheet heads, title-block
+  labels, field labels, rail section labels.
+- **Body** (Archivo 400, 14–15px, 1.5): prose, help, empty states.
+- **Value** (JetBrains Mono 400–600, 11–13px): IDs, versions, dates, counts,
+  voltages, currents, node names, simulation tick.
 
 ## Layout
 
-The app is a board with pinned sheets: a kraft board rail header, full-bleed content ground in board, and paper sheets for every panel and strip. Dashboard pages center at 1080px with clamped side padding; the editor fills the viewport with three pinned panes (parts sheet, canvas sheet, spec slip) and an analysis strip pinned below. Corners are square (2–3px) everywhere; hairlines separate, never enclose, except sheet borders. At 390px the rail wraps, dashboard strips stack, and the editor scrolls with a 420px minimum canvas.
+A fixed 224px dark rail on the left holds the brand, primary navigation, and the
+signed-in account block at the bottom. Content sits in a `.page-frame` capped at
+1200px with 18–40px side padding. Dashboards use a main column plus a 320px
+action rail (projects) or a 340px list beside a detail sheet (teams). The editor
+is a three-pane grid: 244px components sheet, fluid canvas, 300px inspector,
+with the simulation or analysis sheet docked under the canvas. At 1080px the
+editor stacks palette → canvas → inspector and the page scrolls; at 900px the
+rail becomes a horizontal top bar, and below 560px its labels collapse to icons.
+
+Sheets use 6px radius, 1px rules, and a single small shadow. The page head is
+type and spacing only, with no heavy rule; the dark rail provides the frame.
+Auth is a 1:1 split at desktop: dark figure panel left, form sheet right; under
+900px the figure panel collapses to the wordmark and the form centers.
 
 ## Elevation & Depth
 
-Flat paper with one offset: sheets sit on the board with a 1px ink-foot plus a 3–6px soft ink shadow (`0 1px 0 rgba(29,29,27,0.18), 0 3px 6px rgba(29,29,27,0.12)`). No bevels, no glows.
+Depth is reserved for sheets above the ground.
 
-### Shadow Vocabulary (if applicable)
-- **Pinned sheet** (`box-shadow: 0 1px 0 rgba(29,29,27,0.18), 0 3px 6px rgba(29,29,27,0.12)`): every sheet, panel, card, and dialog.
-- **No shadow** tape corners, text, rules, canvas drawings.
-
-### Named Rules (optional)
-**The Flat-By-Default Rule.** Surfaces are flat at rest; the single shadow vocabulary exists only to separate a sheet from the board.
-
-## Shapes
-
-Form language is rectilinear paper: 2–3px corners, 1px hairline rules, 2px ink rule under headers and toolbars, 5px highlighter underline for active navigation and brand marks. Selection geometry is drawn, not boxed: the canvas marquee is biro, and selection carries a 2px highlight halo. Stamps rotate −2deg with a 2–3px border. No circles except pins and the round recording-style dots; no pill radii anywhere — chips are 2px rectangles.
+- **Sheet** (`0 1px 2px rgba(16,24,32,.06)`): all cards, panels, dialogs.
+- **Lift** (`0 6px 18px -10px rgba(16,24,32,.28), 0 1px 3px rgba(16,24,32,.08)`):
+  hovered project sheets and raised dialogs.
+- **No shadow** on rail, rules, canvas drawings, or inline strips.
 
 ## Components
 
 ### Buttons
-- **Shape:** 2px corners, 1px ink-ish border with a 2px bottom rule (stapled strip).
-- **Primary:** toner fill (#1d1d1b) with sheet text; turns biro on hover.
-- **Hover / Focus:** paper-wash hover (`--highlight-soft`); one visible 2px biro focus ring everywhere.
-- **Secondary / Ghost / Tertiary (if applicable):** the default strip (paper fill, ink text); danger uses stamp-red ink and border. Disabled greys on sunk paper.
+- **Shape:** 4px radius, 1px Rule Strong border, paper fill, 34px min height.
+- **Primary:** drafting blue fill with white text and a small blue shadow.
+- **Hover / Focus:** paper-soft hover; 2px focus ring in `--focus` with 2px
+  offset. Active press translates 1px.
+- **Secondary / Ghost / Danger:** ghost is borderless and quiet; danger uses red
+  ink and border with a red wash on hover. Disabled uses sunk paper and faint
+  ink.
 
-### Chips
-- **Style:** transparent paper, 1px rule border, condensed caps label.
-- **State:** domain chips take the domain ink (biro for analog); stamped state chips (shared, lock) keep the stamp border.
+### Chips and stamps
+- **Chip:** 3px radius, 1px rule, tracked 10.5px label. Domain logic uses blue
+  wash, analog uses ochre wash, shared uses warn wash.
+- **Stamp:** status chip with a 5px round dot before the label; green for
+  pass/live/saved, red for failure/void, muted for unknown. The only authored
+  motion is the 180ms stamp press.
 
-### Cards / Containers
-- **Corner Style:** 2px. **Background:** copy paper (raised paper for sub-boxes). **Shadow Strategy:** the pinned-sheet vocabulary. **Border:** 1px rule. **Internal Padding:** 10px strips, 12–16px cards.
+### Sheets and title blocks
+- **Sheet:** paper, 1px rule, 6px radius, sheet head (42px, uppercase tracked,
+  optional mono note on the right).
+- **Title block:** flex row of cells divided by rules; each cell is a tracked
+  label over a mono value; the first cell grows. Used on projects, the editor
+  sheet strip, and account metadata.
 
 ### Inputs / Fields
-- **Style:** raised-paper field, 1px rule, 2px radius, mono values; checkbox uses biro accent.
-- **Focus:** biro border shift. **Error / Disabled:** stamp-red text and message; disabled sits on sunk paper.
+- **Style:** paper fill, 1px Rule Strong, 4px radius, 36px min height. Selects
+  carry an authored chevron. Focus replaces the border with a 3px accent-soft
+  ring.
+- **Errors:** danger-soft block with red text; inline field errors sit in the
+  danger ink.
+- **Disabled:** sunk paper and faint ink.
 
 ### Navigation
-- Board rail, condensed caps labels; hover underlines in highlighter; active page carries the highlighter wash; email shown in mono; Log out is a stapled strip button. Rail wraps on narrow screens.
+- Dark rail: 224px, brand mark plus "logic + analog", icon plus label links.
+  Active is an accent-filled row with white text and `aria-current="page"`.
+  Bottom account block shows initials, truncated email, and Log out.
+- Mobile: rail becomes a 52px top bar with the brand, icon nav, and Log out.
+- Skip link is the first focusable element.
 
-### Signature Component (optional, if the project has a distinctive custom component worth documenting)
-**Stamp.** A rotated (−2deg) double-weight bordered label: green PASS, red VOID, ink-muted neutral. Run outcomes, lock states, and saved states stamp the sheet and persist until the next event; nothing disappears, it cancels. The run press animates in two 140ms steps (none under reduced motion).
+### Signature Components
+**Title block.** The recurring metadata strip; it makes a project or document
+feel like a drawing with provenance, and removes the need for decorative cards.
+**Drafting figure.** Auth and empty states use authored line drawings of gates,
+waveforms, and dividers with FIG labels, never stock imagery.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** mark touched things with highlighter and run things with stamps — marks over chrome, always.
-- **Do** set every value, ID, voltage, and current in Courier Prime with tabular numerals.
-- **Do** keep sheets on the board ground with the pinned-sheet shadow; the app background is never white.
-- **Do** give every empty, loading, error, stale, locked, and read-only state its own stamped or ruled message.
+- **Do** put metadata in title blocks and values in JetBrains Mono.
+- **Do** keep the ground a faint grid and the shell dark; content is white paper.
+- **Do** pair every colored state with a readable label and a dot or chip.
+- **Do** let the canvas and waveform be the visual center on editor pages.
+- **Do** give loading, empty, error, read-only, stale, and locked states their
+  own composed treatment; skeletons for lists, teaching empty states.
 
 ### Don't:
-- **Don't** use the dark-IDE palette, grey-plus-blue SaaS accents, or rounded card grids.
-- **Don't** add a UI framework, icon system, or hosted font; faces are self-hosted woff2 beside the app.
-- **Don't** use color alone for state; every wash and stamp pairs with text.
-- **Don't** let a paper effect (tape, rotation, texture) cost legibility or speed; flat paper wins ties.
+- **Don't** bring the dark bench into content panels or return to a dark IDE.
+- **Don't** use purple/indigo gradients, glassmorphism, or soft-shadow cards.
+- **Don't** use color alone for domain, status, or validation.
+- **Don't** add a UI framework, icon library, or hosted fonts; icons are authored
+  SVG and faces are self-hosted.
+- **Don't** make the paper metaphor decorative at the cost of density or speed.

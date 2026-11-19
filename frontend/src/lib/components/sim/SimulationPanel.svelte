@@ -239,6 +239,10 @@
 </script>
 
 <section class="sim-panel" data-testid="simulation-panel">
+	<div class="panel-head">
+		<h2>Simulation</h2>
+		<span class="note">logic · {mode === 'physical' ? 'physical timing' : mode === 'timed' ? 'timed' : 'delta-cycle'}</span>
+	</div>
 	<div class="bar">
 		<Controls
 			{mode}
@@ -312,10 +316,40 @@
 	.sim-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
+		padding: 0 12px 12px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+		overflow: hidden;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0 -12px 0;
 		padding: 10px 12px;
-		background: var(--sheet);
-		border-top: 2px solid var(--ink);
+		border-bottom: 1px solid var(--rule);
+		background: var(--paper);
+	}
+
+	.panel-head h2 {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+	}
+
+	.panel-head .note {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		white-space: nowrap;
 	}
 
 	.bar {
@@ -323,50 +357,45 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
-		font-family: var(--font-head);
-		font-size: 12px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--ink-soft);
 	}
 
 	.note {
-		font-family: var(--font-body);
+		font-family: var(--font-ui);
 		font-size: 12px;
-		text-transform: none;
-		letter-spacing: 0;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
 	}
 
 	.io {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
 	}
 
 	.switch {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		padding: 4px 8px;
+		gap: 8px;
+		padding: 4px 9px;
+		min-height: 28px;
 	}
 
 	.switch-name {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 11.5px;
 	}
 
 	.switch-value {
-		font-family: var(--font-head);
-		font-weight: 700;
-		font-size: 13px;
+		font-family: var(--font-mono);
+		font-weight: 600;
+		font-size: 12px;
+		color: var(--accent-strong);
 	}
 
 	.waveform {
-		border: var(--rule-faint);
-		border-radius: 2px;
-		background: var(--sheet-sunk);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper);
 		overflow: hidden;
+		min-height: 150px;
 	}
 </style>

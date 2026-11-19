@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 
 	import { formatSI } from '../../../engine/analog/si';
+	import { CHART } from '../../../render/chartTheme';
 	import {
 		RESULT_POINT_CAP,
 		decimateMinMax,
@@ -152,9 +153,9 @@
 		const candidate = [1, 2, 5, 10].find((step) => step * magnitude >= rawStep) ?? 10;
 		const step = candidate * magnitude;
 		const first = Math.ceil(windowStart / step) * step;
-		ctx.strokeStyle = '#cfd8dc';
-		ctx.fillStyle = '#546e7a';
-		ctx.font = '10px sans-serif';
+		ctx.strokeStyle = CHART.rule;
+		ctx.fillStyle = CHART.inkSoft;
+		ctx.font = `10px ${CHART.mono}`;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
 		for (let tick = first; tick <= windowEnd + step / 1e6; tick += step) {
@@ -182,7 +183,7 @@
 		}
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, width, height);
-		ctx.fillStyle = '#fafafa';
+		ctx.fillStyle = CHART.plot;
 		ctx.fillRect(0, 0, width, height);
 
 		const plotTop = PAD_TOP;
@@ -244,15 +245,15 @@
 			const yOf = (value: number): number =>
 				laneBottom - ((value - yMin) / (yMax - yMin)) * (laneBottom - laneTop);
 
-			ctx.fillStyle = '#ffffff';
+			ctx.fillStyle = CHART.plot;
 			ctx.fillRect(PAD_LEFT, laneTop, plotWidth(), laneBottom - laneTop);
-			ctx.strokeStyle = '#eceff1';
+			ctx.strokeStyle = CHART.rule;
 			ctx.beginPath();
 			ctx.moveTo(PAD_LEFT, laneBottom - 0.5);
 			ctx.lineTo(width - PAD_RIGHT, laneBottom - 0.5);
 			ctx.stroke();
 			if (yMin < 0 && yMax > 0) {
-				ctx.strokeStyle = '#e0e0e0';
+				ctx.strokeStyle = CHART.rule;
 				ctx.setLineDash([3, 3]);
 				ctx.beginPath();
 				ctx.moveTo(PAD_LEFT, yOf(0));
@@ -262,7 +263,7 @@
 			}
 
 			if (series.x.length > 0) {
-				ctx.strokeStyle = info?.color ?? '#1565c0';
+				ctx.strokeStyle = info?.color ?? CHART.biro;
 				ctx.lineWidth = 1.6;
 				ctx.beginPath();
 				ctx.moveTo(xOf(series.x[0]), yOf(series.y[0]));
@@ -277,14 +278,14 @@
 		if (fullStatsChanged) fullStats = { ...fullStatsForRecord };
 
 		if (cursor) {
-			ctx.strokeStyle = '#37474f';
+			ctx.strokeStyle = CHART.ink;
 			ctx.setLineDash([2, 2]);
 			ctx.beginPath();
 			ctx.moveTo(cursor.x, PAD_TOP);
 			ctx.lineTo(cursor.x, plotBottom);
 			ctx.stroke();
 			ctx.setLineDash([]);
-			ctx.fillStyle = '#37474f';
+			ctx.fillStyle = CHART.ink;
 			ctx.beginPath();
 			ctx.arc(cursor.x, PAD_TOP + 4, 2.5, 0, Math.PI * 2);
 			ctx.fill();
@@ -520,8 +521,9 @@
 	}
 
 	.toolbar button {
-		padding: 3px 8px;
-		font-size: 11px;
+		padding: 3px 9px;
+		min-height: 26px;
+		font-size: 11.5px;
 	}
 
 	.resolution {
@@ -565,9 +567,9 @@
 	.plot {
 		position: relative;
 		height: 220px;
-		background: var(--sheet-sunk);
-		border: var(--rule-faint);
-		border-radius: 2px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
 
@@ -581,10 +583,11 @@
 		font-family: var(--font-mono);
 		font-size: 11px;
 		color: var(--ink);
-		background: var(--highlight-soft);
-		border: var(--rule-faint);
-		border-radius: 2px;
-		padding: 2px 6px;
+		background: var(--accent-soft);
+		border: 1px solid var(--accent-line);
+		border-radius: var(--radius-xs);
+		padding: 3px 7px;
+		color: var(--accent-strong);
 		white-space: nowrap;
 	}
 

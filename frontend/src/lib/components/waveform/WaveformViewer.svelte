@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { formatTimePs } from '../../engine/time';
+	import { CHART } from '../../render/chartTheme';
 	import { presentSignal } from '../../render/scene';
 	import type { SimulationMode } from '../../sim/protocol';
 	import type { WaveformChange } from '../../sim/recorder';
@@ -74,7 +75,7 @@
 		ctx.strokeStyle = signal.color;
 		ctx.lineWidth = first.oscillating ? 2.5 : 1.8;
 		if (signal.pattern === 'hatched') {
-			ctx.fillStyle = 'rgba(178, 106, 0, 0.18)';
+			ctx.fillStyle = CHART.unknownWash;
 			ctx.beginPath();
 			for (const segment of segments) {
 				const x0 = x(segment.startTick);
@@ -156,7 +157,7 @@
 		}
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, width, height);
-		ctx.fillStyle = '#fafafa';
+		ctx.fillStyle = CHART.plot;
 		ctx.fillRect(0, 0, width, height);
 
 		const plotWidth = Math.max(1, width - GUTTER);
@@ -165,15 +166,15 @@
 		const range = visibleLaneRange(scrollTop, plotHeight, ROW_HEIGHT, nets.length);
 		const offset = range.start * ROW_HEIGHT - scrollTop;
 
-		ctx.font = '11px sans-serif';
+		ctx.font = `11px ${CHART.mono}`;
 		ctx.textBaseline = 'middle';
 		for (let index = range.start; index < range.end; index++) {
 			const net = nets[index];
 			const rowTop = offset + (index - range.start) * ROW_HEIGHT;
 			const rowBottom = rowTop + ROW_HEIGHT;
-			ctx.fillStyle = index % 2 === 0 ? '#ffffff' : '#f4f6f7';
+			ctx.fillStyle = index % 2 === 0 ? CHART.plot : CHART.plotAlt;
 			ctx.fillRect(0, rowTop, width, ROW_HEIGHT);
-			ctx.fillStyle = selectedNets.has(net) ? '#1565c0' : '#37474f';
+			ctx.fillStyle = selectedNets.has(net) ? CHART.biro : CHART.ink;
 			ctx.fillText(net, 8, rowTop + ROW_HEIGHT / 2, GUTTER - 16);
 			const groups = new Map<string, WaveformSegment[]>();
 			for (const segment of windowSegments(historyFor(net), startTick, endTick)) {
@@ -187,7 +188,7 @@
 				drawSegments(ctx, segments, startTick, tickScale, rowTop, rowBottom);
 			}
 		}
-		ctx.strokeStyle = '#cfd8dc';
+		ctx.strokeStyle = CHART.rule;
 		ctx.beginPath();
 		for (let index = range.start; index < range.end; index++) {
 			const rowBottom = offset + (index - range.start + 1) * ROW_HEIGHT;
@@ -195,15 +196,15 @@
 			ctx.lineTo(width, rowBottom - 0.5);
 		}
 		ctx.stroke();
-		ctx.strokeStyle = '#b0bec5';
+		ctx.strokeStyle = CHART.ruleStrong;
 		ctx.beginPath();
 		ctx.moveTo(GUTTER - 0.5, 0);
 		ctx.lineTo(GUTTER - 0.5, height);
 		ctx.stroke();
 
 		if (mode === 'physical') {
-			ctx.fillStyle = '#546e7a';
-			ctx.font = '10px sans-serif';
+			ctx.fillStyle = CHART.inkSoft;
+			ctx.font = `10px ${CHART.mono}`;
 			ctx.textAlign = 'center';
 			for (const time of timeAxisTicks(startTick, endTick, 4)) {
 				const x = Math.min(width - 22, Math.max(GUTTER + 12, GUTTER + tickToX(time, startTick, tickScale)));
@@ -311,9 +312,9 @@
 		height: 100%;
 		min-height: 140px;
 		overflow: hidden;
-		background: #fafafa;
-		border: 1px solid #cfd8dc;
-		border-radius: 6px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 	}
 
 	canvas {
@@ -342,8 +343,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 12px;
-		color: #90a4ae;
+		font-size: 12.5px;
+		color: var(--ink-faint);
 		pointer-events: none;
 	}
 </style>

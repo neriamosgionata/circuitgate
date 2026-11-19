@@ -34,7 +34,7 @@ Browsers at 1366x768 and larger, with connectivity required for accounts and sto
 
 ## Brand Commitments
 
-None established. The product name "CircuitGate" is fixed. There is no logo, palette, or voice commitment recorded; even the favicon is still the framework default. A deliberate identity may be established.
+The product name "CircuitGate" is fixed. The interface identity is the **Drafting Sheet**: a faint engineering-grid ground, white sheets with title blocks, a dark ink navigation rail, drafting-blue interaction, ochre analog identity, and self-hosted Archivo + JetBrains Mono. The favicon is an authored circuit mark. Voice stays terse and technical; no marketing claims.
 
 ## Evidence on Hand
 

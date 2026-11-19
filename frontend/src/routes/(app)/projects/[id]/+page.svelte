@@ -553,52 +553,85 @@
 {:else}
 	<div class="page">
 		<header class="toolbar">
-			<nav class="crumbs">
-				<button type="button" onclick={() => store.navigateTo(0)}>root</button>
-				{#each snapshot.path as crumb, index (crumb + index)}
-					<span class="sep">/</span>
-					<button type="button" onclick={() => store.navigateTo(index + 1)}>{crumb}</button>
-				{/each}
-			</nav>
-			<label class="project-name">
-				<span class="visually-hidden">Project name</span>
-				<input bind:value={name} aria-label="Project name" disabled={readOnly} />
-			</label>
-			<span class="muted" data-testid="component-count">
-				{snapshot.document.components.length} components
-			</span>
-			<span class="muted">version {version}</span>
-			<span class="muted" data-testid="realtime-status" data-status={realtimeStatus}>
-				{realtimeStatus === 'connected' ? 'live' : realtimeStatus}
-			</span>
-			<span class="spacer"></span>
-			{#if data.project.owned}
-				<button type="button" data-testid="share-project" onclick={() => (shareOpen = true)}>
-					Share
-				</button>
-			{/if}
-			{#if snapshot.domain === 'analog'}
-				<button
-					type="button"
-					data-testid="import-model"
-					onclick={openImport}
-					disabled={readOnly}
-				>
-					Import model
-				</button>
-			{/if}
-			<button
-				type="button"
-				data-testid="save-project"
-				onclick={save}
-				disabled={readOnly || saveState === 'saving'}
-			>
-				{saveState === 'saving' ? 'Saving…' : 'Save'}
-			</button>
-			<button type="button" data-testid="export-project" onclick={exportLocal}>Export</button>
-			<a class="back" href="/projects">Projects</a>
-			{#if saveState === 'saved' && !conflict}<span class="saved" data-testid="save-status">Saved</span>{/if}
-			{#if saveError}<span class="error-inline" role="alert" data-testid="save-status">{saveError}</span>{/if}
+			<div class="toolbar-row">
+				<div class="project-line">
+					<div class="name-row">
+						<label class="project-name">
+							<span class="visually-hidden">Project name</span>
+							<input
+								bind:value={name}
+								aria-label="Project name"
+								disabled={readOnly}
+								style:width={`${Math.min(Math.max(name.length + 2, 13), 44)}ch`}
+							/>
+						</label>
+						{#if snapshot.domain}
+							<span class="chip domain-{snapshot.domain}">{snapshot.domain}</span>
+						{/if}
+						{#if readOnly}<span class="chip">read only</span>{/if}
+					</div>
+					<nav class="crumbs" aria-label="Circuit hierarchy">
+						<button type="button" onclick={() => store.navigateTo(0)}>root</button>
+						{#each snapshot.path as crumb, index (crumb + index)}
+							<span class="sep" aria-hidden="true">/</span>
+							<button type="button" onclick={() => store.navigateTo(index + 1)}>{crumb}</button>
+						{/each}
+					</nav>
+				</div>
+
+				<div class="actions">
+					{#if data.project.owned}
+						<button type="button" data-testid="share-project" onclick={() => (shareOpen = true)}>
+							Share
+						</button>
+					{/if}
+					{#if snapshot.domain === 'analog'}
+						<button
+							type="button"
+							data-testid="import-model"
+							onclick={openImport}
+							disabled={readOnly}
+						>
+							Import model
+						</button>
+					{/if}
+					<button
+						type="button"
+						class="primary"
+						data-testid="save-project"
+						onclick={save}
+						disabled={readOnly || saveState === 'saving'}
+					>
+						{saveState === 'saving' ? 'Saving…' : 'Save'}
+					</button>
+					<button type="button" data-testid="export-project" onclick={exportLocal}>Export</button>
+					<a class="back" href="/projects">All projects</a>
+					{#if saveState === 'saved' && !conflict}<span class="stamp" data-testid="save-status">Saved</span>{/if}
+					{#if saveError}<span class="error-inline" role="alert" data-testid="save-status">{saveError}</span>{/if}
+				</div>
+			</div>
+
+			<div class="titleblock sheet-tb">
+				<span class="tb-cell grow">
+					<span class="tb-label">Sheet</span>
+					<span class="tb-value strong">{snapshot.path.length === 0 ? 'root' : snapshot.path.join(' / ')}</span>
+				</span>
+				<span class="tb-cell">
+					<span class="tb-label">Components</span>
+					<span class="tb-value" data-testid="component-count">{snapshot.document.components.length} components</span>
+				</span>
+				<span class="tb-cell">
+					<span class="tb-label">Revision</span>
+					<span class="tb-value">version {version}</span>
+				</span>
+				<span class="tb-cell">
+					<span class="tb-label">Link</span>
+					<span class="live" data-testid="realtime-status" data-status={realtimeStatus}>
+						<span class="dot" aria-hidden="true"></span>
+						{realtimeStatus === 'connected' ? 'live' : realtimeStatus}
+					</span>
+				</span>
+			</div>
 		</header>
 
 		<LockBanner
@@ -755,46 +788,180 @@
 		flex-direction: column;
 		flex: 1;
 		min-height: 0;
+		height: 100dvh;
+		overflow: hidden;
 	}
 
 	.toolbar {
+		flex: none;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		padding: 10px 16px 0;
+		background: var(--paper);
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.toolbar-row {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 10px 16px;
+	}
+
+	.project-line {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.name-row {
 		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 7px 12px;
-		background: var(--sheet);
-		border-bottom: 2px solid var(--ink);
+		gap: 8px;
 		flex-wrap: wrap;
+	}
+
+	.project-name input {
+		padding: 2px 0;
+		font-family: var(--font-ui);
+		font-size: 19px;
+		font-weight: 650;
+		letter-spacing: -0.02em;
+		color: var(--ink);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-xs);
+		max-width: min(44ch, 52vw);
+		min-height: 30px;
+	}
+
+	.project-name input:hover:not(:disabled) {
+		border-color: var(--rule);
+		background: var(--paper-soft);
+	}
+
+	.project-name input:focus {
+		border-color: var(--accent);
+		background: var(--paper);
+		box-shadow: 0 0 0 3px var(--accent-soft);
 	}
 
 	.crumbs {
 		display: flex;
 		align-items: center;
-		gap: 4px;
+		gap: 2px;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
 	}
 
 	.crumbs button {
-		font-size: 12px;
-		padding: 3px 7px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
-		background: var(--sheet-raised);
-		cursor: pointer;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		font-weight: 500;
+		letter-spacing: 0;
+		text-transform: none;
+		padding: 2px 6px;
+		min-height: 22px;
+		border: 1px solid transparent;
+		border-radius: var(--radius-xs);
+		background: transparent;
+		color: var(--ink-soft);
+		box-shadow: none;
+	}
+
+	.crumbs button:hover:not(:disabled) {
+		background: var(--paper-sunk);
+		border-color: transparent;
+		color: var(--ink);
 	}
 
 	.sep {
 		color: var(--ink-faint);
 	}
 
-	.project-name input {
-		padding: 5px 8px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
-		font-family: var(--font-mono);
-		font-size: 13px;
-		font-weight: 600;
+	.actions {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-left: auto;
+	}
+
+	.actions button {
+		min-height: 32px;
+		padding: 5px 11px;
+		font-size: 12.5px;
+	}
+
+	.back {
+		font-size: 12.5px;
+		font-weight: 550;
+		color: var(--ink-soft);
+		text-decoration: none;
+		padding: 6px 8px;
+		border-radius: var(--radius-xs);
+	}
+
+	.back:hover {
+		background: var(--paper-sunk);
 		color: var(--ink);
-		background: var(--sheet-raised);
+		text-decoration: none;
+	}
+
+	.error-inline {
+		font-size: 12px;
+		color: var(--danger);
+	}
+
+	.sheet-tb {
+		margin-bottom: 10px;
+		background: var(--paper-soft);
+	}
+
+	.sheet-tb .tb-cell {
+		padding: 3px 12px 4px;
+	}
+
+	.sheet-tb .tb-label {
+		font-size: 8px;
+	}
+
+	.sheet-tb .tb-value {
+		font-size: 11px;
+	}
+
+	.sheet-tb .tb-value.strong {
+		font-size: 12px;
+	}
+
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		text-transform: capitalize;
+		color: var(--ok);
+		white-space: nowrap;
+	}
+
+	.live .dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+
+	.live[data-status='connecting'] {
+		color: var(--warn);
+	}
+
+	.live[data-status='disconnected'] {
+		color: var(--danger);
 	}
 
 	.muted {
@@ -803,47 +970,13 @@
 		color: var(--ink-soft);
 	}
 
-	.spacer {
-		flex: 1;
-	}
-
-	.toolbar button {
-		padding: 6px 10px;
-	}
-
-	.back {
-		font-family: var(--font-head);
-		font-size: 12px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.saved {
-		display: inline-block;
-		font-family: var(--font-head);
-		font-weight: 700;
-		font-size: 11px;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		color: var(--stamp-green);
-		border: 2px solid var(--stamp-green);
-		border-radius: 3px;
-		padding: 1px 6px;
-		transform: rotate(-2deg);
-	}
-
-	.error-inline {
-		font-size: 12px;
-		color: var(--stamp-red);
-	}
-
 	.conflict {
-		padding: 10px 12px;
-		background: var(--sheet);
-		border-bottom: 2px solid var(--ink);
+		flex: none;
+		padding: 10px 16px;
+		background: var(--danger-soft);
+		border-bottom: 1px solid #e6b6b1;
 		font-size: 13px;
-		color: var(--ink);
+		color: #7e1d15;
 	}
 
 	.conflict p {
@@ -852,11 +985,14 @@
 
 	.conflict-actions {
 		display: flex;
-		gap: 10px;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
 	}
 
 	.conflict-actions button {
-		padding: 5px 9px;
+		padding: 5px 10px;
+		font-size: 12px;
 	}
 
 	.conflict form {
@@ -875,46 +1011,47 @@
 
 	.conflict form input {
 		padding: 5px 8px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
 		font-size: 13px;
 	}
 
 	.editor {
 		flex: 1;
-		display: flex;
-		gap: 10px;
-		padding: 10px;
+		display: grid;
+		grid-template-columns: 244px minmax(0, 1fr) 300px;
+		grid-template-areas: 'palette canvas inspector';
+		gap: 12px;
+		padding: 12px 16px 16px;
 		min-height: 0;
 		overflow: auto;
 	}
 
 	.canvas-area {
-		flex: 1;
-		min-width: 0;
-		min-height: 0;
+		grid-area: canvas;
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 12px;
+		min-width: 0;
+		min-height: 0;
 	}
 
 	.canvas-slot {
 		flex: 1 1 auto;
-		min-height: 420px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+		min-height: 380px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
 		overflow: hidden;
 	}
 
 	.invalid {
-		padding: 24px;
+		margin: 24px;
+		padding: 22px;
 		font-size: 14px;
 		color: var(--ink);
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
 	}
 
 	.visually-hidden {
@@ -924,7 +1061,7 @@
 		padding: 0;
 		margin: -1px;
 		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
+		clip: rect(0 0 0 0);
 		white-space: nowrap;
 		border: 0;
 	}
@@ -935,28 +1072,26 @@
 		left: 50%;
 		transform: translate(-50%, -50%);
 		z-index: 20;
-		width: min(560px, calc(100vw - 32px));
+		width: min(580px, calc(100vw - 32px));
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
-		padding: 16px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 3px;
-		box-shadow: 0 12px 32px rgba(29, 29, 27, 0.28);
+		gap: 12px;
+		padding: 20px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-2);
 	}
 
 	.import-modal h2 {
-		font-size: 16px;
+		font-size: 17px;
 		margin: 0;
 	}
 
 	.import-modal textarea {
 		font-family: var(--font-mono);
 		font-size: 12px;
-		padding: 8px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
+		padding: 10px;
 		resize: vertical;
 	}
 
@@ -966,7 +1101,98 @@
 		justify-content: flex-end;
 	}
 
-	.import-actions button {
-		padding: 6px 12px;
+	@media (max-width: 1280px) {
+		.editor {
+			grid-template-columns: 224px minmax(0, 1fr) 276px;
+		}
+	}
+
+	@media (max-height: 820px) and (min-width: 1081px) {
+		.canvas-slot {
+			min-height: 300px;
+		}
+
+		.toolbar {
+			gap: 6px;
+			padding-top: 8px;
+		}
+
+		.sheet-tb {
+			margin-bottom: 8px;
+		}
+
+		.editor {
+			padding-top: 10px;
+			gap: 10px;
+		}
+	}
+
+	@media (max-width: 1080px) {
+		.page {
+			flex: 0 0 auto;
+			height: auto;
+			min-height: 100%;
+			overflow: visible;
+		}
+
+		.editor {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas:
+				'palette'
+				'canvas'
+				'inspector';
+			grid-auto-rows: max-content;
+			overflow: visible;
+		}
+
+		.canvas-area {
+			grid-area: canvas;
+		}
+
+		.canvas-slot {
+			min-height: 460px;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.toolbar {
+			padding: 10px 12px 0;
+		}
+
+		.editor {
+			padding: 10px 12px 14px;
+		}
+
+		.project-name {
+			flex: 1 1 100%;
+		}
+
+		.project-name input {
+			font-size: 17px;
+			max-width: 100%;
+			width: 100% !important;
+		}
+
+		.sheet-tb {
+			flex-wrap: wrap;
+			overflow: visible;
+		}
+
+		.sheet-tb .tb-cell {
+			flex: 1 1 42%;
+			border-bottom: 1px solid var(--rule);
+		}
+
+		.sheet-tb .tb-cell.grow {
+			flex-basis: 100%;
+		}
+
+		.sheet-tb .tb-cell:last-child {
+			border-bottom: 0;
+		}
+
+		.actions {
+			width: 100%;
+		}
 	}
 </style>

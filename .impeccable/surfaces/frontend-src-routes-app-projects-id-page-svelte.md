@@ -15,18 +15,19 @@ Scope: app shell (nav, projects, teams, account, auth), editor chrome (toolbar, 
 
 Constraints: WCAG AA baseline, lightweight CSS, existing performance budget, `frontend/tests` selectors stay valid.
 
-Open: projects board vs list treatment; mobile read-only vs editable; paper-material intensity.
+Open: mobile editing is scroll-dense once the palette, canvas, and analysis sheet stack; project domain tags rely on metadata remembered locally until a project is opened on the device.
 
 ## Direction contract
 
-THESIS: The editor as a pinned departmental worktable — photocopied sheets, toner text, highlighter marks, rubber-stamp outcomes; it refuses the dark-IDE panel look and the grey-plus-blue SaaS dashboard.
+THESIS: The product as a live technical drafting sheet on a dark bench — a faint engineering grid, white sheets with title blocks, drafting-blue interaction, ochre analog identity, and mono values. It refuses both the dark-IDE editor panel look and the grey-plus-blue SaaS dashboard.
 
-OWN-WORLD: kraft-board shell (#c9b79a over #b9a482), copy-paper sheets (#e7e3d9), toner text (#1d1d1b), highlighter selection (#ffe23d wash), stamp red (#c0271b void/fail), bottle-green ink (#1f6b43 pass), biro blue (#1d4ed8 wires/links). Saira Condensed for sheet heads and stamped labels; Public Sans for prose; Courier Prime for codes, values, measurements (tabular). Hairlines #8a8377; sheets ruled by a 1px header band; buttons are stapled strips, chips are stamped labels.
+OWN-WORLD: ground #eef1f3 with a 32px grid, paper #ffffff / #f7f9fa / #edf1f3, ink #101820, dark rail #0f1923, accent #1858c9 (washes #e7effc), analog #a84a00, ok #0c7a4e, warn #8f5b00, danger #bf2b1f. Archivo for UI and display, JetBrains Mono for values, IDs and measurements. 4–6px radii, 1px rules, one small sheet shadow. Title blocks label real metadata; chips and stamps pair every color with text.
 
-STORY: The student sees a worktable: parts pinned, work taped down, whatever they touch highlights, whatever ran is stamped. Outcome readable at a glance, sheet handable to a teammate.
+STORY: The student sees a drafting bench: their project as a sheet with a title block, parts in a components sheet, the circuit on a gridded canvas, results as measured traces. Everything important reads like a drawing annotation, so a teammate can pick it up without explanation.
 
-FIRST VIEWPORT: Board-rail header: project name in stamped capitals, actions as stapled strips. Three pinned sheets fill the viewport — numbered parts sheet left, taped graph-paper canvas center, spec slip right — analysis strip pinned below, run status as a stamp.
+FIRST VIEWPORT: Dark rail (brand, Projects/Teams/Account, account block) beside a page head and a title-blocked project sheet. The editor keeps the rail, a components sheet left, the gridded canvas center with a sheet title block, inspector right, and a simulation/analysis sheet docked below.
 
-FORM: notice-board sheet system, position 7 of the grounded list; seed key 333ffe51.
+FORM: drafting-sheet system with title-block signature; position 7 of the grounded list; seed key 333ffe51.
+
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.

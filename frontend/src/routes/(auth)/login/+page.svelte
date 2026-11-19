@@ -81,7 +81,9 @@
 
 <style>
 	h1 {
-		font-size: 24px;
+		font-size: 25px;
+		font-weight: 650;
+		letter-spacing: -0.02em;
 		margin: 0;
 		color: var(--ink);
 	}
@@ -89,7 +91,7 @@
 	form {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 14px;
 	}
 
 	label {
@@ -101,15 +103,16 @@
 	}
 
 	label span {
-		font-family: var(--font-head);
-		font-size: 11px;
-		letter-spacing: 0.08em;
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
+		color: var(--ink-faint);
 	}
 
 	input[type='email'],
 	input[type='password'] {
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 	}
 
 	.checkbox {
@@ -118,19 +121,28 @@
 		gap: 8px;
 	}
 
+	.checkbox span {
+		font-family: var(--font-ui);
+		font-size: 12.5px;
+		font-weight: 500;
+		letter-spacing: 0;
+		text-transform: none;
+		color: var(--ink-soft);
+	}
+
 	.error {
 		margin: 0;
 		padding: 8px;
-		border: 2px solid var(--stamp-red);
-		border-radius: 2px;
-		background: var(--sheet);
-		color: var(--stamp-red);
+		border: 1px solid #e6b6b1;
+		border-radius: var(--radius-sm);
+		background: var(--danger-soft);
+		color: #8f1f16;
 		font-size: 13px;
 	}
 
 	.field-error {
 		margin: -6px 0 0;
-		color: var(--stamp-red);
+		color: var(--danger);
 		font-size: 12px;
 	}
 

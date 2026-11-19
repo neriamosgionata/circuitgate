@@ -416,13 +416,38 @@
 {/snippet}
 
 <aside class="inspector">
-	<h2>Inspector</h2>
+	<div class="inspector-head">
+		<h2>Inspector</h2>
+		{#if selected}<span class="note">{selected.kind}</span>{/if}
+	</div>
 	{#if !selected}
-		<p class="muted">
-			{snapshot.selection.size === 0
-				? 'Select a component to edit its properties.'
-				: 'Select a single component to edit its properties.'}
-		</p>
+		<div class="empty">
+			<svg viewBox="0 0 120 72" aria-hidden="true" focusable="false">
+				<path d="M8 36h26" />
+				<path d="M34 22v28l22-14z" />
+				<path d="M56 36h26" />
+				<rect x="82" y="26" width="26" height="20" />
+				<path d="M108 36h6" />
+			</svg>
+			<p class="empty-title">
+				{snapshot.selection.size === 0
+					? 'Nothing selected'
+					: 'Several parts selected'}
+			</p>
+			<p class="muted">
+				{snapshot.selection.size === 0
+					? 'Click a part on the canvas to edit its properties.'
+					: 'Select a single part to edit its properties.'}
+			</p>
+			<dl class="shortcuts">
+				<div><dt><kbd>Click</kbd></dt><dd>Place a part, then click the canvas</dd></div>
+				<div><dt><kbd>Drag</kbd></dt><dd>Wire from one pin to another</dd></div>
+				<div><dt><kbd>Shift</kbd> + click</dt><dd>Select several parts</dd></div>
+				<div><dt><kbd>Middle</kbd> drag</dt><dd>Pan the sheet</dd></div>
+				<div><dt><kbd>Del</kbd></dt><dd>Delete the selection</dd></div>
+				<div><dt><kbd>Esc</kbd></dt><dd>Cancel placing or wiring</dd></div>
+			</dl>
+		</div>
 	{:else}
 		<fieldset class="readonly-guard" disabled={readonly}>
 		<fieldset>
@@ -677,29 +702,128 @@
 
 <style>
 	.inspector {
-		width: 252px;
-		min-width: 252px;
+		grid-area: inspector;
+		width: 300px;
+		min-width: 0;
+		min-height: 0;
 		overflow-y: auto;
-		padding: 12px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+		padding: 0 12px 14px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+	}
+
+	.inspector-head {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 -12px 12px;
+		padding: 11px 12px;
+		background: var(--paper);
+		border-bottom: 1px solid var(--rule);
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
 	}
 
 	h2 {
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		margin: 0;
+	}
+
+	.inspector-head .note {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.empty {
+		padding: 14px 2px 4px;
+	}
+
+	.empty-title {
+		margin: 0 0 4px;
 		font-size: 14px;
-		margin: 0 0 8px;
-		padding-bottom: 4px;
-		border-bottom: 2px solid var(--ink);
+		font-weight: 650;
+		color: var(--ink);
+	}
+
+	.shortcuts {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		margin: 16px 0 0;
+		padding: 0;
+		border-top: 1px solid var(--rule);
+	}
+
+	.shortcuts > div {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 7px 0;
+		border-bottom: 1px solid var(--rule-faint);
+	}
+
+	.shortcuts dt {
+		flex: none;
+		font-size: 10.5px;
+		color: var(--ink-soft);
+	}
+
+	.shortcuts dd {
+		margin: 0;
+		text-align: right;
+		font-size: 11px;
+		line-height: 1.35;
+		color: var(--ink-faint);
+	}
+
+	kbd {
+		display: inline-block;
+		padding: 1px 5px;
+		border: 1px solid var(--rule-strong);
+		border-bottom-width: 2px;
+		border-radius: var(--radius-xs);
+		background: var(--paper-soft);
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--ink-soft);
+	}
+
+	.empty svg {
+		width: 96px;
+		height: auto;
+		fill: none;
+		stroke: var(--accent);
+		stroke-width: 1.4;
+		opacity: 0.55;
+		margin-bottom: 10px;
 	}
 
 	fieldset {
-		border: var(--rule-faint);
-		border-radius: 2px;
-		padding: 8px;
-		margin: 0 0 10px;
-		background: var(--sheet-raised);
+		border: 0;
+		border-top: 1px solid var(--rule);
+		border-radius: 0;
+		padding: 10px 0 2px;
+		margin: 0 0 4px;
+		background: transparent;
+	}
+
+	fieldset:first-of-type {
+		border-top: 0;
+		padding-top: 0;
 	}
 
 	.readonly-guard {
@@ -710,22 +834,32 @@
 	}
 
 	legend {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.11em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
-		padding: 0 4px;
+		color: var(--ink-faint);
+		padding: 0;
+		margin-bottom: 8px;
 	}
 
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 4px;
 		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
 		color: var(--ink-soft);
-		margin-bottom: 8px;
+		margin-bottom: 9px;
+	}
+
+	label > span {
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-faint);
 	}
 
 	input,
@@ -733,34 +867,50 @@
 	textarea {
 		font-family: var(--font-mono);
 		font-size: 12px;
-		padding: 4px 5px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
+		padding: 6px 8px;
+		min-height: 32px;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius-sm);
 		width: 100%;
 		box-sizing: border-box;
 		color: var(--ink);
-		background: var(--sheet);
+		background: var(--paper);
+	}
+
+	select {
+		padding-right: 26px;
 	}
 
 	input[type='checkbox'] {
 		width: auto;
+		min-height: 0;
 		align-self: flex-start;
 	}
 
 	.muted {
-		font-size: 11px;
+		font-size: 12px;
 		color: var(--ink-soft);
 		margin: 0 0 6px;
 	}
 
 	.error {
 		font-size: 11px;
-		color: var(--stamp-red);
+		color: var(--danger);
+		padding: 0;
+		border: 0;
+		background: none;
 	}
 
 	.notice {
-		font-size: 11px;
+		font-size: 11.5px;
 		color: var(--ink-soft);
 		margin: 0 0 6px;
+	}
+
+	@media (max-width: 1080px) {
+		.inspector {
+			width: 100%;
+			overflow-y: visible;
+		}
 	}
 </style>
