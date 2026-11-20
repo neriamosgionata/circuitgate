@@ -549,6 +549,9 @@ export class CircuitEditorStore {
 		if (count === 0) return 0;
 		this.updateCurrentDocument(removeComponents(document, this.selection));
 		this.updateCurrentLayout(removeLayoutEntries(this.layoutFor(this.path), this.selection));
+		// A delete ends the edit: an armed wire must not complete on the next
+		// pin click against a graph the user just changed.
+		this.pendingWire = null;
 		if (
 			this.pendingAssist !== null &&
 			(this.selection.has(this.pendingAssist.output.componentId) ||
@@ -584,6 +587,13 @@ export class CircuitEditorStore {
 		const pending = this.pendingWire;
 		if (!pending) return { ok: false, error: 'no-pending-wire' };
 		if (!this.pinExists(target)) return { ok: false, error: 'unknown-pin' };
+		if (!this.pinExists(pending)) {
+			// The armed pin disappeared under a kind or width edit since the wire
+			// was started. Drop it instead of connecting from a pin that is gone.
+			this.pendingWire = null;
+			this.emit();
+			return { ok: false, error: 'unknown-pin' };
+		}
 		if (pending.componentId === target.componentId && pending.pin === target.pin) {
 			return { ok: false, error: 'self-connection' };
 		}

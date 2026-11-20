@@ -136,22 +136,37 @@ function stubPoint(point: Point, side: 'input' | 'output'): Point {
 // every drawn segment stays axis-aligned. A net with a single endpoint renders
 // as a short dangling stub instead of a wire, which is what makes dangling
 // wires visible.
+//
+// A net can also lose its driver: deleting the component that drove it leaves
+// the remaining pins on the one net, with no output among them. There is no
+// pin to route from then, so the anchor is the leftmost remaining pin and the
+// trunk sits outside it. Treating an input as a driver would draw a lead on the
+// far side of its pin, inside the component body, which reads as a wire that
+// appeared on its own.
 export function routeWire(endpoints: readonly Endpoint[]): Point[] {
 	if (endpoints.length === 0) return [];
 	if (endpoints.length === 1) {
 		const only = endpoints[0];
 		return [only.point, stubPoint(only.point, only.side)];
 	}
-	const driver = endpoints.find((endpoint) => endpoint.side === 'output') ?? endpoints[0];
-	const driverStub = stubPoint(driver.point, 'output');
-	const points: Point[] = [driver.point];
-	const consumers = endpoints.filter((endpoint) => endpoint !== driver);
+	const driver = endpoints.find((endpoint) => endpoint.side === 'output');
+	const anchor = driver ?? leftmostEndpoint(endpoints);
+	const anchorStub = stubPoint(anchor.point, anchor.side);
+	const points: Point[] = [anchor.point];
+	const consumers = endpoints.filter((endpoint) => endpoint !== anchor);
+	const floatingTrunkX =
+		driver === undefined
+			? Math.min(
+					anchorStub.x,
+					...consumers.map((endpoint) => stubPoint(endpoint.point, endpoint.side).x)
+				)
+			: null;
 	consumers.forEach((endpoint, index) => {
 		const targetStub = stubPoint(endpoint.point, endpoint.side);
-		const trunkX = (targetStub.x + driverStub.x) / 2;
+		const trunkX = floatingTrunkX ?? (targetStub.x + anchorStub.x) / 2;
 		points.push(
-			driverStub,
-			{ x: trunkX, y: driverStub.y },
+			anchorStub,
+			{ x: trunkX, y: anchorStub.y },
 			{ x: trunkX, y: targetStub.y },
 			targetStub,
 			endpoint.point
@@ -160,13 +175,23 @@ export function routeWire(endpoints: readonly Endpoint[]): Point[] {
 			points.push(
 				targetStub,
 				{ x: trunkX, y: targetStub.y },
-				{ x: trunkX, y: driverStub.y },
-				driverStub,
-				driver.point
+				{ x: trunkX, y: anchorStub.y },
+				anchorStub,
+				anchor.point
 			);
 		}
 	});
 	return points;
+}
+
+/** Deterministic anchor for a net with no driver: leftmost, then topmost pin. */
+function leftmostEndpoint(endpoints: readonly Endpoint[]): Endpoint {
+	return endpoints.reduce((best, candidate) => {
+		if (candidate.point.x !== best.point.x) {
+			return candidate.point.x < best.point.x ? candidate : best;
+		}
+		return candidate.point.y < best.point.y ? candidate : best;
+	});
 }
 
 export function buildScene(input: SceneInput): Scene {

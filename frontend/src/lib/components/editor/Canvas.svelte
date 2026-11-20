@@ -792,6 +792,12 @@
 		scheduleDraw();
 	});
 
+	// The preview line is canvas-local state, so a store-side cancellation
+	// (deleting the selection, for example) has to drop it here as well.
+	$effect(() => {
+		if (snapshot.pendingWire === null && wirePreview !== null) wirePreview = null;
+	});
+
 	$effect(() => {
 		void $analogAnnotations;
 		scheduleDraw();

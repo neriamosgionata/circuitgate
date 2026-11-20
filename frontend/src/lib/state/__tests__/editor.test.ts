@@ -33,6 +33,35 @@ describe('editor wiring', () => {
 		}
 	});
 
+	it('drops an armed wire whose pin a later edit removed', () => {
+		const store = new CircuitEditorStore();
+		const register = expectOk(store.placeComponent('register', { x: 0, y: 0 }));
+		const sink = expectOk(store.placeComponent('probe', { x: 200, y: 0 }));
+		expect(store.beginWire({ componentId: register.id, pin: 'q7', side: 'output' }).ok).toBe(true);
+		expect(store.setParam(register.id, 'width', 2).ok).toBe(true);
+
+		const result = store.completeWire({ componentId: sink.id, pin: 'in', side: 'input' });
+
+		// A wire cannot start at a pin that no longer exists; the click is a
+		// miss, not a connection from nowhere.
+		expect(result).toEqual({ ok: false, error: 'unknown-pin' });
+		expect(store.snapshot.pendingWire).toBeNull();
+	});
+
+	it('cancels a wire in progress when the selection is deleted', () => {
+		const store = new CircuitEditorStore();
+		const source = expectOk(store.placeComponent('switch', { x: 0, y: 0 }));
+		const sink = expectOk(store.placeComponent('and', { x: 200, y: 0 }));
+		store.setSelection([sink.id]);
+		expect(store.beginWire({ componentId: source.id, pin: 'out', side: 'output' }).ok).toBe(true);
+
+		store.deleteSelection();
+
+		// Deleting ends the edit: the next pin click must not complete a wire that
+		// was armed before the delete.
+		expect(store.snapshot.pendingWire).toBeNull();
+	});
+
 	it('gives logic parts their own defaults instead of the analog parameters of the same kind name', () => {
 		const logic = new CircuitEditorStore();
 		expect(expectOk(logic.placeComponent('switch', { x: 0, y: 0 })).params).toBeUndefined();

@@ -107,6 +107,39 @@ describe('scene building', () => {
 		}
 	});
 
+	it('routes a net whose driver was deleted outside its remaining pins', () => {
+		const floating: CircuitDocument = {
+			schemaVersion: 1,
+			components: [
+				{ id: 'and1', kind: 'and', inputs: { a: 'F', b: 'B' }, outputs: { out: 'Y' } },
+				{ id: 'not1', kind: 'not', inputs: { a: 'F' }, outputs: { out: 'N' } }
+			]
+		};
+		const scene = buildScene({
+			document: floating,
+			layout: {
+				and1: { position: { x: 240, y: 0 } },
+				not1: { position: { x: 240, y: 120 } }
+			}
+		});
+		const wire = scene.wires.find((candidate) => candidate.netId === 'F');
+		const pins = [
+			scene.componentById.get('and1')!.pins.find((pin) => pin.name === 'a')!.point,
+			scene.componentById.get('not1')!.pins.find((pin) => pin.name === 'a')!.point
+		];
+		const maxPinX = Math.max(...pins.map((point) => point.x));
+		expect(wire).toBeDefined();
+		// Both consumer pins stay on the one net.
+		for (const pin of pins) {
+			expect(wire!.points.some((point) => point.x === pin.x && point.y === pin.y)).toBe(true);
+		}
+		// With no output driving the net, no lead may be invented on the far
+		// side of a pin: that draws a stub into the component body.
+		for (const point of wire!.points) {
+			expect(point.x, `point ${point.x},${point.y} runs past the pins`).toBeLessThanOrEqual(maxPinX);
+		}
+	});
+
 	it('draws derived pins at configured widths with one labeled pin per bit (R6)', () => {
 		const wide: CircuitDocument = {
 			schemaVersion: 1,
