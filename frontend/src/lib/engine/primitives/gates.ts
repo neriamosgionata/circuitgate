@@ -67,13 +67,25 @@ export const ledKind = sinkKind(['in']);
 // A free-running half-period clock. It is meaningful in timed mode, where the
 // engine re-queues self-scheduling kinds every unit delay. Calling settle() on a
 // delta-cycle containing this kind deliberately oscillates into the cap.
-export const clockKind: ComponentKind = {
-	inputs: [],
-	outputs: ['out'],
-	selfScheduling: true,
-	evaluate: (_inputs, state) => {
-		const current = (state as { value?: LogicValue } | undefined)?.value;
-		const next: LogicValue = current === 1 ? 0 : 1;
-		return { outputs: [next], state: { value: next } };
-	}
-};
+//
+// Polarity sets the level the clock presents before its first tick: rising
+// starts low, so the first tick is a rising edge; falling starts high, so the
+// first tick is a falling edge. Clocked parts capture on rising edges, which is
+// why the polarity is a starting level rather than an edge detector of its own.
+export type ClockPolarity = 'rising' | 'falling';
+
+export function clockKindFor(polarity: ClockPolarity = 'rising'): ComponentKind {
+	const start: LogicValue = polarity === 'falling' ? 1 : 0;
+	return {
+		inputs: [],
+		outputs: ['out'],
+		selfScheduling: true,
+		evaluate: (_inputs, state) => {
+			const current = (state as { value?: LogicValue } | undefined)?.value ?? start;
+			const next: LogicValue = current === 1 ? 0 : 1;
+			return { outputs: [next], state: { value: next } };
+		}
+	};
+}
+
+export const clockKind = clockKindFor('rising');

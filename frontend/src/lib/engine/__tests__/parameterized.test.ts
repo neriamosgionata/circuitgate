@@ -4,6 +4,7 @@ import { Simulator } from '../evaluate';
 import {
 	PARAMETERIZED_FAMILY_KINDS,
 	defaultParamsForKind,
+	foreignParamNames,
 	parameterShapeFor,
 	pinoutForParameterizedKind,
 	resolveComponentKind,
@@ -131,6 +132,14 @@ describe('parameterized kind resolution', () => {
 		const mutable = defaultParamsForKind('rom')!;
 		(mutable['contents'] as number[])[0] = 7;
 		expect(defaultParamsForKind('rom')).toEqual({ contents: new Array(16).fill(0), wordBits: 8 });
+	});
+
+	it('names the parameters a logic part inherits only from its analog namesake', () => {
+		expect([...foreignParamNames('switch', 'logic')]).toEqual(['state']);
+		expect([...foreignParamNames('led', 'logic')]).toEqual(['model']);
+		expect([...foreignParamNames('and', 'logic')]).toEqual([]);
+		// A real analog switch keeps its own parameters.
+		expect([...foreignParamNames('switch', 'analog')]).toEqual([]);
 	});
 
 	it.each([0, 33, 64, 4.5])('rejects unsupported width %s', (width) => {

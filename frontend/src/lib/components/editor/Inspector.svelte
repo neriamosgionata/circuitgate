@@ -3,7 +3,7 @@
 	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
-	import { kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
+	import { foreignParamNames, kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
 	import { formatTimePs, nsToPs } from '../../engine/time';
 	import {
 		timingFieldsForKind,
@@ -60,7 +60,9 @@
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
 	const selectedShape = $derived(selected ? parameterShapeFor(selected.kind) : null);
 	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
-	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
+	const modelBacked = $derived(
+		selected && snapshot.domain === 'analog' ? isModelBackedKind(selected.kind) : false
+	);
 	const modelOptions = $derived(
 		selected ? modelOptionsForKind(selected.kind, snapshot.models) : []
 	);
@@ -79,7 +81,10 @@
 	const visibleParams = $derived(
 		selected
 			? Object.entries(selected.params ?? {}).filter(
-					([key]) => !(modelBacked && key === 'model') && !hiddenParamKeys(selected.kind).has(key)
+					([key]) =>
+						!(modelBacked && key === 'model') &&
+						!hiddenParamKeys(selected.kind).has(key) &&
+						!foreignParamNames(selected.kind, snapshot.domain).has(key)
 				)
 			: []
 	);

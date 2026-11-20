@@ -76,6 +76,37 @@ describe('scene building', () => {
 		expect(wire?.points).toHaveLength(2);
 	});
 
+	it('routes a fan-out net as orthogonal branches with no consumer-to-consumer jump', () => {
+		const fanout: CircuitDocument = {
+			schemaVersion: 1,
+			components: [
+				{ id: 'sw', kind: 'switch', inputs: {}, outputs: { out: 'A' } },
+				{ id: 'and1', kind: 'and', inputs: { a: 'A', b: 'B' }, outputs: { out: 'Y' } },
+				{ id: 'not1', kind: 'not', inputs: { a: 'A' }, outputs: { out: 'N' } }
+			]
+		};
+		const scene = buildScene({
+			document: fanout,
+			layout: {
+				sw: { position: { x: 0, y: 60 } },
+				and1: { position: { x: 200, y: 0 } },
+				not1: { position: { x: 200, y: 140 } }
+			}
+		});
+		const wire = scene.wires.find((candidate) => candidate.netId === 'A');
+		const points = wire?.points ?? [];
+		expect(points.length).toBeGreaterThan(2);
+		for (let index = 0; index < points.length - 1; index++) {
+			const from = points[index];
+			const to = points[index + 1];
+			const orthogonal = Math.abs(from.x - to.x) < 1e-9 || Math.abs(from.y - to.y) < 1e-9;
+			expect(
+				orthogonal,
+				`segment ${index} (${from.x},${from.y})->(${to.x},${to.y}) is diagonal`
+			).toBe(true);
+		}
+	});
+
 	it('draws derived pins at configured widths with one labeled pin per bit (R6)', () => {
 		const wide: CircuitDocument = {
 			schemaVersion: 1,

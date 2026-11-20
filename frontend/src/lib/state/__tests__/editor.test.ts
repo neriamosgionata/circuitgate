@@ -33,6 +33,20 @@ describe('editor wiring', () => {
 		}
 	});
 
+	it('gives logic parts their own defaults instead of the analog parameters of the same kind name', () => {
+		const logic = new CircuitEditorStore();
+		expect(expectOk(logic.placeComponent('switch', { x: 0, y: 0 })).params).toBeUndefined();
+		expect(expectOk(logic.placeComponent('led', { x: 0, y: 0 })).params).toBeUndefined();
+
+		const analog = new CircuitEditorStore({ domain: 'analog' });
+		expect(expectOk(analog.placeComponent('switch', { x: 0, y: 0 })).params).toEqual({
+			state: 'open'
+		});
+		expect(expectOk(analog.placeComponent('led', { x: 0, y: 0 })).params).toEqual({
+			model: 'ledred'
+		});
+	});
+
 	it('connects two pins, rejects a self-connection, and rejects a dangling drop', () => {
 		const store = new CircuitEditorStore();
 		const source = expectOk(store.placeComponent('switch', { x: 0, y: 0 }));

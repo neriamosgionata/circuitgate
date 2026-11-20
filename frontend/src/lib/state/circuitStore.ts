@@ -469,8 +469,11 @@ export class CircuitEditorStore {
 	}
 
 	placeComponent(kind: string, position: Point, params?: Record<string, unknown>): Result<Component> {
+		const domain = this.domain();
 		const effectiveParams =
-			params ?? defaultLogicParamsForKind(kind) ?? defaultAnalogParamsForKind(kind) ?? undefined;
+			params ??
+			(domain === 'analog' ? defaultAnalogParamsForKind(kind) : defaultLogicParamsForKind(kind)) ??
+			undefined;
 		let pins: PinSpec | null;
 		try {
 			pins = this.resolvePinsForKind(kind, effectiveParams);

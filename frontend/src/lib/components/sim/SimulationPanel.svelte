@@ -205,6 +205,10 @@
 		)
 	);
 
+	const hasClock = $derived(
+		snapshot.document.components.some((component) => component.kind === 'clock')
+	);
+
 	const selectedNets = $derived.by(() => {
 		const selected = new Set<string>();
 		for (const component of snapshot.document.components) {
@@ -260,6 +264,13 @@
 			<span class="note">Simulating the root circuit while editing {snapshot.path.at(-1)}.</span>
 		{/if}
 	</div>
+
+	{#if mode === 'delta' && hasClock}
+		<p class="note mode-hint" data-testid="clock-mode-hint">
+			Delta-cycle simulation has no time to advance a clock. Choose timed or physical timing in
+			Mode to run it.
+		</p>
+	{/if}
 
 	<Diagnostics
 		diagnostics={diagnosticList}
@@ -363,6 +374,12 @@
 		font-family: var(--font-ui);
 		font-size: 12px;
 		color: var(--ink-faint);
+	}
+
+	.mode-hint {
+		margin: 0;
+		padding-left: 10px;
+		border-left: 2px solid var(--warn);
 	}
 
 	.io {

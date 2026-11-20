@@ -1,6 +1,8 @@
 import { CompileError, type ComponentKind } from './compile';
 import { primitiveKinds } from './primitives';
+import { clockKindFor } from './primitives/gates';
 import { analogKinds } from './analog/primitives';
+import { timingFieldsForKind } from './timing';
 import {
 	magnitudeComparatorKind,
 	magnitudeComparatorPins,
@@ -193,12 +195,16 @@ function resolveParameterizedKind(kind: string, params?: ComponentParams): Compo
 /**
  * Resolve one component from its own kind and parameters at use time,
  * falling back to the static registry. Static-kind behavior is unchanged:
- * non-parameterized kinds ignore params entirely.
+ * non-parameterized kinds ignore params entirely. The clock is the exception:
+ * its polarity is a starting level, so it resolves through a factory.
  */
 export function resolveComponentKind(
 	kind: string,
 	params?: ComponentParams
 ): ComponentKind | null {
+	if (kind === 'clock') {
+		return clockKindFor(params?.['polarity'] === 'falling' ? 'falling' : 'rising');
+	}
 	return resolveParameterizedKind(kind, params) ?? primitiveKinds[kind] ?? null;
 }
 
@@ -230,4 +236,21 @@ export function kindNamesForDomain(domain: Domain): string[] {
 export function kindExistsInOtherDomain(kind: string, domain: Domain): boolean {
 	const other: Domain = domain === 'logic' ? 'analog' : 'logic';
 	return isKindInDomain(kind, other);
+}
+
+/**
+ * Parameter names owned by the other domain's kind of the same name. Logic and
+ * analog both ship a `switch` and an `led`, and the analog entries declare
+ * parameters (`state`, `model`) the logic engine never reads. The logic editor
+ * must not present them, including on documents saved while placement still
+ * copied the analog defaults into a logic part.
+ */
+export function foreignParamNames(kind: string, domain: Domain): ReadonlySet<string> {
+	if (domain !== 'logic') return new Set<string>();
+	const analog = analogKinds[kind];
+	if (!analog) return new Set<string>();
+	const timing = new Set<string>(timingFieldsForKind(kind));
+	return new Set(
+		analog.parameters.map((parameter) => parameter.name).filter((name) => !timing.has(name))
+	);
 }
