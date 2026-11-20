@@ -5,6 +5,12 @@ import { apiCreateProject, apiGetProject, createVerifiedAccount, uniqueEmail } f
 // U4: palette, Inspector, and symbols for the parameterized families.
 // Placement goes through the palette buttons (registered-kind filter), edits
 // go through the Inspector width/contents controls with inline validation.
+//
+// These specs click canvas pixels derived from world coordinates, so the
+// browser viewport has to leave a canvas that shows the placed parts. At the
+// Playwright default (1280x720) the rail, palette, inspector, and simulation
+// panel leave only a 500x300 canvas, which is smaller than the parts here.
+test.use({ viewport: { width: 1600, height: 1200 } });
 
 const FAMILIES = [
 	'rippleCarryAdder',

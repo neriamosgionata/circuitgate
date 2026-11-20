@@ -71,6 +71,10 @@
 		flex-direction: column;
 		gap: 6px;
 		font-size: 12.5px;
+		/* A long list must not push the canvas below its minimum height: past
+		   this many rows the panel scrolls its own diagnostics instead. */
+		max-height: 240px;
+		overflow-y: auto;
 	}
 
 	.entry {
