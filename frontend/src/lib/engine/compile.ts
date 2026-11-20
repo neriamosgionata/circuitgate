@@ -1,4 +1,5 @@
 import type { CircuitDocument } from '../model/circuit';
+import type { TimingProfile } from './timing';
 import type { LogicValue } from './values';
 
 export interface ComponentEvaluation {
@@ -22,6 +23,12 @@ export type ComponentKinds = Readonly<Record<string, ComponentKind>>;
  */
 export type KindResolver = (kind: string, params?: Record<string, unknown>) => ComponentKind | null;
 
+/** Resolve one timing profile for a component at compile time. */
+export type TimingResolver = (
+	kind: string,
+	params?: Record<string, unknown>
+) => TimingProfile;
+
 export class CompileError extends Error {
 	readonly code: string | undefined;
 
@@ -40,6 +47,7 @@ export interface CompiledComponent {
 	inputNets: number[];
 	outputNets: number[];
 	state: unknown;
+	timing?: TimingProfile;
 }
 
 export interface CompiledNetlist {
@@ -59,7 +67,11 @@ export function compile(document: CircuitDocument, kinds: ComponentKinds): Compi
  * different params each compile against their own pinout. A per-kind table
  * cannot express that and must not be used for parameterized documents.
  */
-export function compileWithResolver(document: CircuitDocument, resolve: KindResolver): CompiledNetlist {
+export function compileWithResolver(
+	document: CircuitDocument,
+	resolve: KindResolver,
+	timingResolver?: TimingResolver
+): CompiledNetlist {
 	const netIds: string[] = [];
 	const netIndex = new Map<string, number>();
 	const componentIds = new Set<string>();
@@ -107,7 +119,8 @@ export function compileWithResolver(document: CircuitDocument, resolve: KindReso
 			selfScheduling: kind.selfScheduling === true,
 			inputNets,
 			outputNets,
-			state: component.initialState
+			state: component.initialState,
+			timing: timingResolver?.(component.kind, component.params)
 		};
 	});
 

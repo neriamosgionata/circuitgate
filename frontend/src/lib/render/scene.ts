@@ -25,12 +25,12 @@ export interface SignalPresentation {
 }
 
 export const SIGNAL_COLORS = {
-	low: '#1d1d1b',
-	high: '#1f6b43',
-	unknown: '#8a5a00',
-	highZ: '#5b3f9e',
-	oscillating: '#c0271b',
-	idle: '#8a8377'
+	low: '#101820',
+	high: '#0c7a4e',
+	unknown: '#8f5b00',
+	highZ: '#6b3fa0',
+	oscillating: '#bf2b1f',
+	idle: '#b4c0c8'
 } as const;
 
 // KTD4 presentation convention shared by the canvas, indicators, and the
@@ -130,9 +130,12 @@ function stubPoint(point: Point, side: 'input' | 'output'): Point {
 	return { x: point.x + (side === 'output' ? 10 : -10), y: point.y };
 }
 
-// Orthogonal wire routing: each consumer pin runs to the shared driver pin
-// through a mid-point trunk. A net with a single endpoint renders as a short
-// dangling stub instead of a wire, which is what makes dangling wires visible.
+// Orthogonal wire routing: the driver pin reaches each consumer pin through a
+// shared mid-point trunk. Branches after the first run out from and back to the
+// driver, so the path never jumps diagonally between two consumer pins while
+// every drawn segment stays axis-aligned. A net with a single endpoint renders
+// as a short dangling stub instead of a wire, which is what makes dangling
+// wires visible.
 export function routeWire(endpoints: readonly Endpoint[]): Point[] {
 	if (endpoints.length === 0) return [];
 	if (endpoints.length === 1) {
@@ -141,23 +144,28 @@ export function routeWire(endpoints: readonly Endpoint[]): Point[] {
 	}
 	const driver = endpoints.find((endpoint) => endpoint.side === 'output') ?? endpoints[0];
 	const driverStub = stubPoint(driver.point, 'output');
-	const points: Point[] = [];
-	for (const endpoint of endpoints) {
-		if (endpoint === driver) continue;
+	const points: Point[] = [driver.point];
+	const consumers = endpoints.filter((endpoint) => endpoint !== driver);
+	consumers.forEach((endpoint, index) => {
 		const targetStub = stubPoint(endpoint.point, endpoint.side);
 		const trunkX = (targetStub.x + driverStub.x) / 2;
 		points.push(
-			endpoint.point,
-			targetStub,
-			{ x: trunkX, y: targetStub.y },
-			{ x: trunkX, y: driverStub.y },
 			driverStub,
-			driver.point
+			{ x: trunkX, y: driverStub.y },
+			{ x: trunkX, y: targetStub.y },
+			targetStub,
+			endpoint.point
 		);
-	}
-	if (points.length === 0) {
-		points.push(driver.point, driverStub);
-	}
+		if (index < consumers.length - 1) {
+			points.push(
+				targetStub,
+				{ x: trunkX, y: targetStub.y },
+				{ x: trunkX, y: driverStub.y },
+				driverStub,
+				driver.point
+			);
+		}
+	});
 	return points;
 }
 

@@ -101,6 +101,21 @@ export function buildLanes(
 	}));
 }
 
+/** Evenly spaced real-time labels for the physical waveform axis. */
+export function timeAxisTicks(
+	startTick: number,
+	endTick: number,
+	divisions = 4
+): number[] {
+	if (!Number.isFinite(startTick) || !Number.isFinite(endTick) || divisions < 1) {
+		throw new Error('timeAxisTicks requires finite bounds and at least one division');
+	}
+	const span = Math.max(1, endTick - startTick);
+	return Array.from({ length: divisions + 1 }, (_, index) =>
+		Math.round(startTick + (span * index) / divisions)
+	);
+}
+
 export function tickToX(tick: number, startTick: number, tickScale: number): number {
 	return (tick - startTick) * tickScale;
 }

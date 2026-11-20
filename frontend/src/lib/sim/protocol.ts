@@ -6,8 +6,9 @@ import type { WaveformChange } from './recorder';
 
 export const PROTOCOL_VERSION = 1;
 
-export type SimulationMode = 'delta' | 'timed';
-export type SimulationStatus = 'stable' | 'oscillation';
+export type SimulationMode = 'delta' | 'timed' | 'physical';
+export type SimulationStatus = 'stable' | 'oscillation' | 'event-limit';
+export type SimulationPauseReason = 'timing' | 'event-limit';
 
 export interface InitCommand {
 	type: 'init';
@@ -115,6 +116,7 @@ export interface StatusEvent {
 	running: boolean;
 	mode: SimulationMode;
 	tick: number;
+	pauseReason?: SimulationPauseReason;
 }
 
 export interface ValuesEvent {
@@ -140,6 +142,8 @@ export interface HistoryEvent {
 export interface DiagnosticEvent {
 	type: 'diagnostic';
 	diagnostic: Diagnostic;
+	/** When true, the viewer removes this diagnostic id instead of adding it. */
+	cleared?: boolean;
 }
 
 export interface RestartedEvent {

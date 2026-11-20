@@ -4,8 +4,11 @@ import { apiCreateProject, apiGetProject, createVerifiedAccount, uniqueEmail } f
 
 // U5: assisted stepping. Dragging q0 to d0 across two 16-bit registers arms
 // q1 to d1 (visible in the canvas hint); a mismatched connection arms
-// nothing; Escape clears the armed state. Coordinates assume the default
-// viewport (scale 1, offset 48,48): screen = world + 48.
+// nothing; Escape clears the armed state. Coordinates assume the canvas
+// viewport (scale 1, offset 48,48): screen = world + 48. The browser viewport
+// is set wide enough that both 282px-tall registers fit in the canvas, which
+// the compact 1280x720 layout does not leave room for.
+test.use({ viewport: { width: 1600, height: 1200 } });
 
 function seedDocument(): Record<string, unknown> {
 	const reg = (id: string) => ({

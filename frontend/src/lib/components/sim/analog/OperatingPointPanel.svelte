@@ -61,6 +61,7 @@
 
 	.op table {
 		width: 100%;
+		border-top: 1px solid var(--rule-strong);
 		border-collapse: collapse;
 		font-family: var(--font-mono);
 		font-size: 12px;
@@ -68,18 +69,18 @@
 
 	.op th,
 	.op td {
-		padding: 3px 8px 3px 0;
+		padding: 6px 10px 6px 0;
 		text-align: left;
-		border-bottom: var(--rule-faint);
+		border-bottom: 1px solid var(--rule);
 	}
 
 	.op th {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
+		border-bottom-color: var(--rule-strong);
 	}
 
 	.signal {
@@ -92,8 +93,8 @@
 	}
 
 	.kind {
-		color: var(--ink-soft);
-		font-size: 11px;
+		color: var(--ink-faint);
+		font-size: 10.5px;
 	}
 
 	.empty {

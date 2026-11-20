@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 
 	import { formatSI } from '../../../engine/analog/si';
+	import { CHART } from '../../../render/chartTheme';
 	import {
 		decimateMinMax,
 		isFullDetail,
@@ -171,9 +172,9 @@
 	function drawAxis(ctx: CanvasRenderingContext2D, bottom: number): void {
 		const first = Math.ceil(windowStart);
 		const last = Math.floor(windowEnd);
-		ctx.strokeStyle = '#cfd8dc';
-		ctx.fillStyle = '#546e7a';
-		ctx.font = '10px sans-serif';
+		ctx.strokeStyle = CHART.rule;
+		ctx.fillStyle = CHART.inkSoft;
+		ctx.font = `10px ${CHART.mono}`;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
 		for (let decade = first; decade <= last; decade += 1) {
@@ -200,7 +201,7 @@
 		}
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, width, height);
-		ctx.fillStyle = '#fafafa';
+		ctx.fillStyle = CHART.plot;
 		ctx.fillRect(0, 0, width, height);
 
 		const plotBottom = height - AXIS_HEIGHT;
@@ -214,9 +215,9 @@
 			{ top: gainTop, bottom: gainBottom },
 			{ top: phaseTop, bottom: phaseBottom }
 		]) {
-			ctx.fillStyle = '#ffffff';
+			ctx.fillStyle = CHART.plot;
 			ctx.fillRect(PAD_LEFT, region.top, plotWidth(), region.bottom - region.top);
-			ctx.strokeStyle = '#eceff1';
+			ctx.strokeStyle = CHART.rule;
 			ctx.beginPath();
 			ctx.moveTo(PAD_LEFT, region.bottom - 0.5);
 			ctx.lineTo(width - PAD_RIGHT, region.bottom - 0.5);
@@ -239,8 +240,8 @@
 		const gainLabel = visibleTraces[0];
 		if (gainLabel) {
 			const gainStats = windowRange(gainLabel.logX, gainLabel.gainDb, windowStart, windowEnd);
-			ctx.fillStyle = '#90a4ae';
-			ctx.font = '9px sans-serif';
+			ctx.fillStyle = CHART.inkSoft;
+			ctx.font = `9px ${CHART.mono}`;
 			ctx.textAlign = 'left';
 			ctx.fillText(`${gainStats.max.toFixed(1)} dB`, 4, gainTop + 4);
 			ctx.fillText(`${gainStats.min.toFixed(1)} dB`, 4, gainBottom - 12);
@@ -255,7 +256,7 @@
 		}
 
 		if (cursor) {
-			ctx.strokeStyle = '#37474f';
+			ctx.strokeStyle = CHART.ink;
 			ctx.setLineDash([2, 2]);
 			ctx.beginPath();
 			ctx.moveTo(cursor.x, PAD_TOP);
@@ -536,8 +537,9 @@
 	}
 
 	.toolbar button {
-		padding: 3px 8px;
-		font-size: 11px;
+		padding: 3px 9px;
+		min-height: 26px;
+		font-size: 11.5px;
 	}
 
 	.resolution {
@@ -577,9 +579,9 @@
 	.plot {
 		position: relative;
 		height: 260px;
-		background: var(--sheet-sunk);
-		border: var(--rule-faint);
-		border-radius: 2px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 		overflow: hidden;
 	}
 
@@ -593,10 +595,11 @@
 		font-family: var(--font-mono);
 		font-size: 11px;
 		color: var(--ink);
-		background: var(--highlight-soft);
-		border: var(--rule-faint);
-		border-radius: 2px;
-		padding: 2px 6px;
+		background: var(--accent-soft);
+		border: 1px solid var(--accent-line);
+		border-radius: var(--radius-xs);
+		padding: 3px 7px;
+		color: var(--accent-strong);
 		white-space: nowrap;
 	}
 

@@ -785,11 +785,11 @@
 	<div class="bar">
 		<span class="title">Analog analyses</span>
 		{#if readonly}
-			<span class="readonly" data-testid="analysis-readonly">
-				Read-only — acquire the edit lock to change analyses.
+			<span class="readonly" data-testid="analysis-readonly" title="Acquire the edit lock to change analyses.">
+				Read-only
 			</span>
 		{/if}
-		<button type="button" data-testid="analog-run" onclick={run} disabled={busy}>Run</button>
+		<button type="button" class="primary" data-testid="analog-run" onclick={run} disabled={busy}>Run</button>
 		{#if busy}
 			<button type="button" data-testid="analog-cancel" onclick={cancel}>Cancel</button>
 		{/if}
@@ -1158,9 +1158,12 @@
 		display: flex;
 		flex-direction: column;
 		gap: 10px;
-		padding: 10px 12px 12px;
-		background: var(--sheet);
-		border-top: 2px solid var(--ink);
+		padding: 0 12px 12px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+		overflow: visible;
 	}
 
 	.bar {
@@ -1168,30 +1171,41 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px 10px;
+		margin: 0 -12px;
+		padding: 10px 12px;
+		border-bottom: 1px solid var(--rule);
+		background: var(--paper);
 	}
 
 	.title {
-		font-family: var(--font-head);
-		font-size: 14px;
-		font-weight: 700;
-		letter-spacing: 0.08em;
+		font-family: var(--font-ui);
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
-		color: var(--ink);
+		color: var(--ink-soft);
 	}
 
 	.readonly {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--ink-soft);
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.04em;
+		text-transform: none;
+		color: var(--warn);
+		background: var(--warn-soft);
+		border: 1px solid #ecd49c;
+		border-radius: var(--radius-xs);
+		padding: 2px 7px;
 	}
 
 	.status {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 11px;
 		color: var(--ink-soft);
+		background: var(--paper-soft);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-xs);
+		padding: 3px 8px;
 	}
 
 	.status[data-status='failed'] {
@@ -1226,16 +1240,16 @@
 	.track {
 		flex: 1;
 		min-width: 120px;
-		height: 8px;
-		background: var(--sheet-sunk);
-		border: var(--rule-faint);
-		border-radius: 2px;
+		height: 6px;
+		background: var(--paper-sunk);
+		border: 1px solid var(--rule);
+		border-radius: 999px;
 		overflow: hidden;
 	}
 
 	.fill {
 		height: 100%;
-		background: var(--biro);
+		background: var(--accent);
 	}
 
 	.fill.indeterminate {
@@ -1250,9 +1264,9 @@
 	.cancelled,
 	.partial {
 		padding: 8px 10px;
-		background: var(--sheet-raised);
-		border: 2px solid var(--ink);
-		border-radius: 2px;
+		background: var(--paper-soft);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 		font-size: 13px;
 	}
 
@@ -1267,9 +1281,9 @@
 
 	.stale {
 		padding: 8px 10px;
-		background: linear-gradient(180deg, transparent 30%, var(--highlight-soft) 30%);
-		border: var(--rule-hair);
-		border-radius: 2px;
+		background: var(--accent-soft);
+		border: 1px solid var(--accent-line);
+		border-radius: var(--radius-sm);
 		font-size: 13px;
 	}
 
@@ -1281,27 +1295,55 @@
 
 	.form fieldset {
 		margin: 0;
-		padding: 8px 10px 10px;
-		border: var(--rule-faint);
-		border-radius: 2px;
-		background: var(--sheet-raised);
+		padding: 10px 12px 12px;
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper-soft);
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+		align-items: end;
+		gap: 10px 12px;
+	}
+
+	.form fieldset > legend,
+	.form fieldset > .hint,
+	.form fieldset > .meas-hint,
+	.form fieldset > .error,
+	.form fieldset > button,
+	.form .measurement {
+		grid-column: 1 / -1;
+	}
+
+	.form label {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-faint);
+	}
+
+	.form label input {
+		width: 100%;
 	}
 
 	.form legend {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.11em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
 		padding: 0 4px;
 	}
 
 	.hint {
 		margin: 2px 0 8px;
-		font-family: var(--font-mono);
+		font-family: var(--font-ui);
 		font-size: 12px;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
 	}
 
 	.error {
@@ -1316,9 +1358,9 @@
 		gap: 6px;
 		margin-top: 8px;
 		padding: 8px;
-		border: var(--rule-faint);
-		border-radius: 2px;
-		background: var(--sheet);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper);
 	}
 
 	.measurement .unit {
@@ -1338,14 +1380,15 @@
 	}
 
 	.result {
-		padding: 8px 10px;
-		border: var(--rule-hair);
-		border-radius: 2px;
-		background: var(--sheet-raised);
+		padding: 9px 10px;
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper);
 	}
 
 	.result.failed {
-		border: 2px solid var(--stamp-red);
+		border-color: #e6b6b1;
+		background: var(--danger-soft);
 	}
 
 	.result-head {
@@ -1356,10 +1399,9 @@
 	}
 
 	.result-kind {
-		font-family: var(--font-head);
-		font-size: 12px;
-		font-weight: 700;
-		letter-spacing: 0.1em;
+		font-size: 10.5px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
 		color: var(--ink);
 	}
@@ -1371,12 +1413,11 @@
 	}
 
 	.state {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.12em;
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
 		text-transform: uppercase;
-		color: var(--stamp-green);
+		color: var(--ok);
 	}
 
 	.result-summary {
@@ -1404,17 +1445,19 @@
 	}
 
 	.tablist [data-testid='result-tab'] {
-		border-radius: 2px 2px 0 0;
+		border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 	}
 
 	.tablist [aria-selected='true'] {
-		border-bottom: 5px solid var(--highlight);
+		background: var(--accent-soft);
+		border-color: var(--accent-line);
+		color: var(--accent-strong);
 	}
 
 	.tab-panel {
-		border: var(--rule-faint);
-		border-radius: 0 2px 2px 2px;
-		background: var(--sheet-raised);
+		border: 1px solid var(--rule);
+		border-radius: 0 var(--radius-sm) var(--radius-sm) var(--radius-sm);
+		background: var(--paper);
 		padding: 10px;
 		overflow: auto;
 	}
@@ -1423,5 +1466,11 @@
 		color: var(--ink-soft);
 		font-size: 13px;
 		margin: 4px 0;
+	}
+
+	@media (max-width: 640px) {
+		.form fieldset {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 </style>

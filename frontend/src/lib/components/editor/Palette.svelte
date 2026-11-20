@@ -25,6 +25,7 @@
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let packageName = $state('');
 	let packageError = $state<string | null>(null);
+	let filter = $state('');
 
 	const logicGroups: { title: string; kinds: string[] }[] = [
 		{ title: 'Gates', kinds: ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buffer'] },
@@ -52,15 +53,26 @@
 
 	const domain = $derived(snapshot.domain);
 	const groups = $derived(domain === 'analog' ? analogGroups : logicGroups);
+	const filterText = $derived(filter.trim().toLowerCase());
 	const available = $derived(
 		groups
 			.map((group) => ({
 				...group,
-				kinds: group.kinds.filter((kind) => resolveKind(kind, domain))
+				kinds: group.kinds.filter(
+					(kind) => resolveKind(kind, domain) && kind.toLowerCase().includes(filterText)
+				)
 			}))
 			.filter((group) => group.kinds.length > 0)
 	);
 	const definitionNames = $derived(Object.keys(snapshot.definitions));
+	const filteredDefinitions = $derived(
+		definitionNames.filter((name) => name.toLowerCase().includes(filterText))
+	);
+	const noMatches = $derived(
+		filterText.length > 0 &&
+			available.length === 0 &&
+			(domain !== 'logic' || filteredDefinitions.length === 0)
+	);
 
 	$effect(() => {
 		snapshot = store.snapshot;
@@ -103,10 +115,43 @@
 	const selectedInstance = $derived(selectedDefinitionName());
 
 	const iconFor = (kind: string): string => SYMBOL_PATHS[symbolKeyFor(kind)] ?? SYMBOL_PATHS.generic;
+
+	const KIND_LABELS: Record<string, string> = {
+		and: 'AND', or: 'OR', not: 'NOT', nand: 'NAND', nor: 'NOR', xor: 'XOR', xnor: 'XNOR',
+		buffer: 'Buffer', switch: 'Switch', probe: 'Probe', led: 'LED', clock: 'Clock',
+		dFlipFlop: 'D flip-flop', jkFlipFlop: 'JK flip-flop', srFlipFlop: 'SR flip-flop',
+		srLatch: 'SR latch', counter: 'Counter', shiftRegister: 'Shift register',
+		halfAdder: 'Half adder', fullAdder: 'Full adder', mux2: 'Mux 2:1', mux4: 'Mux 4:1',
+		decoder2: 'Decoder 2→4', decoder3: 'Decoder 3→8', triStateBuffer: 'Tri-state buffer',
+		sevenSegDecoder: '7-seg decoder', sevenSegDisplay: '7-seg display',
+		rippleCarryAdder: 'Ripple adder', magnitudeComparator: 'Comparator',
+		register: 'Register', registerFile: 'Register file', ram: 'RAM', rom: 'ROM',
+		vsource: 'V source', isource: 'I source', resistor: 'Resistor', capacitor: 'Capacitor',
+		inductor: 'Inductor', potentiometer: 'Potentiometer', diode: 'Diode', zener: 'Zener',
+		bjt: 'NPN BJT', pnp: 'PNP BJT', mosfet: 'MOSFET', bridge: 'Bridge',
+		idealOpamp: 'Ideal op-amp', opamp: 'Op-amp', comparator: 'Comparator',
+		timer555: '555 timer', regulator: 'Regulator', ground: 'Ground'
+	};
+
+	const kindLabel = (kind: string): string => KIND_LABELS[kind] ?? kind;
 </script>
 
 <aside class="palette" data-domain={domain}>
-	<h2>Components</h2>
+	<div class="palette-head">
+		<h2>Components</h2>
+		<label class="filter">
+			<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+				<circle cx="6.5" cy="6.5" r="4.2" />
+				<path d="M9.8 9.8 14 14" />
+			</svg>
+			<span class="visually-hidden">Filter parts</span>
+			<input type="search" placeholder="Filter parts" bind:value={filter} />
+		</label>
+		<p class="place-hint">Pick a part, then click the canvas.</p>
+	</div>
+	{#if noMatches}
+		<p class="muted">No parts match “{filter.trim()}”.</p>
+	{/if}
 	{#each available as group (group.title)}
 		<section>
 			<h3>{group.title}</h3>
@@ -117,11 +162,13 @@
 						class:active={snapshot.pendingKind === kind}
 						onclick={() => store.beginPlacement(kind)}
 						disabled={readonly}
+						aria-label={kind}
+						title={kindLabel(kind)}
 					>
 						<svg class="kind-icon" viewBox="0 0 64 40" aria-hidden="true" focusable="false">
 							<path d={iconFor(kind)} />
 						</svg>
-						<span>{kind}</span>
+						<span>{kindLabel(kind)}</span>
 					</button>
 				{/each}
 			</div>
@@ -133,13 +180,17 @@
 		<h3>Subcircuits</h3>
 		{#if definitionNames.length === 0}
 			<p class="muted">Package a selection to create one.</p>
+		{:else if filteredDefinitions.length === 0}
+			<p class="muted">No subcircuits match “{filter.trim()}”.</p>
 		{/if}
 		<div class="kinds">
-			{#each definitionNames as name (name)}
+			{#each filteredDefinitions as name (name)}
 				<button
 					type="button"
 					onclick={() => store.instantiateDefinition(name, { x: 80, y: 80 })}
 					disabled={readonly}
+					aria-label={name}
+					title={name}
 				>
 					<svg class="kind-icon" viewBox="0 0 64 40" aria-hidden="true" focusable="false">
 						<path d={iconFor('subcircuit')} />
@@ -198,51 +249,147 @@
 
 <style>
 	.palette {
-		width: 228px;
-		min-width: 228px;
+		grid-area: palette;
+		width: 244px;
+		min-width: 0;
+		min-height: 0;
 		overflow-y: auto;
-		padding: 12px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+		padding: 0 10px 12px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+	}
+
+	.palette-head {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		margin: 0 -10px 10px;
+		padding: 10px 12px 10px;
+		background: var(--paper);
+		border-bottom: 1px solid var(--rule);
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
+	}
+
+	.place-hint {
+		margin: 7px 0 0;
+		font-size: 10.5px;
+		line-height: 1.35;
+		color: var(--ink-faint);
 	}
 
 	h2 {
-		font-size: 14px;
-		margin: 0 0 8px;
-		padding-bottom: 4px;
-		border-bottom: 2px solid var(--ink);
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		margin: 0;
+	}
+
+	.filter {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 8px;
+		padding: 0 8px;
+		background: var(--paper);
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius-sm);
+	}
+
+	.filter:focus-within {
+		border-color: var(--accent);
+		box-shadow: 0 0 0 3px var(--accent-soft);
+	}
+
+	.filter svg {
+		width: 13px;
+		height: 13px;
+		fill: none;
+		stroke: var(--ink-faint);
+		stroke-width: 1.6;
+		flex: none;
+	}
+
+	.filter input {
+		flex: 1;
+		min-width: 0;
+		min-height: 32px;
+		padding: 2px 0;
+		border: 0;
+		background: transparent;
+		box-shadow: none;
+		font-size: 12.5px;
+	}
+
+	.filter input:focus {
+		outline: none;
+		box-shadow: none;
 	}
 
 	h3 {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
+		font-family: var(--font-ui);
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.11em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
-		margin: 12px 0 6px;
+		color: var(--ink-faint);
+		margin: 14px 0 6px;
+	}
+
+	section:first-of-type h3 {
+		margin-top: 2px;
 	}
 
 	.kinds {
-		display: flex;
-		flex-wrap: wrap;
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 5px;
 	}
 
 	button {
-		display: inline-flex;
+		display: flex;
+		flex-direction: column;
 		align-items: center;
-		gap: 6px;
-		font-size: 11px;
-		padding: 4px 7px;
+		justify-content: center;
+		gap: 3px;
+		width: 100%;
+		min-width: 0;
+		min-height: 56px;
+		font-size: 9.5px;
+		font-weight: 550;
+		padding: 6px 4px;
+		text-align: center;
+		line-height: 1.15;
+		letter-spacing: 0.01em;
+		text-transform: none;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		box-shadow: none;
+	}
+
+	button:hover:not(:disabled) {
+		border-color: var(--accent-line);
+		background: var(--accent-soft);
+	}
+
+	button span {
+		min-width: 0;
+		max-width: 100%;
+		overflow-wrap: anywhere;
 	}
 
 	.kind-icon {
-		width: 32px;
-		height: 20px;
+		width: 30px;
+		height: 18px;
 		flex: none;
+	}
+
+	.palette[data-domain='analog'] .kind-icon {
+		color: var(--analog);
 	}
 
 	.kind-icon path {
@@ -254,15 +401,18 @@
 	}
 
 	button.active {
-		border: 2px solid var(--ink);
-		background: var(--sheet-raised);
-		box-shadow: 0 0 0 2px var(--highlight);
+		border-color: var(--accent);
+		background: var(--accent-soft);
+		box-shadow: inset 0 0 0 1px var(--accent);
 	}
 
 	button.wide {
 		display: block;
 		width: 100%;
 		margin-top: 8px;
+		min-height: 32px;
+		font-size: 11.5px;
+		padding: 6px 8px;
 	}
 
 	.pins {
@@ -280,7 +430,9 @@
 	}
 
 	.pins input {
-		width: 80px;
+		width: 78px;
+		min-height: 28px;
+		padding: 3px 6px;
 	}
 
 	.row {
@@ -289,13 +441,35 @@
 		margin-top: 6px;
 	}
 
+	.row button {
+		min-height: 30px;
+		font-size: 11.5px;
+		padding: 5px 8px;
+	}
+
 	.muted {
-		font-size: 11px;
-		color: var(--ink-soft);
+		font-size: 11.5px;
+		color: var(--ink-faint);
+		margin: 6px 0;
 	}
 
 	.error {
 		font-size: 11px;
-		color: var(--stamp-red);
+		color: var(--danger);
+		padding: 0;
+		border: 0;
+		background: none;
+	}
+
+	@media (max-width: 1080px) {
+		.palette {
+			width: 100%;
+			max-height: 240px;
+			overflow-y: auto;
+		}
+
+		.kinds {
+			grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+		}
 	}
 </style>

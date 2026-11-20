@@ -4,7 +4,11 @@
 	import type { LogicValue } from '../../engine/values';
 	import type { CircuitDocument, Component } from '../../model/circuit';
 	import { DiagnosticsStore, type Diagnostic } from '../../sim/diagnostics';
-	import { type SimulationEvent, type SimulationMode } from '../../sim/protocol';
+	import {
+		type SimulationEvent,
+		type SimulationMode,
+		type SimulationPauseReason
+	} from '../../sim/protocol';
 	import { WaveformRecorder } from '../../sim/recorder';
 	import { WorkerSimulationSession, type WorkerLike } from '../../sim/session';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
@@ -15,9 +19,11 @@
 
 	interface Props {
 		store: CircuitEditorStore;
+		mode: SimulationMode;
+		onModeChange: (mode: SimulationMode) => void;
 	}
 
-	let { store }: Props = $props();
+	let { store, mode, onModeChange }: Props = $props();
 
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	$effect(() => {
@@ -38,10 +44,10 @@
 	const mirror = new WaveformRecorder();
 	let version = $state(0);
 	let nets = $state<string[]>([]);
-	let mode = $state<SimulationMode>('delta');
 	let running = $state(false);
 	let tick = $state(0);
 	let ready = $state(false);
+	let pauseReason = $state<SimulationPauseReason | null>(null);
 	let session: WorkerSimulationSession | null = null;
 	let commandId = 0;
 
@@ -54,13 +60,12 @@
 		switch (event.type) {
 			case 'ready':
 				nets = event.nets;
-				mode = event.mode;
 				ready = true;
 				break;
 			case 'status':
 				running = event.running;
-				mode = event.mode;
 				tick = event.tick;
+				pauseReason = event.pauseReason ?? null;
 				break;
 			case 'values':
 				for (const change of event.changes) {
@@ -86,15 +91,23 @@
 				}
 				break;
 			case 'diagnostic':
-				diagnostics.add(event.diagnostic);
+				if (event.cleared) {
+					diagnostics.dismiss(event.diagnostic.id);
+				} else if (event.diagnostic.kind === 'timing') {
+					diagnostics.upsert(event.diagnostic);
+				} else {
+					diagnostics.add(event.diagnostic);
+				}
 				break;
 			case 'restarted':
 				mirror.clear();
 				store.clearNetValues();
+				diagnostics.clear();
 				nets = [];
 				ready = false;
 				running = false;
 				tick = 0;
+				pauseReason = null;
 				version += 1;
 				break;
 			case 'ack':
@@ -115,6 +128,7 @@
 		ready = false;
 		running = false;
 		tick = 0;
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session = new WorkerSimulationSession({
@@ -163,14 +177,18 @@
 
 	function reset() {
 		mirror.clear();
+		diagnostics.clear();
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session?.send({ type: 'reset', id: nextId() });
 	}
 
 	function changeMode(next: SimulationMode) {
-		mode = next;
+		onModeChange(next);
 		mirror.clear();
+		diagnostics.clear();
+		pauseReason = null;
 		version += 1;
 		store.clearNetValues();
 		session?.send({ type: 'setMode', id: nextId(), mode: next });
@@ -185,6 +203,10 @@
 			(component) =>
 				component.kind === 'switch' || component.kind === 'probe' || component.kind === 'led'
 		)
+	);
+
+	const hasClock = $derived(
+		snapshot.document.components.some((component) => component.kind === 'clock')
 	);
 
 	const selectedNets = $derived.by(() => {
@@ -221,12 +243,17 @@
 </script>
 
 <section class="sim-panel" data-testid="simulation-panel">
+	<div class="panel-head">
+		<h2>Simulation</h2>
+		<span class="note">logic · {mode === 'physical' ? 'physical timing' : mode === 'timed' ? 'timed' : 'delta-cycle'}</span>
+	</div>
 	<div class="bar">
 		<Controls
 			{mode}
 			{running}
 			{tick}
 			{ready}
+			{pauseReason}
 			onRun={run}
 			onPause={pause}
 			onStep={step}
@@ -237,6 +264,13 @@
 			<span class="note">Simulating the root circuit while editing {snapshot.path.at(-1)}.</span>
 		{/if}
 	</div>
+
+	{#if mode === 'delta' && hasClock}
+		<p class="note mode-hint" data-testid="clock-mode-hint">
+			Delta-cycle simulation has no time to advance a clock. Choose timed or physical timing in
+			Mode to run it.
+		</p>
+	{/if}
 
 	<Diagnostics
 		diagnostics={diagnosticList}
@@ -273,6 +307,7 @@
 			{nets}
 			tick={tick}
 			{version}
+			{mode}
 			{selectedNets}
 			historyFor={(net) => mirror.history(net)}
 			onSelectNet={(net) => {
@@ -292,10 +327,40 @@
 	.sim-panel {
 		display: flex;
 		flex-direction: column;
-		gap: 8px;
+		gap: 10px;
+		padding: 0 12px 12px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+		overflow: hidden;
+	}
+
+	.panel-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0 -12px 0;
 		padding: 10px 12px;
-		background: var(--sheet);
-		border-top: 2px solid var(--ink);
+		border-bottom: 1px solid var(--rule);
+		background: var(--paper);
+	}
+
+	.panel-head h2 {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+	}
+
+	.panel-head .note {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		white-space: nowrap;
 	}
 
 	.bar {
@@ -303,50 +368,51 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
-		font-family: var(--font-head);
-		font-size: 12px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--ink-soft);
 	}
 
 	.note {
-		font-family: var(--font-body);
+		font-family: var(--font-ui);
 		font-size: 12px;
-		text-transform: none;
-		letter-spacing: 0;
-		color: var(--ink-soft);
+		color: var(--ink-faint);
+	}
+
+	.mode-hint {
+		margin: 0;
+		padding-left: 10px;
+		border-left: 2px solid var(--warn);
 	}
 
 	.io {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
 	}
 
 	.switch {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		padding: 4px 8px;
+		gap: 8px;
+		padding: 4px 9px;
+		min-height: 28px;
 	}
 
 	.switch-name {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 11.5px;
 	}
 
 	.switch-value {
-		font-family: var(--font-head);
-		font-weight: 700;
-		font-size: 13px;
+		font-family: var(--font-mono);
+		font-weight: 600;
+		font-size: 12px;
+		color: var(--accent-strong);
 	}
 
 	.waveform {
-		border: var(--rule-faint);
-		border-radius: 2px;
-		background: var(--sheet-sunk);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
+		background: var(--paper);
 		overflow: hidden;
+		min-height: 150px;
 	}
 </style>

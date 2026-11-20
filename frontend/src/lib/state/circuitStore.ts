@@ -10,6 +10,13 @@ import {
 	resolveKind
 } from '../engine/kinds';
 import { MAX_ADDRESS_BITS, MAX_WORD_BITS } from '../engine/primitives/pins';
+import { nsToPs } from '../engine/time';
+import {
+	isTimingParam,
+	timingFieldsForKind,
+	timingForComponent,
+	validateTimingParam
+} from '../engine/timing';
 import type { LogicValue } from '../engine/values';
 import type {
 	AnalogAnalysis,
@@ -462,8 +469,11 @@ export class CircuitEditorStore {
 	}
 
 	placeComponent(kind: string, position: Point, params?: Record<string, unknown>): Result<Component> {
+		const domain = this.domain();
 		const effectiveParams =
-			params ?? defaultLogicParamsForKind(kind) ?? defaultAnalogParamsForKind(kind) ?? undefined;
+			params ??
+			(domain === 'analog' ? defaultAnalogParamsForKind(kind) : defaultLogicParamsForKind(kind)) ??
+			undefined;
 		let pins: PinSpec | null;
 		try {
 			pins = this.resolvePinsForKind(kind, effectiveParams);
@@ -735,8 +745,93 @@ export class CircuitEditorStore {
 				return { ok: false, error: 'invalid-width' };
 			}
 		}
+		if (isTimingParam(key)) {
+			const validation = validateTimingParam(component.kind, key, value);
+			if (!validation.ok) return { ok: false, error: 'invalid-timing' };
+			const crossField = this.timingCrossFieldProblem(component, key, validation.value);
+			if (crossField !== null) return { ok: false, error: 'invalid-clock-period' };
+		}
 		const params = { ...(component.params ?? {}), [key]: value };
 		return this.applyParams(id, params);
+	}
+
+	clearTimingParam(id: ComponentId, key: string): Result<number> {
+		const component = this.findComponent(id);
+		if (!component) return { ok: false, error: 'unknown-component' };
+		if (!isTimingParam(key) || !timingFieldsForKind(component.kind).includes(key)) {
+			return { ok: false, error: 'invalid-timing' };
+		}
+		const params = { ...(component.params ?? {}) };
+		delete params[key];
+		if (key !== 'duty') {
+			const defaults = timingForComponent(component.kind);
+			const fallback =
+				key === 'period'
+					? (defaults.periodPs ?? 20_000) / 1000
+					: key === 'delay'
+						? defaults.delayPs / 1000
+						: key === 'clockToQ'
+							? (defaults.clockToQPs ?? 0) / 1000
+							: key === 'setup'
+								? (defaults.setupPs ?? 0) / 1000
+								: (defaults.holdPs ?? 0) / 1000;
+			const crossField = this.timingCrossFieldProblem(component, key, fallback);
+			if (crossField !== null) return { ok: false, error: 'invalid-clock-period' };
+		}
+		return this.applyParams(id, params);
+	}
+
+	private timingCrossFieldProblem(component: Component, key: string, value: number): string | null {
+		try {
+			if (component.kind === 'clock' && key === 'period') {
+				return this.clockPeriodProblem(component, { ...(component.params ?? {}), period: value });
+			}
+			if (key !== 'hold' && key !== 'clockToQ' && key !== 'setup') return null;
+			const clockNet = component.inputs['clk'];
+			if (clockNet === undefined) return null;
+			const clock = this.currentDocument().components.find(
+				(candidate) =>
+					candidate.kind === 'clock' &&
+					Object.values(candidate.outputs).includes(clockNet)
+			);
+			if (!clock) return null;
+			const periodPs = nsToPs(
+				typeof clock.params?.['period'] === 'number'
+					? (clock.params['period'] as number)
+					: 20
+			);
+			const profile = timingForComponent(component.kind, {
+				...(component.params ?? {}),
+				[key]: value
+			});
+			if (!profile.sequential) return null;
+			const minimum =
+				Math.max(profile.holdPs ?? 0, profile.clockToQPs ?? 0) + (profile.setupPs ?? 0);
+			if (periodPs <= minimum) {
+				return `clock period ${periodPs / 1000}ns is too short for ${component.id}; needs more than ${minimum / 1000}ns`;
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	}
+
+	private clockPeriodProblem(clock: Component, params: Record<string, unknown>): string | null {
+		const periodPs = nsToPs(typeof params['period'] === 'number' ? (params['period'] as number) : 20);
+		const clockNets = new Set(Object.values(clock.outputs));
+		for (const component of this.currentDocument().components) {
+			if (component.id === clock.id) continue;
+			const clockNet = component.inputs['clk'];
+			if (clockNet === undefined || !clockNets.has(clockNet)) continue;
+			const profile = timingForComponent(component.kind, component.params);
+			if (!profile.sequential) continue;
+			const minimum =
+				Math.max(profile.holdPs ?? 0, profile.clockToQPs ?? 0) + (profile.setupPs ?? 0);
+			if (periodPs <= minimum) {
+				return `clock period ${periodPs / 1000}ns is too short for ${component.id}; needs more than ${minimum / 1000}ns`;
+			}
+		}
+		return null;
 	}
 
 	setComponentKind(id: ComponentId, kind: string): UnitResult {

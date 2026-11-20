@@ -6,6 +6,7 @@ import {
 	segmentsForChanges,
 	sliceSegments,
 	tickToX,
+	timeAxisTicks,
 	visibleLaneRange,
 	windowSegments,
 	xToTick,
@@ -25,6 +26,12 @@ describe('waveform lanes', () => {
 		expect(visibleLaneRange(-40, 100, 20, 10)).toEqual({ start: 0, end: 7 });
 		expect(visibleLaneRange(0, 100, 20, 0)).toEqual({ start: 0, end: 0 });
 		expect(() => visibleLaneRange(0, 100, 0, 10)).toThrow();
+	});
+
+	it('divides the physical axis into readable real-time positions', () => {
+		expect(timeAxisTicks(0, 30_000, 4)).toEqual([0, 7_500, 15_000, 22_500, 30_000]);
+		expect(timeAxisTicks(10_000, 10_000, 2)).toEqual([10_000, 10_001, 10_001]);
+		expect(() => timeAxisTicks(0, 10, 0)).toThrow();
 	});
 
 	it('builds segments from change lists with an explicit end tick', () => {

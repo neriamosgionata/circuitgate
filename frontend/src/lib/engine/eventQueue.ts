@@ -3,6 +3,89 @@ export interface QueueEntry {
 	index: number;
 }
 
+export type PhysicalTaskKind = 'transition' | 'evaluate' | 'commit';
+
+export interface PhysicalTask {
+	timePs: number;
+	sequence: number;
+	kind: PhysicalTaskKind;
+	componentIndex: number;
+	pin?: number;
+	value?: import('./values').LogicValue;
+}
+
+/**
+ * Physical-mode task queue. Unlike the timed queue, it never deduplicates:
+ * distinct transitions at the same timestamp are legitimate transport events.
+ */
+export class PhysicalTaskQueue {
+	private heap: PhysicalTask[] = [];
+
+	private static less(a: PhysicalTask, b: PhysicalTask): boolean {
+		if (a.timePs !== b.timePs) return a.timePs < b.timePs;
+		return a.sequence < b.sequence;
+	}
+
+	get size(): number {
+		return this.heap.length;
+	}
+
+	push(task: PhysicalTask): void {
+		this.heap.push(task);
+		let child = this.heap.length - 1;
+		while (child > 0) {
+			const parent = (child - 1) >> 1;
+			if (PhysicalTaskQueue.less(this.heap[child], this.heap[parent])) {
+				[this.heap[child], this.heap[parent]] = [this.heap[parent], this.heap[child]];
+				child = parent;
+			} else {
+				break;
+			}
+		}
+	}
+
+	peek(): PhysicalTask | undefined {
+		return this.heap[0];
+	}
+
+	pop(): PhysicalTask | undefined {
+		if (this.heap.length === 0) return undefined;
+		const top = this.heap[0];
+		const last = this.heap.pop() as PhysicalTask;
+		if (this.heap.length > 0) {
+			this.heap[0] = last;
+			let parent = 0;
+			for (;;) {
+				const left = parent * 2 + 1;
+				const right = left + 1;
+				let smallest = parent;
+				if (left < this.heap.length && PhysicalTaskQueue.less(this.heap[left], this.heap[smallest])) {
+					smallest = left;
+				}
+				if (
+					right < this.heap.length &&
+					PhysicalTaskQueue.less(this.heap[right], this.heap[smallest])
+				) {
+					smallest = right;
+				}
+				if (smallest === parent) break;
+				[this.heap[parent], this.heap[smallest]] = [this.heap[smallest], this.heap[parent]];
+				parent = smallest;
+			}
+		}
+		return top;
+	}
+
+	/** Remove and return every task due at exactly `timePs`, in sequence order. */
+	due(timePs: number): PhysicalTask[] {
+		const tasks: PhysicalTask[] = [];
+		while (this.heap.length > 0 && (this.heap[0] as PhysicalTask).timePs === timePs) {
+			tasks.push(this.pop() as PhysicalTask);
+		}
+		return tasks;
+	}
+}
+
 export class EventQueue {
 	private heap: QueueEntry[] = [];
 	private present = new Set<string>();

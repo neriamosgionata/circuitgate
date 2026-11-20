@@ -33,6 +33,20 @@ describe('editor wiring', () => {
 		}
 	});
 
+	it('gives logic parts their own defaults instead of the analog parameters of the same kind name', () => {
+		const logic = new CircuitEditorStore();
+		expect(expectOk(logic.placeComponent('switch', { x: 0, y: 0 })).params).toBeUndefined();
+		expect(expectOk(logic.placeComponent('led', { x: 0, y: 0 })).params).toBeUndefined();
+
+		const analog = new CircuitEditorStore({ domain: 'analog' });
+		expect(expectOk(analog.placeComponent('switch', { x: 0, y: 0 })).params).toEqual({
+			state: 'open'
+		});
+		expect(expectOk(analog.placeComponent('led', { x: 0, y: 0 })).params).toEqual({
+			model: 'ledred'
+		});
+	});
+
 	it('connects two pins, rejects a self-connection, and rejects a dangling drop', () => {
 		const store = new CircuitEditorStore();
 		const source = expectOk(store.placeComponent('switch', { x: 0, y: 0 }));
@@ -774,5 +788,74 @@ describe('assisted stepping (U5)', () => {
 		removed.store.setSelection([removed.a.id]);
 		expect(removed.store.deleteSelection()).toBe(1);
 		expect(removed.store.snapshot.pendingAssist).toBeNull();
+	});
+});
+
+describe('physical timing parameters', () => {
+	function timingStore(): CircuitEditorStore {
+		return new CircuitEditorStore({
+			circuit: doc([
+				{ id: 'clk', kind: 'clock', inputs: {}, outputs: { out: 'CLK' } },
+				{
+					id: 'ff',
+					kind: 'dFlipFlop',
+					inputs: { d: 'D', clk: 'CLK' },
+					outputs: { q: 'Q', qn: 'QN' }
+				}
+			])
+		});
+	}
+
+	function params(store: CircuitEditorStore, id: string): Record<string, unknown> | undefined {
+		return store.snapshot.document.components.find((component) => component.id === id)?.params;
+	}
+
+	it('stores timing overrides without materializing defaults', () => {
+		const store = timingStore();
+		expect(params(store, 'ff')).toBeUndefined();
+		expectOk(store.setParam('ff', 'setup', 1.5));
+		expect(params(store, 'ff')).toEqual({ setup: 1.5 });
+		expectOk(store.setParam('clk', 'period', 20));
+		expect(params(store, 'clk')).toEqual({ period: 20 });
+	});
+
+	it('rejects timing keys that do not apply and non-positive values', () => {
+		const store = timingStore();
+		expect(store.setParam('ff', 'delay', 1)).toEqual({ ok: false, error: 'invalid-timing' });
+		expect(store.setParam('ff', 'setup', -1)).toEqual({ ok: false, error: 'invalid-timing' });
+		expect(store.setParam('clk', 'duty', 0)).toEqual({ ok: false, error: 'invalid-timing' });
+		expect(store.setParam('clk', 'duty', 100)).toEqual({ ok: false, error: 'invalid-timing' });
+	});
+
+	it('rejects a clock period that cannot fit a directly clocked part', () => {
+		const store = timingStore();
+		expect(store.setParam('clk', 'period', 5)).toEqual({
+			ok: false,
+			error: 'invalid-clock-period'
+		});
+		expectOk(store.setParam('clk', 'period', 20));
+		expect(store.setParam('ff', 'clockToQ', 6)).toEqual({ ok: true, value: 0 });
+		expect(store.setParam('clk', 'period', 7)).toEqual({
+			ok: false,
+			error: 'invalid-clock-period'
+		});
+	});
+
+	it('resets an override without changing the saved default', () => {
+		const store = timingStore();
+		expectOk(store.setParam('ff', 'setup', 1.5));
+		expectOk(store.clearTimingParam('ff', 'setup'));
+		expect(params(store, 'ff')).toEqual({});
+		expect(store.clearTimingParam('ff', 'setup')).toEqual({ ok: true, value: 0 });
+	});
+
+	it('does not reset an override into a clock period that is too short', () => {
+		const store = timingStore();
+		expectOk(store.setParam('ff', 'clockToQ', 1));
+		expectOk(store.setParam('clk', 'period', 6));
+		expect(store.clearTimingParam('ff', 'clockToQ')).toEqual({
+			ok: false,
+			error: 'invalid-clock-period'
+		});
 	});
 });

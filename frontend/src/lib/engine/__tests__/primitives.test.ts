@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CircuitDocument } from '../../model/circuit';
 import { CompileError, type ComponentKinds } from '../compile';
 import { Simulator } from '../evaluate';
+import { resolveComponentKind } from '../kinds';
 import { primitiveKinds } from '../primitives';
 import { magnitudeComparatorKind, rippleCarryAdderKind } from '../primitives/adders';
 import { registerKind } from '../primitives/flipflops';
@@ -149,6 +150,32 @@ describe('gate primitives', () => {
 		for (let tick = 1; tick < series.length; tick++) {
 			expect(series[tick]).toBe(series[tick - 1] === 0 ? 1 : 0);
 		}
+	});
+
+	it('gives the clock its polarity as a starting level', () => {
+		const seriesFor = (polarity: string) => {
+			const sim = new Simulator(
+				document([
+					{
+						id: 'clk',
+						kind: 'clock',
+						inputs: {},
+						outputs: { out: 'CLK' },
+						params: { polarity }
+					}
+				]),
+				(input, params) => resolveComponentKind(input, params)
+			);
+			const { snapshots } = sim.runTimed({ ticks: 3 });
+			const netIndex = sim.netlist.netIndex.get('CLK') as number;
+			return snapshots.map((values) => values[netIndex]);
+		};
+		// Rising starts low, so the first tick is the rising edge.
+		expect(seriesFor('rising')).toEqual([1, 0, 1]);
+		// Falling starts high, so the first tick is the falling edge.
+		expect(seriesFor('falling')).toEqual([0, 1, 0]);
+		// An unknown polarity keeps the default.
+		expect(seriesFor('sideways')).toEqual([1, 0, 1]);
 	});
 });
 

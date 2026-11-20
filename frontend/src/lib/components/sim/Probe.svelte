@@ -13,9 +13,9 @@
 	const signal = $derived(value === undefined ? null : presentSignal(value, oscillating));
 
 	const swatchStyle = $derived.by(() => {
-		if (!signal) return 'background:#e0e0e0';
+		if (!signal) return 'background:var(--sheet-sunk)';
 		if (signal.pattern === 'hatched') {
-			return `background:repeating-linear-gradient(45deg, ${signal.color} 0 2px, #ffffff 2px 4px)`;
+			return `background:repeating-linear-gradient(45deg, ${signal.color} 0 2px, var(--sheet-raised) 2px 4px)`;
 		}
 		if (signal.pattern === 'dashed') {
 			return `background:transparent;border:2px dashed ${signal.color}`;
@@ -34,29 +34,31 @@
 	.probe {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
-		padding: 3px 8px;
-		border: 1px solid #cfd8dc;
-		border-radius: 4px;
-		background: #ffffff;
+		gap: 7px;
+		padding: 4px 9px;
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-xs);
+		background: var(--paper);
 		font-size: 12px;
 	}
 
 	.probe.oscillating {
-		border-color: #d84315;
-		box-shadow: 0 0 0 1px rgba(216, 67, 21, 0.35);
+		border-color: #e6b6b1;
+		background: var(--danger-soft);
 	}
 
 	.swatch {
-		width: 14px;
-		height: 14px;
-		border-radius: 3px;
-		border: 1px solid #90a4ae;
+		width: 12px;
+		height: 12px;
+		border-radius: 2px;
+		border: 1px solid var(--rule);
 		box-sizing: border-box;
 	}
 
 	.label {
-		color: #546e7a;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--ink-soft);
 		max-width: 140px;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -64,8 +66,10 @@
 	}
 
 	.value {
+		font-family: var(--font-mono);
 		font-weight: 600;
-		color: #263238;
+		font-size: 12px;
+		color: var(--ink);
 		font-variant-numeric: tabular-nums;
 	}
 </style>

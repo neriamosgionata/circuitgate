@@ -3,7 +3,14 @@
 	import { analogKind, isModelBackedKind } from '../../engine/analog/primitives';
 	import { modelOptionsForKind, modelReferenceIssue } from '../../engine/analog/models';
 	import { parseSI, stripTrailingUnit } from '../../engine/analog/si';
-	import { kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
+	import { foreignParamNames, kindNamesForDomain, parameterShapeFor } from '../../engine/kinds';
+	import { formatTimePs, nsToPs } from '../../engine/time';
+	import {
+		timingFieldsForKind,
+		timingForComponent,
+		validateTimingParam,
+		type TimingField
+	} from '../../engine/timing';
 	import {
 		DEFAULT_ADDRESS_BITS,
 		DEFAULT_WORD_BITS,
@@ -13,14 +20,16 @@
 	} from '../../engine/primitives/pins';
 	import { SUB_CIRCUIT_KIND } from '../../engine/hierarchy';
 	import type { Component, ComponentId } from '../../model/circuit';
+	import type { SimulationMode } from '../../sim/protocol';
 	import type { CircuitEditorStore, EditorSnapshot } from '../../state/circuitStore';
 
 	interface Props {
 		store: CircuitEditorStore;
+		mode?: SimulationMode;
 		readonly?: boolean;
 	}
 
-	let { store, readonly = false }: Props = $props();
+	let { store, mode = 'delta', readonly = false }: Props = $props();
 	let snapshot = $state<EditorSnapshot>(untrack(() => store.snapshot));
 	let kindError = $state<string | null>(null);
 	let paramError = $state<{ key: string; message: string } | null>(null);
@@ -51,7 +60,9 @@
 	const flipFlopKinds = ['dFlipFlop', 'jkFlipFlop', 'srFlipFlop', 'srLatch'];
 	const selectedShape = $derived(selected ? parameterShapeFor(selected.kind) : null);
 	const kindOptions = $derived(kindNamesForDomain(snapshot.domain));
-	const modelBacked = $derived(selected ? isModelBackedKind(selected.kind) : false);
+	const modelBacked = $derived(
+		selected && snapshot.domain === 'analog' ? isModelBackedKind(selected.kind) : false
+	);
 	const modelOptions = $derived(
 		selected ? modelOptionsForKind(selected.kind, snapshot.models) : []
 	);
@@ -64,13 +75,103 @@
 			: ''
 	);
 	const parameterSpecs = $derived(selected ? analogKind(selected.kind)?.parameters ?? [] : []);
+	const timingFields = $derived(
+		selected && snapshot.domain === 'logic' ? timingFieldsForKind(selected.kind) : []
+	);
 	const visibleParams = $derived(
 		selected
 			? Object.entries(selected.params ?? {}).filter(
-					([key]) => !(modelBacked && key === 'model') && !hiddenParamKeys(selected.kind).has(key)
+					([key]) =>
+						!(modelBacked && key === 'model') &&
+						!hiddenParamKeys(selected.kind).has(key) &&
+						!foreignParamNames(selected.kind, snapshot.domain).has(key)
 				)
 			: []
 	);
+
+	function safeTimingProfile(component: Component) {
+		try {
+			return timingForComponent(component.kind, component.params);
+		} catch {
+			return null;
+		}
+	}
+
+	function timingLabel(field: TimingField): string {
+		if (field === 'delay') return 'Propagation delay';
+		if (field === 'clockToQ') return 'Clock-to-Q';
+		if (field === 'setup') return 'Setup';
+		if (field === 'hold') return 'Hold';
+		if (field === 'period') return 'Period';
+		return 'Duty (%)';
+	}
+
+	function timingValue(component: Component, field: TimingField): string {
+		const raw = component.params?.[field];
+		if (typeof raw === 'number') {
+			if (field === 'duty') return String(raw);
+			return formatTimePs(nsToPs(raw));
+		}
+		const profile = safeTimingProfile(component);
+		if (!profile) return '';
+		if (field === 'delay') return formatTimePs(profile.delayPs);
+		if (field === 'clockToQ') return formatTimePs(profile.clockToQPs ?? 0);
+		if (field === 'setup') return formatTimePs(profile.setupPs ?? 0);
+		if (field === 'hold') return formatTimePs(profile.holdPs ?? 0);
+		if (field === 'period') return formatTimePs(profile.periodPs ?? 0);
+		return String((profile.duty ?? 0) * 100);
+	}
+
+	function hasTimingOverride(component: Component, field: TimingField): boolean {
+		return typeof component.params?.[field] === 'number';
+	}
+
+	function parseTimingText(field: TimingField, text: string): { ok: true; value: number } | { ok: false; message: string } {
+		const trimmed = text.trim();
+		if (trimmed.length === 0) return { ok: false, message: 'Enter a value.' };
+		if (field === 'duty') {
+			const value = Number(trimmed.replace(/%$/, ''));
+			if (!Number.isFinite(value)) return { ok: false, message: 'Duty must be a number.' };
+			return { ok: true, value };
+		}
+		const withoutUnit = stripTrailingUnit(trimmed);
+		if (withoutUnit.unit !== '' && withoutUnit.unit !== 's') {
+			return { ok: false, message: 'Use ns, us, ms, or s for time values.' };
+		}
+		if (withoutUnit.unit === '') {
+			const value = Number(withoutUnit.core);
+			return Number.isFinite(value)
+				? { ok: true, value }
+				: { ok: false, message: 'Time must be a number.' };
+		}
+		const parsed = parseSI(withoutUnit.core);
+		if (!parsed.ok) return { ok: false, message: `Invalid value: ${parsed.error}` };
+		return { ok: true, value: parsed.value * 1e9 };
+	}
+
+	function commitTimingText(component: Component, field: TimingField, text: string): void {
+		const parsed = parseTimingText(field, text);
+		if (!parsed.ok) {
+			failParam(field, parsed.message);
+			return;
+		}
+		const validation = validateTimingParam(component.kind, field, parsed.value);
+		if (!validation.ok) {
+			failParam(field, validation.message);
+			return;
+		}
+		reportResult(field, store.setParam(component.id, field, parsed.value), (error) =>
+			error === 'invalid-clock-period'
+				? 'The clock period is too short for a directly clocked part.'
+				: `${timingLabel(field)} is invalid.`
+		);
+	}
+
+	function resetTiming(component: Component, field: TimingField): void {
+		paramError = null;
+		const result = store.clearTimingParam(component.id, field);
+		if (!result.ok) failParam(field, 'Could not reset this timing value.');
+	}
 
 	function enumOptions(key: string): readonly string[] | null {
 		if (snapshot.domain !== 'analog') return null;
@@ -155,10 +256,17 @@
 	/** Parameter keys covered by the dedicated parameterized-family controls. */
 	function hiddenParamKeys(kind: string): ReadonlySet<string> {
 		const shape = parameterShapeFor(kind);
-		if (shape === 'memory') return new Set(['wordBits', 'addressBits']);
-		if (shape === 'rom') return new Set(['wordBits', 'contents']);
-		if (shape === 'width') return new Set(['width']);
-		return new Set();
+		const keys = new Set<string>(timingFieldsForKind(kind));
+		if (shape === 'memory') {
+			keys.add('wordBits');
+			keys.add('addressBits');
+		}
+		if (shape === 'rom') {
+			keys.add('wordBits');
+			keys.add('contents');
+		}
+		if (shape === 'width') keys.add('width');
+		return keys;
 	}
 
 	function parseIntInRange(
@@ -313,13 +421,38 @@
 {/snippet}
 
 <aside class="inspector">
-	<h2>Inspector</h2>
+	<div class="inspector-head">
+		<h2>Inspector</h2>
+		{#if selected}<span class="note">{selected.kind}</span>{/if}
+	</div>
 	{#if !selected}
-		<p class="muted">
-			{snapshot.selection.size === 0
-				? 'Select a component to edit its properties.'
-				: 'Select a single component to edit its properties.'}
-		</p>
+		<div class="empty">
+			<svg viewBox="0 0 120 72" aria-hidden="true" focusable="false">
+				<path d="M8 36h26" />
+				<path d="M34 22v28l22-14z" />
+				<path d="M56 36h26" />
+				<rect x="82" y="26" width="26" height="20" />
+				<path d="M108 36h6" />
+			</svg>
+			<p class="empty-title">
+				{snapshot.selection.size === 0
+					? 'Nothing selected'
+					: 'Several parts selected'}
+			</p>
+			<p class="muted">
+				{snapshot.selection.size === 0
+					? 'Click a part on the canvas to edit its properties.'
+					: 'Select a single part to edit its properties.'}
+			</p>
+			<dl class="shortcuts">
+				<div><dt><kbd>Click</kbd></dt><dd>Place a part, then click the canvas</dd></div>
+				<div><dt><kbd>Drag</kbd></dt><dd>Wire from one pin to another</dd></div>
+				<div><dt><kbd>Shift</kbd> + click</dt><dd>Select several parts</dd></div>
+				<div><dt><kbd>Middle</kbd> drag</dt><dd>Pan the sheet</dd></div>
+				<div><dt><kbd>Del</kbd></dt><dd>Delete the selection</dd></div>
+				<div><dt><kbd>Esc</kbd></dt><dd>Cancel placing or wiring</dd></div>
+			</dl>
+		</div>
 	{:else}
 		<fieldset class="readonly-guard" disabled={readonly}>
 		<fieldset>
@@ -440,6 +573,45 @@
 		{/if}
 		</fieldset>
 
+		{#if timingFields.length > 0}
+			<fieldset class="timing" disabled={mode !== 'physical'}>
+				<legend>Physical timing</legend>
+				{#if mode !== 'physical'}
+					<p class="muted" data-testid="timing-inactive-note">
+						Timing values apply only in physical timing.
+					</p>
+				{/if}
+				{#each timingFields as field (field)}
+					<label>
+						<span>{timingLabel(field)}</span>
+						<input
+							type="text"
+							data-testid={`timing-${field}-input`}
+							value={timingValue(selected, field)}
+							onchange={(event) => commitTimingText(selected, field, event.currentTarget.value)}
+						/>
+						{#if !hasTimingOverride(selected, field)}
+							<span class="muted" data-testid={`timing-${field}-default`}>Default</span>
+						{/if}
+						<button
+							type="button"
+							data-testid={`timing-${field}-reset`}
+							disabled={!hasTimingOverride(selected, field)}
+							onclick={() => resetTiming(selected, field)}
+						>
+							Reset
+						</button>
+					</label>
+					{#if paramError?.key === field}
+						<p class="error" role="alert" data-testid={`timing-${field}-error`}>
+							{paramError.message}
+						</p>
+					{/if}
+				{/each}
+				<p class="muted">Clock polarity is not used in physical timing.</p>
+			</fieldset>
+		{/if}
+
 		{#if modelBacked}
 			<fieldset>
 				<legend>Model</legend>
@@ -535,29 +707,128 @@
 
 <style>
 	.inspector {
-		width: 252px;
-		min-width: 252px;
+		grid-area: inspector;
+		width: 300px;
+		min-width: 0;
+		min-height: 0;
 		overflow-y: auto;
-		padding: 12px;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
-		box-shadow: var(--shadow-sheet);
+		padding: 0 12px 14px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-md);
+		box-shadow: var(--shadow-1);
+	}
+
+	.inspector-head {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 -12px 12px;
+		padding: 11px 12px;
+		background: var(--paper);
+		border-bottom: 1px solid var(--rule);
+		border-radius: var(--radius-md) var(--radius-md) 0 0;
 	}
 
 	h2 {
+		font-size: 11px;
+		font-weight: 650;
+		letter-spacing: 0.09em;
+		text-transform: uppercase;
+		color: var(--ink-soft);
+		margin: 0;
+	}
+
+	.inspector-head .note {
+		margin-left: auto;
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		color: var(--ink-faint);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.empty {
+		padding: 14px 2px 4px;
+	}
+
+	.empty-title {
+		margin: 0 0 4px;
 		font-size: 14px;
-		margin: 0 0 8px;
-		padding-bottom: 4px;
-		border-bottom: 2px solid var(--ink);
+		font-weight: 650;
+		color: var(--ink);
+	}
+
+	.shortcuts {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		margin: 16px 0 0;
+		padding: 0;
+		border-top: 1px solid var(--rule);
+	}
+
+	.shortcuts > div {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 12px;
+		padding: 7px 0;
+		border-bottom: 1px solid var(--rule-faint);
+	}
+
+	.shortcuts dt {
+		flex: none;
+		font-size: 10.5px;
+		color: var(--ink-soft);
+	}
+
+	.shortcuts dd {
+		margin: 0;
+		text-align: right;
+		font-size: 11px;
+		line-height: 1.35;
+		color: var(--ink-faint);
+	}
+
+	kbd {
+		display: inline-block;
+		padding: 1px 5px;
+		border: 1px solid var(--rule-strong);
+		border-bottom-width: 2px;
+		border-radius: var(--radius-xs);
+		background: var(--paper-soft);
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--ink-soft);
+	}
+
+	.empty svg {
+		width: 96px;
+		height: auto;
+		fill: none;
+		stroke: var(--accent);
+		stroke-width: 1.4;
+		opacity: 0.55;
+		margin-bottom: 10px;
 	}
 
 	fieldset {
-		border: var(--rule-faint);
-		border-radius: 2px;
-		padding: 8px;
-		margin: 0 0 10px;
-		background: var(--sheet-raised);
+		border: 0;
+		border-top: 1px solid var(--rule);
+		border-radius: 0;
+		padding: 10px 0 2px;
+		margin: 0 0 4px;
+		background: transparent;
+	}
+
+	fieldset:first-of-type {
+		border-top: 0;
+		padding-top: 0;
 	}
 
 	.readonly-guard {
@@ -568,22 +839,32 @@
 	}
 
 	legend {
-		font-family: var(--font-head);
-		font-size: 11px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
+		font-size: 9.5px;
+		font-weight: 650;
+		letter-spacing: 0.11em;
 		text-transform: uppercase;
-		color: var(--ink-soft);
-		padding: 0 4px;
+		color: var(--ink-faint);
+		padding: 0;
+		margin-bottom: 8px;
 	}
 
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
+		gap: 4px;
 		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.04em;
 		color: var(--ink-soft);
-		margin-bottom: 8px;
+		margin-bottom: 9px;
+	}
+
+	label > span {
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-faint);
 	}
 
 	input,
@@ -591,34 +872,50 @@
 	textarea {
 		font-family: var(--font-mono);
 		font-size: 12px;
-		padding: 4px 5px;
-		border: 1px solid var(--rule);
-		border-radius: 2px;
+		padding: 6px 8px;
+		min-height: 32px;
+		border: 1px solid var(--rule-strong);
+		border-radius: var(--radius-sm);
 		width: 100%;
 		box-sizing: border-box;
 		color: var(--ink);
-		background: var(--sheet);
+		background: var(--paper);
+	}
+
+	select {
+		padding-right: 26px;
 	}
 
 	input[type='checkbox'] {
 		width: auto;
+		min-height: 0;
 		align-self: flex-start;
 	}
 
 	.muted {
-		font-size: 11px;
+		font-size: 12px;
 		color: var(--ink-soft);
 		margin: 0 0 6px;
 	}
 
 	.error {
 		font-size: 11px;
-		color: var(--stamp-red);
+		color: var(--danger);
+		padding: 0;
+		border: 0;
+		background: none;
 	}
 
 	.notice {
-		font-size: 11px;
+		font-size: 11.5px;
 		color: var(--ink-soft);
 		margin: 0 0 6px;
+	}
+
+	@media (max-width: 1080px) {
+		.inspector {
+			width: 100%;
+			overflow-y: visible;
+		}
 	}
 </style>

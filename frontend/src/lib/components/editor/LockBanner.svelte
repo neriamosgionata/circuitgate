@@ -16,6 +16,7 @@
 	data-testid="lock-banner"
 	data-role={role}
 >
+	<span class="dot" aria-hidden="true"></span>
 	{#if role === 'holder'}
 		<span data-testid="lock-holder">Editing — you hold the lock.</span>
 		<button type="button" data-testid="lock-release" onclick={onRelease} disabled={busy}>
@@ -47,34 +48,59 @@
 
 <style>
 	.lock-banner {
+		flex: none;
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 10px;
-		padding: 6px 12px;
-		background: #e8f5e9;
-		border-bottom: 1px solid #c8e6c9;
-		font-size: 12px;
-		color: #1b5e20;
+		gap: 8px;
+		padding: 7px 16px;
+		background: var(--paper-soft);
+		border-bottom: 1px solid var(--rule);
+		font-size: 12.5px;
+		color: var(--ink-soft);
+	}
+
+	.dot {
+		width: 6px;
+		height: 6px;
+		flex: none;
+		border-radius: 50%;
+		background: var(--ink-faint);
+	}
+
+	.lock-banner[data-role='holder'] {
+		background: var(--ok-soft);
+		border-bottom-color: #b9dbc9;
+		color: var(--ink);
+	}
+
+	.lock-banner[data-role='holder'] .dot {
+		background: var(--ok);
 	}
 
 	.lock-banner.locked {
-		background: #fff8e1;
-		border-bottom-color: #ffe082;
-		color: #6d4c00;
+		background: var(--warn-soft);
+		border-bottom-color: #ecd49c;
+		color: var(--ink);
+	}
+
+	.lock-banner.locked .dot {
+		background: var(--warn);
+	}
+
+	.lock-banner[data-role='lost'] {
+		background: var(--danger-soft);
+		border-bottom-color: #e6b6b1;
+	}
+
+	.lock-banner[data-role='lost'] .dot {
+		background: var(--danger);
 	}
 
 	.lock-banner button {
-		padding: 3px 8px;
-		border: 1px solid #90a4ae;
-		border-radius: 4px;
-		background: #ffffff;
-		font-size: 12px;
-		cursor: pointer;
-	}
-
-	.lock-banner button:disabled {
-		opacity: 0.6;
-		cursor: default;
+		padding: 3px 9px;
+		min-height: 26px;
+		font-size: 11.5px;
+		background: var(--paper);
 	}
 </style>

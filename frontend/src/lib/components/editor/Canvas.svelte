@@ -185,7 +185,7 @@
 	) {
 		const net = pin.side === 'output' ? component.outputs[pin.name] : component.inputs[pin.name];
 		ctx.save();
-		ctx.fillStyle = '#ffe23d';
+		ctx.fillStyle = '#dbe8fc';
 		ctx.beginPath();
 		ctx.arc(point.x, point.y, 9, 0, Math.PI * 2);
 		ctx.fill();
@@ -193,11 +193,11 @@
 		ctx.beginPath();
 		ctx.arc(point.x, point.y, 5.5, 0, Math.PI * 2);
 		ctx.fill();
-		ctx.strokeStyle = '#1d1d1b';
+		ctx.strokeStyle = '#101820';
 		ctx.lineWidth = 1.5;
 		ctx.stroke();
 
-		ctx.font = '10px "Courier Prime", "Courier New", monospace';
+		ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
 		const chipWidth = Math.ceil(ctx.measureText(pin.name).width) + 10;
 		const chipHeight = 16;
 		const gap = 13;
@@ -209,12 +209,12 @@
 		const chipY = clamp(point.y - chipHeight / 2, 4, Math.max(4, size.height - chipHeight - 4));
 		ctx.beginPath();
 		ctx.roundRect(chipX, chipY, chipWidth, chipHeight, 3);
-		ctx.fillStyle = '#fff3a8';
+		ctx.fillStyle = '#e7effc';
 		ctx.fill();
-		ctx.strokeStyle = '#1d4ed8';
+		ctx.strokeStyle = '#1858c9';
 		ctx.lineWidth = 1;
 		ctx.stroke();
-		ctx.fillStyle = '#1d4ed8';
+		ctx.fillStyle = '#1858c9';
 		ctx.fillText(pin.name, chipX + chipWidth / 2, chipY + chipHeight / 2 + 0.5);
 		ctx.restore();
 	}
@@ -471,7 +471,7 @@
 				const worldRect = viewportWorldRect(viewport, width, height);
 				const startX = Math.floor(worldRect.x / step) * step;
 				const startY = Math.floor(worldRect.y / step) * step;
-				grid.strokeStyle = '#d8d2c2';
+				grid.strokeStyle = '#e4eaee';
 				grid.lineWidth = 1;
 				for (let x = startX; x <= worldRect.x + worldRect.width; x += step) {
 					const screen = worldToScreen(viewport, { x, y: 0 });
@@ -507,7 +507,7 @@
 		}
 		ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 		ctx.clearRect(0, 0, size.width, size.height);
-		ctx.fillStyle = '#f2efe6';
+		ctx.fillStyle = '#fcfdfd';
 		ctx.fillRect(0, 0, size.width, size.height);
 		ctx.drawImage(gridFor(size.width, size.height, dpr), 0, 0, size.width, size.height);
 
@@ -546,8 +546,8 @@
 
 		// Bodies as one fill/stroke pass, labels grouped by font, pins grouped
 		// by colour: per-component state changes dominate at 2,000 components.
-		ctx.fillStyle = '#fbf9f4';
-		ctx.strokeStyle = '#1d1d1b';
+		ctx.fillStyle = '#ffffff';
+		ctx.strokeStyle = '#101820';
 		ctx.lineWidth = 1.5;
 		ctx.beginPath();
 		for (const component of visible.components) {
@@ -566,7 +566,7 @@
 		// Hit-testing and wiring still use the rect and pin dots; the glyph
 		// is presentation only.
 		ctx.save();
-		ctx.strokeStyle = '#1d1d1b';
+		ctx.strokeStyle = '#101820';
 		ctx.lineCap = 'round';
 		ctx.lineJoin = 'round';
 		for (const component of visible.components) {
@@ -590,9 +590,9 @@
 		ctx.textBaseline = 'middle';
 		ctx.lineJoin = 'round';
 		// Paper halo under both text lines so glyph strokes never swallow them.
-		ctx.strokeStyle = '#fbf9f4';
+		ctx.strokeStyle = '#ffffff';
 		ctx.lineWidth = 3;
-		ctx.font = '12px "Public Sans", sans-serif';
+		ctx.font = '12px "Archivo", system-ui, sans-serif';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -604,7 +604,7 @@
 				Math.max(width - 6, 10)
 			);
 		}
-		ctx.font = '9px "Public Sans", sans-serif';
+		ctx.font = '9px "Archivo", system-ui, sans-serif';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -616,8 +616,8 @@
 				Math.max(width - 6, 10)
 			);
 		}
-		ctx.font = '12px "Public Sans", sans-serif';
-		ctx.fillStyle = '#1d1d1b';
+		ctx.font = '12px "Archivo", system-ui, sans-serif';
+		ctx.fillStyle = '#101820';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -629,8 +629,8 @@
 				Math.max(width - 6, 10)
 			);
 		}
-		ctx.font = '9px "Public Sans", sans-serif';
-		ctx.fillStyle = '#6f6a60';
+		ctx.font = '9px "Archivo", system-ui, sans-serif';
+		ctx.fillStyle = '#66737e';
 		for (const component of visible.components) {
 			const topLeft = worldToScreen(viewport, { x: component.rect.x, y: component.rect.y });
 			const width = component.rect.width * viewport.scale;
@@ -659,7 +659,7 @@
 		}
 		// Paper punch under every pin: wires terminate at the dot edge instead
 		// of running into it, and the enlarged dots stay legible on any body.
-		ctx.fillStyle = '#fbf9f4';
+		ctx.fillStyle = '#ffffff';
 		ctx.beginPath();
 		for (const point of pinPoints) {
 			ctx.moveTo(point.x + 5, point.y);
@@ -675,7 +675,7 @@
 			}
 			ctx.fill();
 		}
-		ctx.strokeStyle = '#1d1d1b';
+		ctx.strokeStyle = '#101820';
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		for (const point of pinPoints) {
@@ -687,7 +687,7 @@
 		if (marquee) {
 			const topLeft = worldToScreen(viewport, { x: marquee.x, y: marquee.y });
 			ctx.save();
-			ctx.strokeStyle = '#1d4ed8';
+			ctx.strokeStyle = '#1858c9';
 			ctx.setLineDash([4, 3]);
 			ctx.strokeRect(topLeft.x, topLeft.y, marquee.width * viewport.scale, marquee.height * viewport.scale);
 			ctx.restore();
@@ -696,7 +696,7 @@
 			const from = worldToScreen(viewport, wirePreview.from);
 			const to = worldToScreen(viewport, wirePreview.to);
 			ctx.save();
-			ctx.strokeStyle = '#c0271b';
+			ctx.strokeStyle = '#bf2b1f';
 			ctx.setLineDash([5, 4]);
 			ctx.beginPath();
 			ctx.moveTo(from.x, from.y);
@@ -826,6 +826,23 @@
 		onwheel={onWheel}
 		oncontextmenu={(event) => event.preventDefault()}
 	></canvas>
+	{#if snapshot.document.components.length === 0}
+		<div class="canvas-empty" aria-hidden="true">
+			<svg viewBox="0 0 200 64" focusable="false">
+				<path d="M12 32h30" />
+				<path d="M42 20v24l22-12z" />
+				<path d="M64 32h28" />
+				<circle cx="98" cy="32" r="3.5" />
+				<path d="M102 32h26" />
+				<rect x="128" y="22" width="24" height="20" rx="2" />
+				<path d="M152 32h20" />
+			</svg>
+			<p>
+				<strong>{readonly ? 'This sheet is empty.' : 'Start with a part.'}</strong>
+				<span>{readonly ? 'The owner has not placed anything yet.' : 'Choose one from the components panel, then click here to place it.'}</span>
+			</p>
+		</div>
+	{/if}
 	<div class="overlay">
 		{#each overlay as entry (entry.id)}
 			<div
@@ -872,11 +889,11 @@
 		position: relative;
 		width: 100%;
 		height: 100%;
-		min-height: 420px;
+		min-height: 0;
 		overflow: hidden;
-		background: var(--sheet-sunk);
-		border: var(--rule-faint);
-		border-radius: 2px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 	}
 
 	canvas {
@@ -895,44 +912,87 @@
 		pointer-events: none;
 	}
 
+	.canvas-empty {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
+		padding: 24px;
+		text-align: center;
+		pointer-events: none;
+		color: var(--ink-faint);
+	}
+
+	.canvas-empty svg {
+		width: min(220px, 42%);
+		height: auto;
+		fill: none;
+		stroke: var(--accent);
+		stroke-width: 1.5;
+		stroke-linecap: round;
+		stroke-linejoin: round;
+		opacity: 0.55;
+	}
+
+	.canvas-empty p {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		margin: 0;
+		font-size: 13px;
+		max-width: 34ch;
+	}
+
+	.canvas-empty strong {
+		font-size: 15px;
+		font-weight: 650;
+		color: var(--ink);
+	}
+
 	.selection {
 		position: absolute;
-		border: 2px solid var(--biro);
-		border-radius: 2px;
+		border: 2px solid var(--accent);
+		border-radius: var(--radius-xs);
 		box-sizing: border-box;
-		box-shadow: 0 0 0 2px var(--highlight);
+		box-shadow: 0 0 0 2px var(--accent-soft);
 	}
 
 	.annotation {
 		position: absolute;
 		transform: translate(-50%, -50%);
-		background: var(--highlight-soft);
-		border: 1px solid var(--biro);
-		border-radius: 3px;
-		padding: 1px 4px;
+		background: var(--accent-soft);
+		border: 1px solid var(--accent-line);
+		border-radius: var(--radius-xs);
+		padding: 1px 5px;
 		font-size: 10px;
 		font-family: var(--font-mono);
-		color: var(--biro);
+		color: var(--accent-strong);
 		white-space: nowrap;
 	}
 
 	.annotation.component {
-		border-color: var(--stamp-green);
-		color: var(--stamp-green);
+		border-color: #b9dbc9;
+		color: var(--ok);
+		background: var(--ok-soft);
 	}
 
 	.controls {
 		position: absolute;
 		right: 12px;
 		bottom: 12px;
+		max-width: calc(100% - 24px);
 		display: flex;
+		flex-wrap: wrap;
 		gap: 6px;
 		align-items: center;
-		background: var(--sheet);
-		border: var(--rule-hair);
-		border-radius: 2px;
+		background: var(--paper);
+		border: 1px solid var(--rule);
+		border-radius: var(--radius-sm);
 		padding: 6px 8px;
-		box-shadow: var(--shadow-sheet);
+		box-shadow: var(--shadow-1);
 	}
 
 	.controls button {
@@ -945,5 +1005,11 @@
 		font-size: 11px;
 		color: var(--ink-soft);
 		max-width: 340px;
+	}
+
+	@media (max-width: 900px) {
+		.hint {
+			display: none;
+		}
 	}
 </style>

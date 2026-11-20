@@ -2,7 +2,10 @@ import { CompileError } from '../engine/compile';
 import { Simulator } from '../engine/evaluate';
 import { flatten, type SubcircuitDefinitions } from '../engine/hierarchy';
 import { pinoutForParameterizedKind, resolveComponentKind } from '../engine/kinds';
+import { PhysicalSimulator, type PhysicalStepResult, type PhysicalTimingEvent } from '../engine/physical';
 import { primitiveKinds } from '../engine/primitives';
+import { formatTimePs } from '../engine/time';
+import { timingForComponent } from '../engine/timing';
 import type { LogicValue } from '../engine/values';
 import type { CircuitDocument, Component } from '../model/circuit';
 import { validateDocumentShape } from '../model/schema';
@@ -15,6 +18,7 @@ import {
 	type SimulationCommand,
 	type SimulationEvent,
 	type SimulationMode,
+	type SimulationPauseReason,
 	type SimulationStatus
 } from './protocol';
 import { WaveformRecorder, type WaveformChange } from './recorder';
@@ -28,7 +32,10 @@ export const defaultScheduler: Scheduler = (callback) => {
 
 export interface SimulationHostOptions {
 	schedule?: Scheduler;
+	/** Scheduler used for the physical Run loop; defaults to `schedule`. */
+	runSchedule?: Scheduler;
 	maxDeltaCycles?: number;
+	maxPhysicalEvents?: number;
 	retentionPerNet?: number;
 }
 
@@ -94,7 +101,9 @@ function findBlockedComponents(flat: CircuitDocument): CompileIssue[] {
 export class SimulationHost {
 	private readonly emitEvent: (event: SimulationEvent) => void;
 	private readonly schedule: Scheduler;
+	private readonly runSchedule: Scheduler;
 	private readonly maxDeltaCycles: number;
+	private readonly maxPhysicalEvents: number;
 	readonly recorder: WaveformRecorder;
 
 	private simulator: Simulator | null = null;
@@ -108,6 +117,8 @@ export class SimulationHost {
 	private currentTick = 0;
 	private currentFrame = 0;
 	private lastStatus: SimulationStatus = 'stable';
+	private pauseReason: SimulationPauseReason | null = null;
+	private seenTimingIds = new Set<string>();
 	private cancelRun: (() => void) | null = null;
 	private cancelFlush: (() => void) | null = null;
 	private pendingChanges = new Map<string, NetChange>();
@@ -119,7 +130,9 @@ export class SimulationHost {
 	constructor(emit: (event: SimulationEvent) => void, options: SimulationHostOptions = {}) {
 		this.emitEvent = emit;
 		this.schedule = options.schedule ?? defaultScheduler;
+		this.runSchedule = options.runSchedule ?? this.schedule;
 		this.maxDeltaCycles = options.maxDeltaCycles ?? 1000;
+		this.maxPhysicalEvents = options.maxPhysicalEvents ?? 100_000;
 		this.recorder = new WaveformRecorder(
 			options.retentionPerNet === undefined ? {} : { retentionPerNet: options.retentionPerNet }
 		);
@@ -206,6 +219,8 @@ export class SimulationHost {
 		this.currentTick = 0;
 		this.currentFrame = 0;
 		this.lastStatus = 'stable';
+		this.pauseReason = null;
+		this.seenTimingIds.clear();
 		this.document = document;
 		this.definitions = definitions;
 		this.currentMode = mode;
@@ -259,7 +274,10 @@ export class SimulationHost {
 				this.emitStatus();
 				return;
 			}
-			this.simulator = new Simulator(flat, resolveComponentKind, initialValues);
+			this.simulator =
+				mode === 'physical'
+					? new PhysicalSimulator(flat, resolveComponentKind, initialValues, timingForComponent)
+					: new Simulator(flat, resolveComponentKind, initialValues);
 		} catch (error) {
 			this.emitEvent({ type: 'compileError', correlationId, issues: [this.issueFromError(error)] });
 			this.emitStatus();
@@ -281,7 +299,14 @@ export class SimulationHost {
 			components
 		});
 
-		if (this.currentMode === 'timed') {
+		if (this.currentMode === 'physical' && this.simulator instanceof PhysicalSimulator) {
+			const result = this.simulator.stepPhysical({
+				maxEvents: this.maxPhysicalEvents,
+				maxDeltaCycles: this.maxDeltaCycles
+			});
+			this.commit(0, result.status, result.oscillatingNetIndexes);
+			this.handlePhysicalTiming(result);
+		} else if (this.currentMode === 'timed') {
 			this.simulator.stepTimed({ ticks: 1 });
 			this.commit(0, 'stable', []);
 		} else {
@@ -314,6 +339,10 @@ export class SimulationHost {
 		const simulator = this.simulator;
 		if (!simulator) return;
 		simulator.setState(componentId, { value });
+		if (this.currentMode === 'physical' && simulator instanceof PhysicalSimulator) {
+			simulator.wakePhysical(componentId);
+			return;
+		}
 		if (this.currentMode === 'timed') {
 			simulator.wake(componentId, 0);
 			return;
@@ -333,6 +362,23 @@ export class SimulationHost {
 	private advance(count: number): void {
 		const simulator = this.simulator;
 		if (!simulator) return;
+		if (this.currentMode === 'physical' && simulator instanceof PhysicalSimulator) {
+			for (let index = 0; index < count; index++) {
+				const before = simulator.timePs;
+				const result = simulator.stepPhysical({
+					maxEvents: this.maxPhysicalEvents,
+					maxDeltaCycles: this.maxDeltaCycles
+				});
+				this.currentTick = result.timePs;
+				this.commit(result.timePs, result.status, result.oscillatingNetIndexes, result.changedNetIndexes);
+				this.flush();
+				this.handlePhysicalTiming(result);
+				if (result.status === 'event-limit' || this.pauseReason !== null) break;
+				if (result.timePs === before && result.changedNetIndexes.length === 0) break;
+			}
+			this.emitStatus();
+			return;
+		}
 		for (let index = 0; index < count; index++) {
 			if (this.currentMode === 'timed') {
 				simulator.stepTimed({ ticks: 1 });
@@ -349,19 +395,22 @@ export class SimulationHost {
 
 	private startRun(): void {
 		if (this.isRunning || !this.simulator) return;
+		this.pauseReason = null;
 		this.isRunning = true;
 		this.emitStatus();
 		const loop = () => {
 			this.cancelRun = null;
 			if (!this.isRunning || !this.simulator) return;
 			this.advance(1);
-			this.cancelRun = this.schedule(loop);
+			if (!this.isRunning) return;
+			this.cancelRun = this.runSchedule(loop);
 		};
-		this.cancelRun = this.schedule(loop);
+		this.cancelRun = this.runSchedule(loop);
 	}
 
 	private stopRun(): void {
 		const wasRunning = this.isRunning;
+		this.pauseReason = null;
 		this.stopRunInternal();
 		if (wasRunning) this.emitStatus();
 	}
@@ -378,12 +427,20 @@ export class SimulationHost {
 		this.pendingChanges.clear();
 	}
 
-	private commit(tick: number, status: SimulationStatus, oscillatingIndexes: readonly number[]): void {
+	private commit(
+		tick: number,
+		status: SimulationStatus,
+		oscillatingIndexes: readonly number[],
+		changedIndexes?: readonly number[]
+	): void {
 		const simulator = this.simulator;
 		if (!simulator) return;
 		const oscillating = new Set(oscillatingIndexes.map((index) => this.netIds[index]));
-		for (let index = 0; index < this.netIds.length; index++) {
+		const indexes =
+			changedIndexes ?? Array.from({ length: this.netIds.length }, (_, index) => index);
+		for (const index of indexes) {
 			const net = this.netIds[index];
+			if (net === undefined) continue;
 			const value = simulator.getNet(net) as LogicValue;
 			const isOscillating = oscillating.has(net);
 			if (this.lastValues.get(net) === value && this.oscillatingNets.has(net) === isOscillating) {
@@ -459,6 +516,84 @@ export class SimulationHost {
 		});
 	}
 
+	private handlePhysicalTiming(result: PhysicalStepResult): void {
+		let newTiming = false;
+		for (const event of result.timingEvents) {
+			const id = `timing:${event.constraint}:${event.componentId}`;
+			if (!this.seenTimingIds.has(id)) {
+				this.seenTimingIds.add(id);
+				newTiming = true;
+			}
+			this.emitTimingDiagnostic(id, event);
+		}
+
+		for (const componentId of result.clearedComponentIds) {
+			for (const constraint of ['setup', 'hold'] as const) {
+				const id = `timing:${constraint}:${componentId}`;
+				if (this.seenTimingIds.delete(id)) this.emitTimingClear(id, componentId);
+			}
+		}
+
+		if (result.status === 'event-limit') {
+			this.pauseReason = 'event-limit';
+			this.emitEventLimitDiagnostic(result.timePs);
+			this.stopRunInternal();
+			this.emitStatus();
+			return;
+		}
+
+		if (newTiming && this.isRunning) {
+			this.pauseReason = 'timing';
+			this.stopRunInternal();
+			this.emitStatus();
+		}
+	}
+
+	private emitTimingDiagnostic(id: string, event: PhysicalTimingEvent): void {
+		const component = this.flatDocument?.components.find((entry) => entry.id === event.componentId);
+		const nets = component ? [...new Set(Object.values(component.inputs))] : [];
+		this.emitEvent({
+			type: 'diagnostic',
+			diagnostic: {
+				id,
+				kind: 'timing',
+				message: `${event.constraint} violation on ${event.componentId} at ${formatTimePs(event.edgeTimePs)} (window ${formatTimePs(event.windowFromPs)}–${formatTimePs(event.windowToPs)})`,
+				componentIds: [event.componentId],
+				nets,
+				time: event.edgeTimePs,
+				window: { from: event.windowFromPs, to: event.windowToPs }
+			}
+		});
+	}
+
+	private emitTimingClear(id: string, componentId: string): void {
+		this.emitEvent({
+			type: 'diagnostic',
+			cleared: true,
+			diagnostic: {
+				id,
+				kind: 'timing',
+				message: '',
+				componentIds: [componentId]
+			}
+		});
+	}
+
+	private emitEventLimitDiagnostic(timePs: number): void {
+		const id = 'event-limit';
+		if (this.seenTimingIds.has(id)) return;
+		this.seenTimingIds.add(id);
+		this.emitEvent({
+			type: 'diagnostic',
+			diagnostic: {
+				id,
+				kind: 'event-limit',
+				message: `simulation event limit reached at ${formatTimePs(timePs)}; reset to continue`,
+				time: timePs
+			}
+		});
+	}
+
 	private emitHistory(correlationId: number): void {
 		const nets: Record<string, WaveformChange[]> = {};
 		for (const net of this.recorder.nets()) nets[net] = [...this.recorder.history(net)];
@@ -474,7 +609,8 @@ export class SimulationHost {
 			type: 'status',
 			running: this.isRunning,
 			mode: this.currentMode,
-			tick: this.currentTick
+			tick: this.currentTick,
+			pauseReason: this.pauseReason ?? undefined
 		});
 	}
 

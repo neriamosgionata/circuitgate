@@ -1,5 +1,12 @@
 import type { CircuitDocument } from '../model/circuit';
-import { compile, compileWithResolver, type CompiledNetlist, type ComponentKinds, type KindResolver } from './compile';
+import {
+	compile,
+	compileWithResolver,
+	type CompiledNetlist,
+	type ComponentKinds,
+	type KindResolver,
+	type TimingResolver
+} from './compile';
 import { EventQueue, type QueueEntry } from './eventQueue';
 import { resolveDrivers, type LogicValue } from './values';
 
@@ -29,19 +36,20 @@ export const DEFAULT_MAX_DELTA_CYCLES = 1000;
 
 export class Simulator {
 	readonly netlist: CompiledNetlist;
-	private values: LogicValue[];
-	private states: unknown[];
+	protected values: LogicValue[];
+	protected states: unknown[];
 	private timedQueue: EventQueue | null = null;
 	private timedTick = 0;
 
 	constructor(
 		document: CircuitDocument,
 		kindsOrResolver: ComponentKinds | KindResolver,
-		initialValues: Readonly<Record<string, LogicValue>> = {}
+		initialValues: Readonly<Record<string, LogicValue>> = {},
+		timingResolver?: TimingResolver
 	) {
 		this.netlist =
 			typeof kindsOrResolver === 'function'
-				? compileWithResolver(document, kindsOrResolver)
+				? compileWithResolver(document, kindsOrResolver, timingResolver)
 				: compile(document, kindsOrResolver);
 		this.values = this.netlist.netIds.map((id) => initialValues[id] ?? 'X');
 		this.states = this.netlist.components.map((component) => component.state);
